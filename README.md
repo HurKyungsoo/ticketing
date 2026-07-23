@@ -233,5 +233,6 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 - [ ] 토스페이먼츠 테스트 결제 연동 + 웹훅으로 결제 상태 동기화
 - [ ] 관리자 대시보드 (`selectDailySales` + Chart.js)
 - [ ] 마이페이지 예매 내역 / 취소 화면
-- [ ] Docker + GitHub Actions CI
-- [ ] AWS EC2 + RDS 배포
+- [x] GitHub Actions CI (push/PR 시 빌드 + `ReservationConcurrencyTest` 포함 전체 테스트 자동 실행)
+- [ ] Docker
+- [ ] AWS EC2 + RDS 배포 (CD)

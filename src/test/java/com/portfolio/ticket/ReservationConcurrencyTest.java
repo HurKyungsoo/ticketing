@@ -85,7 +85,7 @@ class ReservationConcurrencyTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(HoldStrategy.class)
     void concurrentHold(HoldStrategy strategy) throws InterruptedException {
-        ExecutorService executor = Executors.newFixedThreadPool(32);
+        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         CountDownLatch ready = new CountDownLatch(THREAD_COUNT);
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(THREAD_COUNT);
