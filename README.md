@@ -199,6 +199,10 @@ CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► Perf
 # 2) 환경변수로 주입 (application.yml 에 직접 넣지 말 것)
 export PUBLICDATA_SERVICE_KEY="발급받은_인코딩된_키"
 
+# 2-1) 결제 기능을 쓰려면 토스페이먼츠 테스트 키도 발급 (developers.tosspayments.com)
+export TOSS_CLIENT_KEY="test_ck_..."
+export TOSS_SECRET_KEY="test_sk_..."
+
 # 3) 실행 (H2 인메모리)
 ./gradlew bootRun
 
@@ -218,12 +222,16 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 | Method | URL | 설명 |
 |---|---|---|
 | GET | `/` | 공연 목록 |
+| GET | `/login`, `/signup` | 로그인 / 회원가입 |
 | GET | `/performances/{id}` | 공연 상세 + 회차 |
 | GET | `/schedules/{id}/seats` | 좌석 배치도 |
-| POST | `/api/seats/{seatId}/hold?memberId=&strategy=` | 좌석 선점 (전략 선택 가능) |
-| POST | `/api/reservations/{no}/confirm` | 결제 확정 |
-| POST | `/api/reservations/{no}/cancel?memberId=` | 취소 + 환불액 계산 |
+| POST | `/api/seats/{seatId}/hold?strategy=` | 좌석 선점 (로그인 필요, 전략 선택 가능) |
+| GET | `/reservations/{no}/payment` | 결제 페이지 (결제위젯) |
+| GET | `/reservations/{no}/payment/success` | 결제 승인 콜백 - 서버가 amount 대조 검증 후 확정 |
+| GET | `/reservations/{no}/payment/fail` | 결제 실패 콜백 |
+| POST | `/api/reservations/{no}/cancel` | 취소 + 환불액 계산 (결제완료 건은 토스 취소 API 호출) |
 | POST | `/api/admin/sync` | 공공데이터 수동 수집 |
+| POST | `/api/webhooks/toss` | 토스 결제 상태 웹훅 (가상계좌 입금완료 등 비동기 반영) |
 
 환불 수수료: 10일 전 0% / 7일 전 10% / 3일 전 20% / 1일 전 30% / 당일 취소 불가
 
@@ -232,7 +240,7 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 ## 9. 남은 작업
 
 - [x] Spring Security + 회원 도메인 (세션 기반 폼 로그인, `memberId` 파라미터 제거)
-- [ ] 토스페이먼츠 테스트 결제 연동 + 웹훅으로 결제 상태 동기화
+- [x] 토스페이먼츠 테스트 결제 연동 (결제위젯 3.0) + 웹훅으로 결제 상태 동기화
 - [ ] 관리자 대시보드 (`selectDailySales` + Chart.js)
 - [ ] 마이페이지 예매 내역 / 취소 화면
 - [x] GitHub Actions CI (push/PR 시 빌드 + `ReservationConcurrencyTest` 포함 전체 테스트 자동 실행)
