@@ -1,0 +1,219 @@
+/* ------------------------------------------------------------------
+   공연 예매 - 공통 스타일
+   컨셉: 극장 프로그램북. 어두운 객석 + 조명 받는 무대.
+   ------------------------------------------------------------------ */
+:root {
+  --ink:        #17122B;   /* 객석 어둠 */
+  --ink-soft:   #221B3A;
+  --paper:      #F2EDE4;   /* 프로그램북 종이 */
+  --brass:      #C9A227;   /* 무대 조명 */
+  --brass-dim:  #8A7220;
+  --rose:       #C4566B;   /* 매진 */
+  --mute:       #6B6480;
+  --line:       rgba(242, 237, 228, 0.14);
+
+  --display: 'Gowun Batang', 'Nanum Myeongjo', serif;
+  --body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 40px;
+}
+.masthead h1 {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+.masthead .tag {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.masthead .authnav {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--mute);
+}
+.masthead .authnav a { color: var(--brass); }
+.masthead .authnav form { margin: 0; }
+.masthead .authnav .linklike {
+  background: none; border: 0; padding: 0;
+  font: inherit; color: var(--brass); cursor: pointer;
+}
+
+/* ---------- 공연 목록 ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 28px;
+}
+.card { display: block; }
+.card .poster {
+  aspect-ratio: 3 / 4;
+  background: var(--ink-soft);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.card .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .poster.empty {
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 34px;
+  color: var(--brass-dim);
+}
+.card h3 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+.card .meta { font-size: 13px; color: var(--mute); }
+
+/* ---------- 상세 ---------- */
+.detail { display: grid; grid-template-columns: 280px 1fr; gap: 40px; }
+.detail h2 { font-family: var(--display); font-size: 30px; margin: 0 0 8px; }
+.spec { border-top: 1px solid var(--line); margin-top: 24px; }
+.spec div { display: flex; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.spec dt { width: 84px; color: var(--mute); flex: none; margin: 0; }
+
+.schedules { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.schedules a {
+  border: 1px solid var(--brass-dim);
+  color: var(--brass);
+  padding: 9px 16px;
+  font-size: 14px;
+  transition: background .15s, color .15s;
+}
+.schedules a:hover { background: var(--brass); color: var(--ink); }
+.schedules a.soldout {
+  border-color: var(--line); color: var(--mute); pointer-events: none;
+}
+
+/* ---------- 좌석 배치도 (시그니처) ---------- */
+.stage {
+  margin: 8px auto 44px;
+  max-width: 620px;
+  height: 62px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  border-top: 2px solid var(--brass);
+  background: linear-gradient(to bottom, rgba(201,162,39,.20), transparent 78%);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  letter-spacing: 0.5em;
+  font-size: 14px;
+  color: var(--brass);
+  padding-left: 0.5em;
+}
+
+.house { display: flex; flex-direction: column; gap: 9px; align-items: center; }
+.row { display: flex; align-items: center; gap: 9px; }
+.row .rowlabel {
+  font-family: var(--display);
+  width: 30px;
+  text-align: right;
+  font-size: 17px;
+  color: var(--brass-dim);
+  flex: none;
+}
+
+.seat {
+  width: 26px; height: 26px;
+  border: 1px solid var(--line);
+  background: var(--ink-soft);
+  border-radius: 4px 4px 2px 2px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform .1s, background .1s, border-color .1s;
+}
+.seat:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--brass); }
+.seat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.seat.grade-VIP { border-color: rgba(201,162,39,.55); }
+.seat.grade-R   { border-color: rgba(201,162,39,.32); }
+.seat[data-status="HELD"] { background: var(--brass-dim); cursor: not-allowed; }
+.seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
+.seat.selected { background: var(--brass); border-color: var(--brass); }
+
+.legend {
+  display: flex; gap: 22px; justify-content: center;
+  margin-top: 40px; font-size: 12px; color: var(--mute);
+}
+.legend span { display: flex; align-items: center; gap: 7px; }
+.legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+
+/* ---------- 예매 바 ---------- */
+.bookbar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: rgba(23,18,43,.94);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+  padding: 16px 24px;
+}
+.bookbar .inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.bookbar .picked { font-size: 14px; color: var(--mute); }
+.bookbar .picked strong { color: var(--paper); font-weight: 600; }
+.bookbar button {
+  font-family: var(--body); font-size: 15px; font-weight: 600;
+  background: var(--brass); color: var(--ink);
+  border: 0; padding: 13px 30px; cursor: pointer;
+}
+.bookbar button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
+
+.empty-state {
+  text-align: center; padding: 80px 20px; color: var(--mute);
+}
+.empty-state p { margin: 0 0 6px; }
+
+/* ---------- 로그인 / 회원가입 ---------- */
+.authwrap { max-width: 380px; }
+.authform { display: flex; flex-direction: column; gap: 18px; }
+.authform label {
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 13px; color: var(--mute);
+}
+.authform input {
+  font-family: var(--body); font-size: 15px;
+  background: var(--ink-soft); color: var(--paper);
+  border: 1px solid var(--line); padding: 11px 12px;
+}
+.authform input:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.authform button {
+  font-family: var(--body); font-size: 15px; font-weight: 600;
+  background: var(--brass); color: var(--ink);
+  border: 0; padding: 13px; cursor: pointer;
+}
+.authform .autherror { color: var(--rose); font-size: 13px; margin: 0; }
+.authform .authlink { font-size: 13px; color: var(--mute); text-align: center; margin: 0; }
+.authform .authlink a { color: var(--brass); }
+
+@media (max-width: 720px) {
+  .detail { grid-template-columns: 1fr; }
+  .seat { width: 22px; height: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

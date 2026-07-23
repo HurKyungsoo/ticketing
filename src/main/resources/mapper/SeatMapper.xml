@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.portfolio.ticket.mapper.SeatMapper">
+
+    <!-- 좌석 배치도: 한 회차의 전 좌석을 한 방에. 정렬은 DB 에서 끝낸다. -->
+    <select id="selectSeatMap" resultType="com.portfolio.ticket.mapper.dto.SeatMapRow">
+        SELECT s.id        AS seat_id,
+               s.section   AS section,
+               s.seat_no   AS seat_no,
+               s.grade     AS grade,
+               s.status    AS status,
+               s.price     AS price
+          FROM seat s
+         WHERE s.schedule_id = #{scheduleId}
+         ORDER BY s.section ASC, s.seat_no ASC
+    </select>
+
+    <!-- 일자별 매출 집계. 관리자 대시보드 차트용 -->
+    <select id="selectDailySales" resultType="com.portfolio.ticket.mapper.dto.SalesStatRow">
+        SELECT DATE(r.confirmed_at) AS sale_date,
+               COUNT(*)             AS ticket_count,
+               SUM(r.amount)        AS total_amount
+          FROM reservation r
+          JOIN seat s                ON s.id = r.seat_id
+          JOIN performance_schedule ps ON ps.id = s.schedule_id
+         WHERE r.status = 'CONFIRMED'
+        <if test="from != null">
+           AND r.confirmed_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+           AND r.confirmed_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+        </if>
+        <if test="performanceId != null">
+           AND ps.performance_id = #{performanceId}
+        </if>
+         GROUP BY DATE(r.confirmed_at)
+         ORDER BY sale_date ASC
+    </select>
+
+</mapper>

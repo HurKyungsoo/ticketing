@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>좌석 선택</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag" th:text="${performance.title} + ' · ' + ${#temporals.format(schedule.showAt, 'M/d(E) HH:mm')}">회차</span>
+    </header>
+
+    <div class="stage">STAGE</div>
+
+    <div class="house">
+        <div class="row" th:each="row : ${rows}">
+            <span class="rowlabel" th:text="${row.key}">A</span>
+            <button type="button" class="seat"
+                    th:each="seat : ${row.value}"
+                    th:classappend="'grade-' + ${seat.grade}"
+                    th:attr="data-status=${seat.status},
+                             data-seat-id=${seat.seatId},
+                             data-label=${seat.section} + '-' + ${seat.seatNo},
+                             data-price=${seat.price}"
+                    th:disabled="${seat.status != 'AVAILABLE'}"
+                    th:title="|${seat.section}-${seat.seatNo} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
+            </button>
+        </div>
+    </div>
+
+    <div class="legend">
+        <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
+        <span><i style="background:var(--brass)"></i> 선택함</span>
+        <span><i style="background:var(--brass-dim)"></i> 결제 대기</span>
+        <span><i style="background:var(--rose);opacity:.55"></i> 판매 완료</span>
+    </div>
+</div>
+
+<div class="bookbar">
+    <div class="inner">
+        <p class="picked" id="picked">좌석을 선택하세요</p>
+        <button type="button" id="bookBtn" disabled>예매하기</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
+    const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
+    let picked = null;
+
+    document.querySelectorAll('.seat').forEach(seat => {
+        seat.addEventListener('click', () => {
+            document.querySelectorAll('.seat.selected').forEach(s => s.classList.remove('selected'));
+            seat.classList.add('selected');
+            picked = seat;
+
+            const price = Number(seat.dataset.price).toLocaleString();
+            document.getElementById('picked').innerHTML =
+                `<strong>${seat.dataset.label}</strong> · ${price}원`;
+            document.getElementById('bookBtn').disabled = false;
+        });
+    });
+
+    document.getElementById('bookBtn').addEventListener('click', async () => {
+        if (!picked) return;
+        const btn = document.getElementById('bookBtn');
+        btn.disabled = true;
+        btn.textContent = '선점 중...';
+
+        try {
+            const res = await fetch(
+                `/api/seats/${picked.dataset.seatId}/hold?strategy=PESSIMISTIC`,
+                { method: 'POST', headers: { [CSRF_HEADER]: CSRF_TOKEN } });
+
+            if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
+                location.href = '/login';
+                return;
+            }
+            const data = await res.json();
+
+            if (res.ok) {
+                // 결제 페이지로. 여기서 토스페이먼츠 결제창을 띄운다.
+                location.href = `/reservations/${data.reservationNo}/payment`;
+            } else {
+                alert(data.message);
+                picked.dataset.status = 'HELD';
+                picked.disabled = true;
+                picked.classList.remove('selected');
+                picked = null;
+                document.getElementById('picked').textContent = '좌석을 선택하세요';
+            }
+        } catch (e) {
+            alert('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            btn.textContent = '예매하기';
+            btn.disabled = picked === null;
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>로그인</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap authwrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">로그인</span>
+    </header>
+
+    <form class="authform" th:action="@{/login}" method="post">
+        <p class="autherror" th:if="${param.error}">아이디 또는 비밀번호가 올바르지 않습니다.</p>
+
+        <label>
+            아이디
+            <input type="text" name="username" required autofocus>
+        </label>
+        <label>
+            비밀번호
+            <input type="password" name="password" required>
+        </label>
+
+        <button type="submit">로그인</button>
+        <p class="authlink"><a th:href="@{/signup}">회원가입</a></p>
+    </form>
+</div>
+</body>
+</html>

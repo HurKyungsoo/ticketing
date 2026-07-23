@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>공연 예매</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <h1>객석</h1>
+        <span class="tag">공공데이터 기반 공연 예매</span>
+        <nav class="authnav">
+            <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
+            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+                <button type="submit" class="linklike">로그아웃</button>
+            </form>
+            <span sec:authorize="isAnonymous()">
+                <a th:href="@{/login}">로그인</a> · <a th:href="@{/signup}">회원가입</a>
+            </span>
+        </nav>
+    </header>
+
+    <div class="grid" th:if="${!performances.isEmpty()}">
+        <a class="card" th:each="p : ${performances.content}"
+           th:href="@{/performances/{id}(id=${p.id})}">
+            <div class="poster" th:if="${p.posterUrl != null}">
+                <img th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy">
+            </div>
+            <div class="poster empty" th:unless="${p.posterUrl != null}"
+                 th:text="${#strings.substring(p.title, 0, 1)}">공</div>
+            <h3 th:text="${p.title}">공연명</h3>
+            <p class="meta">
+                <span th:text="${p.venue}">공연장</span> ·
+                <span th:text="${#temporals.format(p.startDate, 'M.d')}">시작</span> –
+                <span th:text="${#temporals.format(p.endDate, 'M.d')}">종료</span>
+            </p>
+        </a>
+    </div>
+
+    <div class="empty-state" th:if="${performances.isEmpty()}">
+        <p>아직 수집된 공연이 없습니다.</p>
+        <p><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
+    </div>
+</div>
+</body>
+</html>

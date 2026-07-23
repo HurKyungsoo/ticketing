@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${performance.title}">공연 상세</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">회차 선택</span>
+        <nav class="authnav">
+            <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
+            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+                <button type="submit" class="linklike">로그아웃</button>
+            </form>
+            <span sec:authorize="isAnonymous()">
+                <a th:href="@{/login}">로그인</a> · <a th:href="@{/signup}">회원가입</a>
+            </span>
+        </nav>
+    </header>
+
+    <div class="detail">
+        <div>
+            <div class="poster" style="aspect-ratio:3/4;border:1px solid var(--line);overflow:hidden"
+                 th:if="${performance.posterUrl != null}">
+                <img th:src="${performance.posterUrl}" th:alt="${performance.title}"
+                     style="width:100%;height:100%;object-fit:cover;display:block">
+            </div>
+        </div>
+
+        <div>
+            <h2 th:text="${performance.title}">공연명</h2>
+            <p class="meta" th:text="${performance.genre}">장르</p>
+
+            <dl class="spec">
+                <div><dt>공연장</dt><dd th:text="${performance.venue}">-</dd></div>
+                <div><dt>주소</dt><dd th:text="${performance.address} ?: '-'">-</dd></div>
+                <div><dt>기간</dt>
+                    <dd th:text="|${#temporals.format(performance.startDate,'yyyy.MM.dd')} – ${#temporals.format(performance.endDate,'yyyy.MM.dd')}|">-</dd>
+                </div>
+                <div><dt>객석수</dt><dd th:text="${performance.totalSeatCount} ?: '미상'">-</dd></div>
+            </dl>
+
+            <div class="schedules">
+                <a th:each="s : ${schedules}"
+                   th:href="@{/schedules/{id}/seats(id=${s.id})}"
+                   th:classappend="${s.remainingSeats == 0} ? 'soldout'">
+                    <span th:text="${#temporals.format(s.showAt, 'M/d(E) HH:mm')}">일시</span>
+                    <span th:text="${s.remainingSeats == 0} ? ' 매진' : ' · 잔여 ' + ${s.remainingSeats}"></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
