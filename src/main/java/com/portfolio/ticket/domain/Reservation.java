@@ -51,12 +51,16 @@ public class Reservation {
     private LocalDateTime confirmedAt;
     private LocalDateTime canceledAt;
 
-    public void confirm() {
+    /** 토스페이먼츠 결제 건 식별자. 결제 승인 후에만 값이 채워진다 (취소/환불 API 호출에 필요). */
+    private String paymentKey;
+
+    public void confirm(String paymentKey) {
         if (status != ReservationStatus.PENDING) {
             throw new IllegalStateException("결제 대기 상태가 아닙니다. status=" + status);
         }
         this.status = ReservationStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();
+        this.paymentKey = paymentKey;
     }
 
     public void cancel() {

@@ -24,7 +24,8 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/", "/performances/**", "/schedules/**",
                         "/login", "/signup", "/css/**",
-                        "/api/admin/**", "/h2-console/**"
+                        "/api/admin/**", "/h2-console/**",
+                        "/api/webhooks/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -40,8 +41,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
-            // h2-console 은 프레임 안에서 폼으로 동작하므로 이 경로만 예외 처리한다.
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+            // h2-console 은 프레임 안에서 폼으로 동작해서, 웹훅은 토스 서버가 호출해서
+            // 둘 다 CSRF 토큰을 넣을 수 없으므로 예외 처리한다.
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/webhooks/**"))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         return http.build();

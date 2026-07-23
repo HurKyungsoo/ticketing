@@ -1,6 +1,7 @@
 package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.*;
+import com.portfolio.ticket.payment.TossPaymentClient;
 import com.portfolio.ticket.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class ReservationService {
     private final SeatHoldRepository seatHoldRepository;
     private final ReservationRepository reservationRepository;
     private final PerformanceScheduleRepository scheduleRepository;
+    private final TossPaymentClient tossPaymentClient;
 
     /* ------------------------------------------------------------------
      *  1) 락 없음 - 오버부킹이 발생하는 원본 코드
@@ -108,15 +110,16 @@ public class ReservationService {
     /* ------------------------------------------------------------------
      *  결제 확정 / 취소
      * ------------------------------------------------------------------ */
+    /** 토스 결제 승인이 끝난 뒤 호출한다. paymentKey 는 이후 취소/환불 API 호출에 쓰인다. */
     @Transactional
-    public Reservation confirm(String reservationNo) {
+    public Reservation confirmPayment(String reservationNo, String paymentKey) {
         Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
                 .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
 
         if (reservation.isHoldExpired(LocalDateTime.now())) {
             throw new IllegalStateException("결제 가능 시간이 지났습니다.");
         }
-        reservation.confirm();
+        reservation.confirm(paymentKey);
         reservation.getSeat().sell();
         seatHoldRepository.deleteById(reservation.getSeat().getId());
         return reservation;
@@ -137,6 +140,12 @@ public class ReservationService {
         LocalDateTime showAt = seat.getSchedule().getShowAt();
         int feeRate = reservation.refundFeeRate(showAt, LocalDateTime.now());
         int refund = reservation.getAmount() * (100 - feeRate) / 100;
+
+        // 결제가 이미 승인된 건(paymentKey 존재)만 토스에 실제 환불을 요청한다.
+        // 아직 결제 전(PENDING, 선점만 된 상태)이면 환불할 돈이 없으므로 스킵.
+        if (reservation.getPaymentKey() != null) {
+            tossPaymentClient.cancel(reservation.getPaymentKey(), "고객 요청 취소", refund);
+        }
 
         reservation.cancel();
         seat.release();

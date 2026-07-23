@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>결제 완료</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap authwrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">결제 완료</span>
+    </header>
+
+    <div class="empty-state" style="text-align:left;padding:0">
+        <p><strong style="color:var(--paper)">예매가 확정되었습니다.</strong></p>
+        <p>예매번호: <span th:text="${reservation.reservationNo}">번호</span></p>
+        <p>결제금액: <span th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">금액</span></p>
+    </div>
+
+    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+</div>
+</body>
+</html>

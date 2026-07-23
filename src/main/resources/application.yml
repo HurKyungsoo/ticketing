@@ -31,6 +31,12 @@ publicdata:
   sync-page-size: 100
   sync-max-pages: 5
 
+# 토스페이먼츠 테스트 키 - 절대 커밋하지 말 것
+toss:
+  client-key: ${TOSS_CLIENT_KEY:REPLACE_ME}
+  secret-key: ${TOSS_SECRET_KEY:REPLACE_ME}
+  api-base-url: https://api.tosspayments.com
+
 ---
 spring:
   config:

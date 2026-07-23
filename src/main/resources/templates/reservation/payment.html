@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>결제하기</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script src="https://js.tosspayments.com/v2/standard"></script>
+</head>
+<body>
+<div class="wrap authwrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">결제</span>
+    </header>
+
+    <p class="picked" style="margin-bottom:24px">
+        <strong th:text="${orderName}">주문명</strong> ·
+        <span th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">금액</span>
+    </p>
+
+    <div id="payment-method"></div>
+    <div id="agreement"></div>
+    <button type="button" id="payBtn" style="margin-top:20px" class="authform">결제하기</button>
+</div>
+
+<script th:inline="javascript">
+    const clientKey = /*[[${tossClientKey}]]*/ 'test_ck_00000000000000000000';
+    const reservationNo = /*[[${reservation.reservationNo}]]*/ '';
+    const orderName = /*[[${orderName}]]*/ '';
+    const amount = /*[[${reservation.amount}]]*/ 0;
+
+    const tossPayments = TossPayments(clientKey);
+    const widgets = tossPayments.widgets({ customerKey: "ANONYMOUS" });
+
+    (async () => {
+        await widgets.setAmount({ currency: "KRW", value: amount });
+        await Promise.all([
+            widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
+            widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
+        ]);
+    })();
+
+    document.getElementById('payBtn').addEventListener('click', async () => {
+        try {
+            await widgets.requestPayment({
+                orderId: reservationNo,
+                orderName: orderName,
+                successUrl: `${window.location.origin}/reservations/${reservationNo}/payment/success`,
+                failUrl: `${window.location.origin}/reservations/${reservationNo}/payment/fail`,
+            });
+        } catch (e) {
+            alert('결제 요청 중 오류가 발생했습니다: ' + (e.message || e));
+        }
+    });
+</script>
+</body>
+</html>

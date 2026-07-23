@@ -37,12 +37,6 @@ public class ReservationApiController {
         ));
     }
 
-    @PostMapping("/reservations/{reservationNo}/confirm")
-    public ResponseEntity<?> confirm(@PathVariable String reservationNo) {
-        Reservation reservation = reservationService.confirm(reservationNo);
-        return ResponseEntity.ok(Map.of("status", reservation.getStatus()));
-    }
-
     @PostMapping("/reservations/{reservationNo}/cancel")
     public ResponseEntity<?> cancel(@PathVariable String reservationNo,
                                     @AuthenticationPrincipal CustomUserDetails principal) {
