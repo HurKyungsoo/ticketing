@@ -41,9 +41,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
-            // h2-console 은 프레임 안에서 폼으로 동작해서, 웹훅은 토스 서버가 호출해서
-            // 둘 다 CSRF 토큰을 넣을 수 없으므로 예외 처리한다.
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/webhooks/**"))
+            // h2-console 은 프레임 안에서 폼으로 동작하고, 웹훅은 토스 서버가, admin/sync 는
+            // curl 등 외부에서 호출해서 셋 다 CSRF 토큰을 넣을 수 없으므로 예외 처리한다.
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/webhooks/**", "/api/admin/**"))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         return http.build();

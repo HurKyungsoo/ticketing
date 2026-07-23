@@ -50,7 +50,7 @@ public class PerformanceController {
 
     @GetMapping("/schedules/{scheduleId}/seats")
     public String seatMap(@PathVariable Long scheduleId, Model model) {
-        PerformanceSchedule schedule = scheduleRepository.findById(scheduleId)
+        PerformanceSchedule schedule = scheduleRepository.findWithPerformanceById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다."));
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);
 

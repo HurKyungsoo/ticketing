@@ -14,6 +14,10 @@ public interface PerformanceScheduleRepository extends JpaRepository<Performance
 
     List<PerformanceSchedule> findByPerformanceIdOrderByShowAtAsc(Long performanceId);
 
+    /** 좌석 배치도 화면용. open-in-view=false 라 뷰 렌더링 전에 performance 를 미리 가져와야 한다. */
+    @Query("select s from PerformanceSchedule s join fetch s.performance where s.id = :id")
+    Optional<PerformanceSchedule> findWithPerformanceById(@Param("id") Long id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from PerformanceSchedule s where s.id = :id")
     Optional<PerformanceSchedule> findByIdForUpdate(@Param("id") Long id);

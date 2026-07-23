@@ -78,7 +78,7 @@ public class PaymentController {
     }
 
     private Reservation getOwnedReservation(String reservationNo, CustomUserDetails principal) {
-        Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
+        Reservation reservation = reservationRepository.findWithSeatDetailsByReservationNo(reservationNo)
                 .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
         if (!reservation.getMemberId().equals(principal.getMemberId())) {
             throw new IllegalStateException("본인 예매만 결제할 수 있습니다.");

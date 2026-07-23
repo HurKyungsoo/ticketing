@@ -19,9 +19,7 @@
         <span th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">금액</span>
     </p>
 
-    <div id="payment-method"></div>
-    <div id="agreement"></div>
-    <button type="button" id="payBtn" style="margin-top:20px" class="authform">결제하기</button>
+    <button type="button" id="payBtn" class="authform">카드로 결제하기</button>
 </div>
 
 <script th:inline="javascript">
@@ -31,23 +29,18 @@
     const amount = /*[[${reservation.amount}]]*/ 0;
 
     const tossPayments = TossPayments(clientKey);
-    const widgets = tossPayments.widgets({ customerKey: "ANONYMOUS" });
-
-    (async () => {
-        await widgets.setAmount({ currency: "KRW", value: amount });
-        await Promise.all([
-            widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
-            widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
-        ]);
-    })();
+    const payment = tossPayments.payment({ customerKey: "ANONYMOUS" });
 
     document.getElementById('payBtn').addEventListener('click', async () => {
         try {
-            await widgets.requestPayment({
+            await payment.requestPayment({
+                method: "CARD",
+                amount: { currency: "KRW", value: amount },
                 orderId: reservationNo,
                 orderName: orderName,
                 successUrl: `${window.location.origin}/reservations/${reservationNo}/payment/success`,
                 failUrl: `${window.location.origin}/reservations/${reservationNo}/payment/fail`,
+                card: { useEscrow: false },
             });
         } catch (e) {
             alert('결제 요청 중 오류가 발생했습니다: ' + (e.message || e));
