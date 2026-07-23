@@ -1,5 +1,7 @@
 # 객석 — 공공데이터 기반 공연 예매 시스템
 
+[![CI](https://github.com/HurKyungsoo/ticketing/actions/workflows/ci.yml/badge.svg)](https://github.com/HurKyungsoo/ticketing/actions/workflows/ci.yml)
+
 공공데이터포털의 공연 정보를 배치로 수집해 좌석·회차 도메인을 자체 생성하고,
 **한 좌석에 대한 동시 예매 경쟁을 4가지 전략으로 제어·비교**하는 예매 시스템.
 
