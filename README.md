@@ -42,9 +42,11 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
                                                                    │ 회차 생성
                                                                    ▼
                                                           PerformanceSchedule
-                                                                   │ 객석수 기준
+                                                                   │ 공연장명 매칭
                                                                    ▼
-                                                              SeatGenerator
+                                                              SeatGenerator ◄── venue-layouts.yml
+                                                            (실제 레이아웃 있으면       (VenueLayoutProperties)
+                                                             그대로, 없으면 기본값)
                                                                    │
                                                                    ▼
                                                                  Seat
@@ -55,6 +57,12 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
                                                           HoldExpireScheduler
                                                           (30초마다 만료 선점 해제)
 ```
+
+`venue-layouts.yml` 에 공연장명과 실제 구역(층)별 행·열·등급 구조를 정의해두면,
+공연장명이 정확히 일치하는 회차는 그 구조로 좌석이 생성된다. 일치하지 않으면
+기존처럼 20석 x N줄을 비율(VIP 15% / R 25% / S 35% / A 25%)로 나눈다.
+포함된 "예시극장" 항목은 실존 극장의 검증된 좌석도가 아니라 구조 예시이므로,
+실제 극장 정보를 알고 있다면 교체해서 쓸 것.
 
 ---
 

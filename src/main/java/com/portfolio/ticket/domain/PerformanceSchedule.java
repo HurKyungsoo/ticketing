@@ -56,4 +56,14 @@ public class PerformanceSchedule {
             this.remainingSeats++;
         }
     }
+
+    /**
+     * 실제 좌석 생성 결과로 총석수/잔여석을 맞춘다.
+     * 공연 API 의 객석수 추정치와 VenueLayout 이 실제로 만든 좌석 수가 다를 때 쓴다.
+     * 예매가 시작되기 전(좌석 생성 직후)에만 호출해야 한다.
+     */
+    public void syncActualSeatCount(int actual) {
+        this.totalSeats = actual;
+        this.remainingSeats = actual;
+    }
 }

@@ -92,7 +92,7 @@ public class PerformanceSyncService {
         performanceRepository.flush();
 
         for (PerformanceSchedule schedule : performance.getSchedules()) {
-            seatGenerator.generate(schedule.getId(),
+            seatGenerator.generate(schedule.getId(), performance.getVenue(),
                     performance.getTotalSeatCount(), performance.getBasePrice());
         }
     }

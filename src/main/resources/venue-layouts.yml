@@ -1,0 +1,27 @@
+# 실제 공연장 좌석 배치 예시.
+# 공연장명이 이 목록과 (트림 후) 정확히 일치하면 SeatGenerator 가 이 구조로 좌석을 생성한다.
+# 일치하는 항목이 없으면 기존 기본 로직(20석 x N줄, 비율 기반 등급)으로 대체된다.
+#
+# 아래 "예시극장"은 실존 극장의 검증된 실제 좌석도가 아니라, 층/구역별로
+# 행·열·등급이 달라지는 실제 극장과 유사한 구조를 보여주기 위한 예시다.
+# 실제 극장 정보를 알고 있다면 이 항목을 지우고 실제 극장명/구조로 교체할 것.
+venue:
+  layouts:
+    - venueName: 예시극장
+      sections:
+        - name: 1층
+          rows: 5
+          seatsPerRow: 20
+          grade: VIP
+        - name: 1층뒤
+          rows: 10
+          seatsPerRow: 24
+          grade: R
+        - name: 2층
+          rows: 8
+          seatsPerRow: 22
+          grade: S
+        - name: 3층
+          rows: 6
+          seatsPerRow: 20
+          grade: A

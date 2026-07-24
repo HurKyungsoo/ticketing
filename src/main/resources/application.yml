@@ -3,6 +3,8 @@ spring:
     name: ticketing
   profiles:
     active: local
+  config:
+    import: optional:classpath:venue-layouts.yml
 
   jpa:
     hibernate:

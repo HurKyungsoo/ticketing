@@ -28,9 +28,11 @@ public class SeatGenerator {
 
     private final SeatRepository seatRepository;
     private final PerformanceScheduleRepository scheduleRepository;
+    private final VenueLayoutProperties venueLayoutProperties;
 
+    /** venueName 이 venue-layouts.yml 의 실제 구역 구조와 일치하면 그 구조로, 아니면 기본 로직으로 생성한다. */
     @Transactional
-    public int generate(Long scheduleId, Integer totalSeatCount, Integer basePrice) {
+    public int generate(Long scheduleId, String venueName, Integer totalSeatCount, Integer basePrice) {
         PerformanceSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다. id=" + scheduleId));
 
@@ -39,8 +41,29 @@ public class SeatGenerator {
             return 0;
         }
 
-        int total = (totalSeatCount == null || totalSeatCount <= 0) ? DEFAULT_SEAT_COUNT : totalSeatCount;
         int price = (basePrice == null || basePrice <= 0) ? DEFAULT_BASE_PRICE : basePrice;
+        List<VenueLayoutProperties.SectionLayout> layout = findLayout(venueName);
+
+        List<Seat> seats = (layout != null)
+                ? generateFromLayout(schedule, layout, price)
+                : generateDefault(schedule, totalSeatCount, price);
+
+        seatRepository.saveAll(seats);
+
+        if (seats.size() != schedule.getTotalSeats()) {
+            schedule.syncActualSeatCount(seats.size());
+        }
+
+        log.info("좌석 생성 완료. scheduleId={}, count={}, layout={}", scheduleId, seats.size(), layout != null);
+        return seats.size();
+    }
+
+    private List<VenueLayoutProperties.SectionLayout> findLayout(String venueName) {
+        return venueLayoutProperties.findSections(venueName);
+    }
+
+    private List<Seat> generateDefault(PerformanceSchedule schedule, Integer totalSeatCount, int price) {
+        int total = (totalSeatCount == null || totalSeatCount <= 0) ? DEFAULT_SEAT_COUNT : totalSeatCount;
 
         List<Seat> seats = new ArrayList<>(total);
         for (int i = 0; i < total; i++) {
@@ -57,9 +80,29 @@ public class SeatGenerator {
                     .price(grade.applyTo(price))
                     .build());
         }
-        seatRepository.saveAll(seats);
-        log.info("좌석 생성 완료. scheduleId={}, count={}", scheduleId, seats.size());
-        return seats.size();
+        return seats;
+    }
+
+    /** 구역마다 행(A, B, C...) x 열 구조로 좌석을 만든다. 등급은 구역 단위로 고정. */
+    private List<Seat> generateFromLayout(PerformanceSchedule schedule,
+                                          List<VenueLayoutProperties.SectionLayout> layout, int price) {
+        List<Seat> seats = new ArrayList<>();
+        for (VenueLayoutProperties.SectionLayout section : layout) {
+            for (int row = 0; row < section.getRows(); row++) {
+                String sectionLabel = section.getName() + (char) ('A' + row);
+                for (int seatNo = 1; seatNo <= section.getSeatsPerRow(); seatNo++) {
+                    seats.add(Seat.builder()
+                            .schedule(schedule)
+                            .section(sectionLabel)
+                            .seatNo(seatNo)
+                            .grade(section.getGrade())
+                            .status(SeatStatus.AVAILABLE)
+                            .price(section.getGrade().applyTo(price))
+                            .build());
+                }
+            }
+        }
+        return seats;
     }
 
     private SeatGrade gradeOf(int index, int total) {
