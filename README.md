@@ -52,10 +52,11 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
                                                                  Seat
                                                                    │
                               ReservationFacade ──► ReservationService ──► Reservation
-                                (전략 선택/재시도)      (락 제어)
-                                                                   ▲
-                                                          HoldExpireScheduler
-                                                          (30초마다 만료 선점 해제)
+                                (전략 선택/재시도)      (락 제어)                │
+                                                                   ▲            │ 확정/취소 시
+                                                          HoldExpireScheduler    ▼
+                                                          (30초마다 만료 선점 해제)  ExternalInventoryClient
+                                                                              (Mock — 실제 파트너 없음)
 ```
 
 `venue-layouts.yml` 에 공연장명과 실제 구역(층)별 행·열·등급 구조를 정의해두면,
@@ -63,6 +64,11 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
 기존처럼 20석 x N줄을 비율(VIP 15% / R 25% / S 35% / A 25%)로 나눈다.
 포함된 "예시극장" 항목은 실존 극장의 검증된 좌석도가 아니라 구조 예시이므로,
 실제 극장 정보를 알고 있다면 교체해서 쓸 것.
+
+`ExternalInventoryClient` 는 실제 박스오피스 파트너와의 실시간 재고 연동 포트다.
+접근 가능한 실제 파트너 API가 없어 `MockExternalInventoryClient` (로그만 남김)만
+있다 — 예매 확정/취소 시 호출되는 지점만 만들어뒀고, 실패해도 로컬 예매는
+막지 않는다. 실제 파트너가 생기면 구현체만 교체하면 된다.
 
 ---
 

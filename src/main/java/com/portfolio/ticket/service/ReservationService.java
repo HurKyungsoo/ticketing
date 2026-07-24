@@ -1,6 +1,7 @@
 package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.*;
+import com.portfolio.ticket.external.ExternalInventoryClient;
 import com.portfolio.ticket.payment.TossPaymentClient;
 import com.portfolio.ticket.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final PerformanceScheduleRepository scheduleRepository;
     private final TossPaymentClient tossPaymentClient;
+    private final ExternalInventoryClient externalInventoryClient;
 
     /* ------------------------------------------------------------------
      *  1) 락 없음 - 오버부킹이 발생하는 원본 코드
@@ -128,6 +130,7 @@ public class ReservationService {
         reservation.confirm(paymentKey);
         seat.sell();
         seatHoldRepository.deleteById(seat.getId());
+        externalInventoryClient.notifySold(seat.getSchedule().getId(), 1);
         return reservation;
     }
 
@@ -160,6 +163,7 @@ public class ReservationService {
         PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(seat.getSchedule().getId())
                 .orElseThrow(() -> new IllegalStateException("회차 없음"));
         schedule.increaseRemaining();
+        externalInventoryClient.notifyReleased(schedule.getId(), 1);
 
         log.info("예매 취소. no={}, feeRate={}%, refund={}", reservationNo, feeRate, refund);
         return refund;
