@@ -20,6 +20,7 @@
 | DB | MariaDB (운영), H2 (로컬/테스트) |
 | View | Thymeleaf |
 | Build | Gradle |
+| 배포 | Docker / Docker Compose (앱 + MariaDB), GitHub Actions CI |
 | 외부 연동 | 공공데이터포털 Open API, 서울 열린데이터광장 Open API, 토스페이먼츠 |
 
 ---
@@ -245,6 +246,23 @@ open http://localhost:8080
 
 H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 
+### Docker 로 실행 (MariaDB, prod 프로파일)
+
+```bash
+export DB_USER=ticket
+export DB_PASSWORD=ticket
+export PUBLICDATA_SERVICE_KEY="발급받은_인코딩된_키"
+export TOSS_CLIENT_KEY="test_ck_..."
+export TOSS_SECRET_KEY="test_sk_..."
+
+docker compose up --build
+```
+
+앱은 `http://localhost:8080`, MariaDB 는 `localhost:3306` 로 노출된다.
+`docker-compose.yml` 은 `prod` 프로파일로 기동하며, `application.yml` 의
+데이터소스 URL(`localhost` 고정)은 컨테이너 네트워크용 `SPRING_DATASOURCE_URL`
+환경변수로 덮어쓴다.
+
 ---
 
 ## 8. API
@@ -276,5 +294,5 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 - [x] 관리자 대시보드 (`selectDailySales` + Chart.js, ROLE_ADMIN 전용)
 - [x] 마이페이지 예매 내역 / 취소 화면
 - [x] GitHub Actions CI (push/PR 시 빌드 + `ReservationConcurrencyTest` 포함 전체 테스트 자동 실행)
-- [ ] Docker
+- [x] Docker (`Dockerfile` 멀티스테이지 빌드 + `docker-compose.yml` app/MariaDB)
 - [ ] AWS EC2 + RDS 배포 (CD)

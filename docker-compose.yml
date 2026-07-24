@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: ticket
+      MARIADB_USER: ${DB_USER:-ticket}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-ticket}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # application.yml 의 prod 데이터소스는 localhost 고정이라, 컨테이너 네트워크에서는
+      # 이 환경변수로 db 서비스명을 덮어써서 접속한다.
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USER: ${DB_USER:-ticket}
+      DB_PASSWORD: ${DB_PASSWORD:-ticket}
+      PUBLICDATA_SERVICE_KEY: ${PUBLICDATA_SERVICE_KEY:-REPLACE_ME}
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-REPLACE_ME}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-REPLACE_ME}
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
