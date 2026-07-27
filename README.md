@@ -236,6 +236,7 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 | GET | `/reservations/{no}/payment/success` | 결제 승인 콜백 - 서버가 amount 대조 검증 후 확정 |
 | GET | `/reservations/{no}/payment/fail` | 결제 실패 콜백 |
 | POST | `/api/reservations/{no}/cancel` | 취소 + 환불액 계산 (결제완료 건은 토스 취소 API 호출) |
+| GET | `/mypage/reservations` | 마이페이지 예매 내역 (본인 예매만, 상태별 결제/취소 액션) |
 | GET | `/admin/dashboard?from=&to=` | 관리자 대시보드 (ROLE_ADMIN) - 일자별 매출 / TOP5 / 등급별 비중 |
 | POST | `/api/admin/sync` | 공공데이터 수동 수집 |
 | POST | `/api/webhooks/toss` | 토스 결제 상태 웹훅 (가상계좌 입금완료 등 비동기 반영) |
@@ -249,7 +250,7 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
 - [x] Spring Security + 회원 도메인 (세션 기반 폼 로그인, `memberId` 파라미터 제거)
 - [x] 토스페이먼츠 테스트 결제 연동 (결제위젯 3.0) + 웹훅으로 결제 상태 동기화
 - [x] 관리자 대시보드 (`selectDailySales` + Chart.js, ROLE_ADMIN 전용)
-- [ ] 마이페이지 예매 내역 / 취소 화면
+- [x] 마이페이지 예매 내역 / 취소 화면
 - [x] GitHub Actions CI (push/PR 시 빌드 + `ReservationConcurrencyTest` 포함 전체 테스트 자동 실행)
 - [ ] Docker
 - [ ] AWS EC2 + RDS 배포 (CD)

@@ -22,7 +22,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "where r.reservationNo = :reservationNo")
     Optional<Reservation> findWithSeatDetailsByReservationNo(@Param("reservationNo") String reservationNo);
 
-    List<Reservation> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+    /** 마이페이지 예매 내역용. open-in-view=false 라 seat->schedule->performance 를 미리 가져와야 한다. */
+    @Query("select r from Reservation r " +
+            "join fetch r.seat s " +
+            "join fetch s.schedule sc " +
+            "join fetch sc.performance " +
+            "where r.memberId = :memberId " +
+            "order by r.createdAt desc")
+    List<Reservation> findWithSeatDetailsByMemberIdOrderByCreatedAtDesc(@Param("memberId") Long memberId);
 
     List<Reservation> findByStatusAndHoldExpiresAtBefore(ReservationStatus status, LocalDateTime now);
 

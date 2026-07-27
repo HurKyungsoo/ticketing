@@ -194,6 +194,6 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<Reservation> findMyReservations(Long memberId) {
-        return reservationRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+        return reservationRepository.findWithSeatDetailsByMemberIdOrderByCreatedAtDesc(memberId);
     }
 }

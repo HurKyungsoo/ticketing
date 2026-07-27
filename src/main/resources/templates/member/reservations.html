@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>마이페이지 - 예매 내역</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">마이페이지 · 예매 내역</span>
+    </header>
+
+    <div class="reslist" th:if="${!reservations.isEmpty()}">
+        <div class="resrow" th:each="r : ${reservations}">
+            <div class="resinfo">
+                <p class="restitle" th:text="${r.seat.schedule.performance.title}">공연명</p>
+                <p class="resmeta">
+                    <span th:text="${#temporals.format(r.seat.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
+                    <span th:text="${r.seat.section} + '-' + ${r.seat.seatNo} + ' ' + ${r.seat.grade}">좌석</span> ·
+                    <span th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
+                </p>
+                <p class="resno">
+                    예매번호 <span th:text="${r.reservationNo}">번호</span> ·
+                    <span th:text="${#temporals.format(r.createdAt, 'yyyy.M.d HH:mm')}">예매일</span>
+                </p>
+            </div>
+
+            <div class="resaction">
+                <span class="badge" th:switch="${r.status.name()}" th:classappend="'badge-' + ${r.status}">
+                    <th:block th:case="'PENDING'">결제 대기</th:block>
+                    <th:block th:case="'CONFIRMED'">예매 확정</th:block>
+                    <th:block th:case="'CANCELED'">취소됨</th:block>
+                    <th:block th:case="'EXPIRED'">선점 만료</th:block>
+                </span>
+
+                <a class="btn-pay" th:if="${r.status.name() == 'PENDING' and !r.isHoldExpired(now)}"
+                   th:href="@{/reservations/{no}/payment(no=${r.reservationNo})}">결제하기</a>
+
+                <button type="button" class="btn-cancel"
+                        th:if="${r.status.name() == 'CONFIRMED' or (r.status.name() == 'PENDING' and !r.isHoldExpired(now))}"
+                        th:attr="data-reservation-no=${r.reservationNo}, data-status=${r.status}">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="empty-state" th:if="${reservations.isEmpty()}">
+        <p>예매 내역이 없습니다.</p>
+        <p><a th:href="@{/}" style="color:var(--brass)">공연 보러 가기</a></p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
+    const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
+
+    document.querySelectorAll('.btn-cancel').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reservationNo = btn.dataset.reservationNo;
+            const status = btn.dataset.status;
+            const confirmMessage = status === 'CONFIRMED'
+                ? '취소하시겠습니까? 관람일에 따라 환불 수수료가 부과될 수 있습니다.'
+                : '선점을 취소하시겠습니까?';
+            if (!confirm(confirmMessage)) return;
+
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/reservations/${reservationNo}/cancel`, {
+                    method: 'POST',
+                    headers: { [CSRF_HEADER]: CSRF_TOKEN }
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert(status === 'CONFIRMED'
+                        ? `취소되었습니다. 환불금액: ${data.refundAmount.toLocaleString()}원`
+                        : '선점을 취소했습니다.');
+                    location.reload();
+                } else {
+                    alert(data.message);
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                btn.disabled = false;
+            }
+        });
+    });
+</script>
+</body>
+</html>

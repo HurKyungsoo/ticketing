@@ -13,6 +13,7 @@
         <span class="tag">공공데이터 기반 공연 예매</span>
         <nav class="authnav">
             <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
+            <a sec:authorize="isAuthenticated()" th:href="@{/mypage/reservations}">마이페이지</a>
             <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
                 <button type="submit" class="linklike">로그아웃</button>
             </form>
