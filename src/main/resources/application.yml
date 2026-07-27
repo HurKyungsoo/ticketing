@@ -25,9 +25,16 @@ mybatis:
 publicdata:
   service-key: ${PUBLICDATA_SERVICE_KEY:REPLACE_ME}
   # 전국공연행사정보표준데이터 (객석수/요금/좌표 포함)
-  performance-url: http://api.data.go.kr/openapi/tn_pubr_public_show_performance_api
+  performance-url: https://api.data.go.kr/openapi/tn_pubr_public_show_performance_api
   # 한눈에보는문화정보 (썸네일/장르/상세 포함)
   culture-url: http://api.kcisa.kr/openapi/API_CIA_090/request
+  sync-page-size: 100
+  sync-max-pages: 5
+
+# 서울 열린데이터광장 인증키 (이중화용 세 번째 소스) - 절대 커밋하지 말 것
+seoul-open-api:
+  service-key: ${SEOUL_OPEN_API_KEY:REPLACE_ME}
+  base-url: http://openapi.seoul.go.kr:8088
   sync-page-size: 100
   sync-max-pages: 5
 

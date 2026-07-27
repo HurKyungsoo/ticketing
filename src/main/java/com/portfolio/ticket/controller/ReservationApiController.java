@@ -44,10 +44,11 @@ public class ReservationApiController {
         return ResponseEntity.ok(Map.of("refundAmount", refund));
     }
 
-    /** 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때 */
+    /** 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 시도/수신/파싱성공/
+     *  isValid 탈락/신규저장 건수를 그대로 내려줘서 "호출 실패"와 "중복이라 신규 0건"을 구분할 수 있다. */
     @PostMapping("/admin/sync")
     public ResponseEntity<?> sync() {
-        return ResponseEntity.ok(Map.of("created", syncScheduler.runSync()));
+        return ResponseEntity.ok(syncScheduler.runSync());
     }
 
     @ExceptionHandler(SeatAlreadyTakenException.class)

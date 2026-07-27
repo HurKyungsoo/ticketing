@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -29,9 +30,10 @@ public class PublicPerformanceClient {
     private final RestClient publicDataRestClient;
     private final PublicDataProperties properties;
     private final PublicDataParser parser;
+    private final PublicDataErrorCode errorCode;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<ExternalPerformance> fetchPage(int pageNo) {
+    public FetchResult fetchPage(int pageNo) {
         URI uri = UriComponentsBuilder.fromUriString(properties.getPerformanceUrl())
                 .queryParam("serviceKey", properties.getServiceKey())
                 .queryParam("pageNo", pageNo)
@@ -43,27 +45,41 @@ public class PublicPerformanceClient {
         try {
             String body = publicDataRestClient.get().uri(uri).retrieve().body(String.class);
             return parse(body);
+        } catch (HttpStatusCodeException e) {
+            log.warn("공연 표준데이터 호출 실패. pageNo={}, status={}, body(500자)={}",
+                    pageNo, e.getStatusCode(), preview(e.getResponseBodyAsString()));
+            return FetchResult.empty();
         } catch (Exception e) {
             log.warn("공연 표준데이터 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
-            return List.of();
+            return FetchResult.empty();
         }
     }
 
-    private List<ExternalPerformance> parse(String body) throws Exception {
-        if (body == null || body.isBlank()) return List.of();
+    private FetchResult parse(String body) throws Exception {
+        if (body == null || body.isBlank()) return FetchResult.empty();
 
-        // 인증키 오류 등은 JSON 이 아니라 XML 로 떨어진다.
+        // 인증키 오류 등은 JSON 이 아니라 XML(구형 게이트웨이)로 떨어지기도 한다.
         if (body.stripLeading().startsWith("<")) {
-            log.warn("JSON 이 아닌 응답 수신 (인증키/트래픽 초과 가능성): {}",
-                    body.substring(0, Math.min(200, body.length())));
-            return List.of();
+            String readable = errorCode.describeXml(body);
+            log.warn("JSON 이 아닌 응답 수신{}. body(500자)={}",
+                    readable != null ? " - " + readable : " (인증키/트래픽 초과 가능성)",
+                    preview(body));
+            return FetchResult.empty();
         }
 
         JsonNode root = objectMapper.readTree(body);
+
+        // 신형 게이트웨이는 HTTP 200 을 유지한 채 response.header.resultCode 로 에러를 알린다.
+        String readable = errorCode.describeJson(root);
+        if (readable != null) {
+            log.warn("공공데이터포털 에러 응답 수신 - {}. body(500자)={}", readable, preview(body));
+            return FetchResult.empty();
+        }
+
         JsonNode items = root.path("response").path("body").path("items");
         if (items.isMissingNode() || !items.isArray()) {
             log.debug("items 노드 없음");
-            return List.of();
+            return FetchResult.empty();
         }
 
         List<ExternalPerformance> result = new ArrayList<>();
@@ -73,7 +89,7 @@ public class PublicPerformanceClient {
                 result.add(parsed);
             }
         }
-        return result;
+        return new FetchResult(items.size(), result);
     }
 
     private ExternalPerformance toExternal(JsonNode item) {
@@ -100,5 +116,10 @@ public class PublicPerformanceClient {
         String venue = parser.text(item, "opar", "장소");
         String start = parser.text(item, "eventStartDate", "행사시작일자");
         return Integer.toHexString((title + "|" + venue + "|" + start).hashCode());
+    }
+
+    private String preview(String body) {
+        if (body == null) return "";
+        return body.substring(0, Math.min(500, body.length()));
     }
 }

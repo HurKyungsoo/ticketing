@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -27,9 +28,10 @@ public class CulturePerformanceClient {
     private final RestClient publicDataRestClient;
     private final PublicDataProperties properties;
     private final PublicDataParser parser;
+    private final PublicDataErrorCode errorCode;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<ExternalPerformance> fetchPage(int pageNo) {
+    public FetchResult fetchPage(int pageNo) {
         URI uri = UriComponentsBuilder.fromUriString(properties.getCultureUrl())
                 .queryParam("serviceKey", properties.getServiceKey())
                 .queryParam("numOfRows", properties.getSyncPageSize())
@@ -40,20 +42,37 @@ public class CulturePerformanceClient {
         try {
             String body = publicDataRestClient.get().uri(uri).retrieve().body(String.class);
             return parse(body);
+        } catch (HttpStatusCodeException e) {
+            log.warn("문화정보 API 호출 실패. pageNo={}, status={}, body(500자)={}",
+                    pageNo, e.getStatusCode(), preview(e.getResponseBodyAsString()));
+            return FetchResult.empty();
         } catch (Exception e) {
             log.warn("문화정보 API 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
-            return List.of();
+            return FetchResult.empty();
         }
     }
 
-    private List<ExternalPerformance> parse(String body) throws Exception {
-        if (body == null || body.isBlank() || body.stripLeading().startsWith("<")) {
-            return List.of();
+    private FetchResult parse(String body) throws Exception {
+        if (body == null || body.isBlank()) return FetchResult.empty();
+
+        if (body.stripLeading().startsWith("<")) {
+            String readable = errorCode.describeXml(body);
+            log.warn("JSON 이 아닌 응답 수신{}. body(500자)={}",
+                    readable != null ? " - " + readable : " (인증키/트래픽 초과 가능성)",
+                    preview(body));
+            return FetchResult.empty();
         }
 
         JsonNode root = objectMapper.readTree(body);
+
+        String readable = errorCode.describeJson(root);
+        if (readable != null) {
+            log.warn("공공데이터포털 에러 응답 수신 - {}. body(500자)={}", readable, preview(body));
+            return FetchResult.empty();
+        }
+
         JsonNode items = root.path("response").path("body").path("items").path("item");
-        if (!items.isArray()) return List.of();
+        if (!items.isArray()) return FetchResult.empty();
 
         List<ExternalPerformance> result = new ArrayList<>();
         for (JsonNode item : items) {
@@ -73,6 +92,11 @@ public class CulturePerformanceClient {
                 result.add(parsed);
             }
         }
-        return result;
+        return new FetchResult(items.size(), result);
+    }
+
+    private String preview(String body) {
+        if (body == null) return "";
+        return body.substring(0, Math.min(500, body.length()));
     }
 }
