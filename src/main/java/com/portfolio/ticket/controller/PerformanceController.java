@@ -33,7 +33,16 @@ public class PerformanceController {
     public String list(@RequestParam(defaultValue = "0") int page, Model model) {
         Page<Performance> performances = performanceRepository
                 .findByEndDateGreaterThanEqualOrderByStartDateAsc(LocalDate.now(), PageRequest.of(page, 12));
+
+        // 시작월 기준으로 묶어서 보여준다. 쿼리가 이미 startDate 오름차순이라
+        // LinkedHashMap 에 순서대로 쌓으면 그대로 월별 순서가 된다.
+        Map<String, List<Performance>> performancesByMonth = performances.getContent().stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getStartDate().getYear() + "년 " + p.getStartDate().getMonthValue() + "월",
+                        LinkedHashMap::new, Collectors.toList()));
+
         model.addAttribute("performances", performances);
+        model.addAttribute("performancesByMonth", performancesByMonth);
         return "performance/list";
     }
 

@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 결과는 콘솔에 표로 찍히므로 그대로 README 에 붙이면 된다.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class ReservationConcurrencyTest {
 
     private static final int THREAD_COUNT = 100;
