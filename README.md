@@ -21,24 +21,21 @@
 | View | Thymeleaf |
 | Build | Gradle |
 | 배포 | Docker / Docker Compose (앱 + MariaDB), GitHub Actions CI |
-| 외부 연동 | 공공데이터포털 Open API, 서울 열린데이터광장 Open API, 토스페이먼츠 |
+| 외부 연동 | 공공데이터포털 Open API(공연/문화정보), 토스페이먼츠 |
 
 ---
 
 ## 2. 아키텍처
 
 ```
-[공공데이터포털]        [서울 열린데이터광장]
-      │                        │
-      └───────────┬────────────┘
-                   │  매일 04:00 배치 (PerformanceSyncScheduler)
-                   │  소스 하나가 실패해도 나머지 소스는 계속 진행
-                   ▼
+[공공데이터포털]
+      │  매일 04:00 배치 (PerformanceSyncScheduler)
+      │  소스 하나가 실패해도 나머지 소스는 계속 진행
+      ▼
 PublicPerformanceClient ─┐
-CulturePerformanceClient ─┤
-SeoulCultureClient ───────┤─► ExternalPerformance(정규화) ─► PerformanceSyncService
+CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► PerformanceSyncService
                           │                                        │ upsert
-                          └──────── PublicDataParser               ▼
+                          └──────── PublicDataParser               ▼ (종료/상설전시류 제외)
                                     (필드/날짜/요금 정제)      Performance
                                                                    │ 회차 생성
                                                                    ▼
@@ -200,10 +197,10 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
 | 개발계정 트래픽 제한(일 1,000건) | 실시간 호출 대신 **일 1회 배치 수집 + 로컬 적재** |
 | 원본에 고유키가 없어 재수집 시 중복 적재 | `공연명 + 장소 + 시작일` 해시로 대체키 생성, `external_id` UK |
 | 원본에 "회차" 개념 없음 | 공연 기간 내 최대 8회차(19:00) 자동 생성 규칙 문서화 |
-| 서울 열린데이터광장은 날짜에 시각까지 붙어 옴 (`"2024-01-01 00:00:00.0"`) | `PublicDataParser.date()` 의 4개 포맷에 안 맞아서, 공백 기준으로 날짜 부분만 잘라 별도 파싱 (`SeoulCultureClient.seoulDate()`) |
-| 서울 열린데이터광장은 `serviceKey` 를 쿼리파라미터가 아니라 URL 경로에 넣음 | 다른 두 소스와 다르게 `{baseUrl}/{key}/json/culturalEventInfo/{from}/{to}/` 형태로 직접 조립 |
-| 승인된 API 가 포털 백엔드에 반영되지 않아 `resultCode 30`(등록되지 않은 서비스키) 발생, 빈 리스트만 와서 원인 파악 불가 | 데이터 소스 이중화(서울 열린데이터광장 추가) + 응답 본문 500자까지 WARN 로그 + `resultCode`를 사람이 읽을 수 있는 메시지로 변환(`PublicDataErrorCode`) + `/api/admin/sync` 가 소스별 시도/수신/파싱성공/isValid탈락/신규저장을 그대로 반환 |
-| `performance-url` 을 `http://` 로 두면 api.data.go.kr 이 `https://` 로 301 리다이렉트하는데, `HttpURLConnection` 은 프로토콜이 바뀌는 리다이렉트를 안 따라가서 항상 리다이렉트 HTML만 받고 실패 | `application.yml` 의 `performance-url` 을 `https://` 로 수정 |
+| `performance-url` 을 `http://` 로 두면 api.data.go.kr 이 `https://` 로 301 리다이렉트하는데, `HttpURLConnection` 은 프로토콜이 바뀌는 리다이렉트를 안 따라가서 항상 리다이렉트 HTML만 받고 실패 | `application.yml` 의 `performance-url` 을 `https://` 로, 실제 등록된 End Point(`tn_pubr_public_pblprfr_event_info_api`)로 수정 |
+| 한눈에보는문화정보 API 는 호스트가 이전됐고 정상 응답도 XML 전용인데, 옛 코드는 JSON 을 가정하고 `<` 로 시작하는 응답을 전부 오류로 간주해 조용히 폐기 → CIA- 레코드가 늘 0건 | `culture-url` 을 실제 End Point(`/B553457/cultureinfo/period2`)로 교체, `XmlMapper` 로 파싱 전환. 실제 필드명(`seq`/`title`/`place`/`realmName`/`area`/`sigungu` 등)은 data.go.kr 상세 페이지에 로그인해 Swagger Models 패널을 펼쳐 직접 확인 |
+| 문화정보 응답에 박물관 "상설전시" 류가 섞여 있음 (`startDate` 가 몇 년 전, `endDate` 는 먼 미래) — `createSchedules()` 가 `startDate` 기준 연속 8일치 회차만 만들다 보니 이미 다 지난, 예매 불가능한 회차만 생성됨 | 동기화 단계에서 기간 90일 초과 항목은 상설전시류로 보고 제외. 이미 종료된 공연도 동일하게 제외 |
+| 소스 하나(예: 문화정보)가 호출/파싱에 실패해도 다른 소스 동기화가 막히면 안 됨 | `PerformanceSyncScheduler` 가 소스별로 완전히 격리된 함수에서 try-catch, 실패해도 나머지 소스는 계속 진행. `/api/admin/sync` 응답도 소스별로 분리 |
 
 ---
 
@@ -221,20 +218,18 @@ SeoulCultureClient ───────┤─► ExternalPerformance(정규화)
 ## 7. 실행 방법
 
 ```bash
-# 1) 인증키 발급
-#    - 공공데이터포털: 전국공연행사정보표준데이터 / 한눈에보는문화정보조회서비스
-#    - 서울 열린데이터광장: 문화행사 정보(culturalEventInfo) - 위 두 소스와
-#      승인 기관이 달라서, 한쪽 인증키 승인이 막혀도 이 소스로 화면 확인 가능
+# 1) 공공데이터포털에서 활용신청 후 인증키 발급
+#    - 전국공연행사정보표준데이터 (공연장 주소/좌표/객석수도 이 안에 포함됨)
+#    - 한눈에보는문화정보조회서비스
 
 # 2) 환경변수로 주입 (application.yml 에 직접 넣지 말 것)
 export PUBLICDATA_SERVICE_KEY="발급받은_인코딩된_키"
-export SEOUL_OPEN_API_KEY="발급받은_키"
 
 # 2-1) 결제 기능을 쓰려면 토스페이먼츠 테스트 키도 발급 (developers.tosspayments.com)
 export TOSS_CLIENT_KEY="test_ck_..."
 export TOSS_SECRET_KEY="test_sk_..."
 
-# 3) 실행 (H2 인메모리)
+# 3) 실행 (H2, 파일 기반 - data/ 에 저장돼 재시작해도 유지된다)
 ./gradlew bootRun
 
 # 4) 공공데이터 수동 수집
@@ -244,7 +239,12 @@ curl -X POST http://localhost:8080/api/admin/sync
 open http://localhost:8080
 ```
 
-H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:ticket`)
+로컬 프로필은 `LocalDataSeeder` 가 최초 기동 시 공연 3개 + 테스트 계정(user/user,
+admin/admin)을 자동으로 채워주므로, 공공데이터 API 키 없이도 화면 확인이 가능하다.
+`ReservationConcurrencyTest` 는 별도 `test` 프로필(인메모리 H2)을 써서 로컬 개발 DB와
+분리돼 있다 — 테스트를 돌려도 로컬에 쌓아둔 데이터가 지워지지 않는다.
+
+H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:file:./data/ticket`)
 
 ### Docker 로 실행 (MariaDB, prod 프로파일)
 
@@ -280,7 +280,7 @@ docker compose up --build
 | POST | `/api/reservations/{no}/cancel` | 취소 + 환불액 계산 (결제완료 건은 토스 취소 API 호출) |
 | GET | `/mypage/reservations` | 마이페이지 예매 내역 (본인 예매만, 상태별 결제/취소 액션) |
 | GET | `/admin/dashboard?from=&to=` | 관리자 대시보드 (ROLE_ADMIN) - 일자별 매출 / TOP5 / 등급별 비중 |
-| POST | `/api/admin/sync` | 공공데이터 수동 수집. 소스별 시도/수신/파싱성공/isValid탈락/신규저장 건수 반환 |
+| POST | `/api/admin/sync` | 공공데이터 수동 수집. 소스별(`standard`/`culture`) 수신/신규/스킵 건수와 성공 여부를 분리해서 반환 |
 | POST | `/api/webhooks/toss` | 토스 결제 상태 웹훅 (가상계좌 입금완료 등 비동기 반영) |
 
 환불 수수료: 10일 전 0% / 7일 전 10% / 3일 전 20% / 1일 전 30% / 당일 취소 불가
@@ -295,4 +295,7 @@ docker compose up --build
 - [x] 마이페이지 예매 내역 / 취소 화면
 - [x] GitHub Actions CI (push/PR 시 빌드 + `ReservationConcurrencyTest` 포함 전체 테스트 자동 실행)
 - [x] Docker (`Dockerfile` 멀티스테이지 빌드 + `docker-compose.yml` app/MariaDB)
+- [x] 문화정보(CIA-) 연동 정상화 — 실제 엔드포인트/XML 파싱으로 재작성, 소스별 동기화 실패 격리 + 결과 분리 응답
+- [x] 동기화 데이터 정제 — 종료된 공연·상설전시류(90일 초과) 제외, 홈 화면 공연 목록 월별 그룹핑
+- [x] 로컬 개발 DB 영속화 (H2 파일 기반) + 테스트 전용 프로필 분리
 - [ ] AWS EC2 + RDS 배포 (CD)
