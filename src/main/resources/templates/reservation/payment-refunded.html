@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>자동 환불 안내</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap authwrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">자동 환불</span>
+    </header>
+
+    <div class="empty-state" style="text-align:left;padding:0">
+        <p><strong style="color:var(--rose)">좌석 선점이 만료되어 결제가 자동 환불되었습니다.</strong></p>
+        <p>결제 승인 처리 중 선점 시간이 지나 좌석을 확보하지 못했습니다.
+           승인된 결제 금액은 토스페이먼츠를 통해 자동으로 취소 처리했습니다.</p>
+        <p>예매번호: <span th:text="${reservation.reservationNo}">번호</span></p>
+        <p>환불금액: <span th:text="${#numbers.formatInteger(amount,0,'COMMA')} + '원'">금액</span></p>
+    </div>
+
+    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+</div>
+</body>
+</html>

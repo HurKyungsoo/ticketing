@@ -161,6 +161,12 @@ CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► Perf
 - **잔여석 카운터는 별도 락.** `Seat` 만 잠그면 `PerformanceSchedule.remainingSeats`
   갱신이 유실된다. 회차도 `findByIdForUpdate` 로 잠근다.
 
+### 트러블슈팅
+
+| 문제 | 해결 |
+|---|---|
+| 결제창에서 10분(선점 만료)을 넘기면 `HoldExpireScheduler` 가 좌석을 `AVAILABLE` 로 되돌리는데, 그 사이 토스 승인이 끝나 "돈은 나갔는데 좌석은 없는" 상태 발생 | 컨트롤러가 토스 승인 호출 **전**에 만료 여부를 조기 검사 + `confirmPayment`/스케줄러 양쪽에서 `Seat` 를 `findByIdForUpdate` 로 잠가 경쟁을 없앰(락 순서 Seat → PerformanceSchedule) + 그래도 승인 후 확정 실패 시 토스 결제취소 API로 자동 환불 |
+
 ---
 
 ## 5. 공공데이터 연동에서 겪은 문제

@@ -116,12 +116,18 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
                 .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
 
+        // 락 순서: Seat -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
+        // HoldExpireScheduler 가 같은 좌석을 만료 처리 중일 수 있어 좌석 행을 먼저 잠가
+        // "결제는 승인됐는데 좌석은 이미 풀렸다" 경쟁을 막는다.
+        Seat seat = seatRepository.findByIdForUpdate(reservation.getSeat().getId())
+                .orElseThrow(() -> new IllegalStateException("좌석 없음"));
+
         if (reservation.isHoldExpired(LocalDateTime.now())) {
             throw new IllegalStateException("결제 가능 시간이 지났습니다.");
         }
         reservation.confirm(paymentKey);
-        reservation.getSeat().sell();
-        seatHoldRepository.deleteById(reservation.getSeat().getId());
+        seat.sell();
+        seatHoldRepository.deleteById(seat.getId());
         return reservation;
     }
 

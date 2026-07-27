@@ -2,9 +2,12 @@ package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.domain.ReservationStatus;
+import com.portfolio.ticket.domain.Seat;
+import com.portfolio.ticket.domain.SeatStatus;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatHoldRepository;
+import com.portfolio.ticket.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +26,7 @@ import java.util.List;
 public class HoldExpireScheduler {
 
     private final ReservationRepository reservationRepository;
+    private final SeatRepository seatRepository;
     private final SeatHoldRepository seatHoldRepository;
     private final PerformanceScheduleRepository scheduleRepository;
 
@@ -35,11 +39,21 @@ public class HoldExpireScheduler {
                 reservationRepository.findByStatusAndHoldExpiresAtBefore(ReservationStatus.PENDING, now);
 
         for (Reservation reservation : expired) {
-            reservation.expire();
-            reservation.getSeat().release();
-            seatHoldRepository.deleteById(reservation.getSeat().getId());
+            Long seatId = reservation.getSeat().getId();
 
-            scheduleRepository.findByIdForUpdate(reservation.getSeat().getSchedule().getId())
+            // 락 순서: Seat -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
+            // 결제 확정(ReservationService.confirmPayment)도 같은 좌석을 잠그므로,
+            // 좌석이 이미 SOLD 로 넘어갔다면(=결제가 우리보다 먼저 확정됨) 만료 처리를 건너뛴다.
+            Seat seat = seatRepository.findByIdForUpdate(seatId).orElse(null);
+            if (seat == null || seat.getStatus() != SeatStatus.HELD) {
+                continue;
+            }
+
+            reservation.expire();
+            seat.release();
+            seatHoldRepository.deleteById(seatId);
+
+            scheduleRepository.findByIdForUpdate(seat.getSchedule().getId())
                     .ifPresent(schedule -> schedule.increaseRemaining());
         }
 
