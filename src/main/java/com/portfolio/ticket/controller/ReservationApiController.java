@@ -44,11 +44,27 @@ public class ReservationApiController {
         return ResponseEntity.ok(Map.of("refundAmount", refund));
     }
 
-    /** 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 시도/수신/파싱성공/
-     *  isValid 탈락/신규저장 건수를 그대로 내려줘서 "호출 실패"와 "중복이라 신규 0건"을 구분할 수 있다. */
+    /** 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 결과를 분리해서 반환한다. */
     @PostMapping("/admin/sync")
     public ResponseEntity<?> sync() {
-        return ResponseEntity.ok(syncScheduler.runSync());
+        PerformanceSyncScheduler.SyncSummary summary = syncScheduler.runSync();
+        return ResponseEntity.ok(Map.of(
+                "standard", toResponse(summary.standard()),
+                "culture", toResponse(summary.culture()),
+                "totalCreated", summary.totalCreated()
+        ));
+    }
+
+    private Map<String, Object> toResponse(PerformanceSyncScheduler.SourceSyncResult result) {
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("received", result.received());
+        body.put("created", result.created());
+        body.put("skipped", result.skipped());
+        body.put("success", result.success());
+        if (!result.success()) {
+            body.put("error", result.error());
+        }
+        return body;
     }
 
     @ExceptionHandler(SeatAlreadyTakenException.class)

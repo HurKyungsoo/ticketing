@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -28,14 +29,33 @@ public class PerformanceSyncService {
     private static final int MAX_SCHEDULES = 8;
     private static final LocalTime SHOW_TIME = LocalTime.of(19, 0);
 
+    /**
+     * 이보다 기간이 긴 항목은 상설전시류(박물관 상설전시관 등)로 보고 제외한다.
+     * 회차 생성이 startDate 기준 연속 8일이라, 기간이 몇 년씩 되는 항목은
+     * 이미 다 지난 날짜로만 회차가 만들어져 예매가 불가능해진다.
+     */
+    private static final long MAX_RUN_DAYS = 90;
+
     private final PerformanceRepository performanceRepository;
     private final SeatGenerator seatGenerator;
 
+    /** 한 페이지 분량 동기화 결과. skipped(이미 존재해 갱신만 함)는 received - created 로 구한다. */
+    public record SyncBatchResult(int received, int created) {}
+
     @Transactional
-    public int sync(List<ExternalPerformance> externals) {
+    public SyncBatchResult sync(List<ExternalPerformance> externals) {
         int saved = 0;
+        LocalDate today = LocalDate.now();
 
         for (ExternalPerformance external : externals) {
+            // 이미 종료된 공연은 화면에 노출되지 않으므로 회차/좌석까지 만들 필요가 없다.
+            if (external.getEndDate().isBefore(today)) {
+                continue;
+            }
+            if (ChronoUnit.DAYS.between(external.getStartDate(), external.getEndDate()) > MAX_RUN_DAYS) {
+                continue;
+            }
+
             Performance performance = performanceRepository.findByExternalId(external.getExternalId())
                     .orElse(null);
 
@@ -51,7 +71,7 @@ public class PerformanceSyncService {
             }
         }
         log.info("공연 동기화 완료. 수신={}, 신규={}", externals.size(), saved);
-        return saved;
+        return new SyncBatchResult(externals.size(), saved);
     }
 
     private Performance toEntity(ExternalPerformance e) {

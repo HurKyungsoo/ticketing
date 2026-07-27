@@ -27,16 +27,9 @@ mybatis:
 publicdata:
   service-key: ${PUBLICDATA_SERVICE_KEY:REPLACE_ME}
   # 전국공연행사정보표준데이터 (객석수/요금/좌표 포함)
-  performance-url: https://api.data.go.kr/openapi/tn_pubr_public_show_performance_api
-  # 한눈에보는문화정보 (썸네일/장르/상세 포함)
-  culture-url: http://api.kcisa.kr/openapi/API_CIA_090/request
-  sync-page-size: 100
-  sync-max-pages: 5
-
-# 서울 열린데이터광장 인증키 (이중화용 세 번째 소스) - 절대 커밋하지 말 것
-seoul-open-api:
-  service-key: ${SEOUL_OPEN_API_KEY:REPLACE_ME}
-  base-url: http://openapi.seoul.go.kr:8088
+  performance-url: https://api.data.go.kr/openapi/tn_pubr_public_pblprfr_event_info_api
+  # 한눈에보는문화정보, 기간별(period2) 오퍼레이션 (썸네일/장르/상세 포함). 응답은 XML.
+  culture-url: https://apis.data.go.kr/B553457/cultureinfo/period2
   sync-page-size: 100
   sync-max-pages: 5
 
@@ -52,7 +45,9 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:h2:mem:ticket;MODE=MySQL;DB_CLOSE_DELAY=-1
+    # 파일 기반이라 bootRun 재시작 후에도 데이터가 유지된다. 스키마를 갈아엎어야 하면
+    # data/ 디렉토리를 지우고 다시 띄우면 된다.
+    url: jdbc:h2:file:./data/ticket;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -60,6 +55,19 @@ spring:
     console:
       enabled: true
       path: /h2-console
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    # 인메모리 + 테스트 전용 프로필. local 프로필(파일 기반)과 완전히 분리해서,
+    # 테스트의 deleteAll() 이 로컬 개발용으로 쌓아둔 데이터를 건드리지 않게 한다.
+    url: jdbc:h2:mem:ticket-test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
 ---
 spring:

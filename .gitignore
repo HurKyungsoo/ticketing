@@ -6,3 +6,4 @@ build/
 out/
 *.log
 .claude/settings.local.json
+/data/
