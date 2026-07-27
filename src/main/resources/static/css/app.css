@@ -209,9 +209,58 @@ a { color: inherit; text-decoration: none; }
 .authform .authlink { font-size: 13px; color: var(--mute); text-align: center; margin: 0; }
 .authform .authlink a { color: var(--brass); }
 
+/* ---------- 관리자 대시보드 ---------- */
+.dashfilter { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 32px; }
+.dashfilter label {
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12px; color: var(--mute);
+}
+.dashfilter input {
+  font-family: var(--body); font-size: 14px;
+  background: var(--ink-soft); color: var(--paper);
+  border: 1px solid var(--line); padding: 8px 10px;
+}
+.dashfilter input:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.dashfilter button {
+  font-family: var(--body); font-size: 14px; font-weight: 600;
+  background: var(--brass); color: var(--ink);
+  border: 0; padding: 9px 20px; cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.card-stat {
+  border: 1px solid var(--line);
+  background: var(--ink-soft);
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.card-stat .label {
+  font-size: 12px; letter-spacing: 0.08em;
+  color: var(--mute); text-transform: uppercase;
+}
+.card-stat strong {
+  font-family: var(--display); font-size: 26px;
+  color: var(--brass); font-weight: 700;
+}
+
+.chartgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+.chartbox { border: 1px solid var(--line); padding: 20px; }
+.chartbox h3 {
+  font-family: var(--display); font-size: 15px; font-weight: 600;
+  margin: 0 0 16px; color: var(--paper);
+}
+.chartbox-wide { grid-column: 1 / -1; }
+
 @media (max-width: 720px) {
   .detail { grid-template-columns: 1fr; }
   .seat { width: 22px; height: 22px; }
+  .chartgrid { grid-template-columns: 1fr; }
+  .dashfilter { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

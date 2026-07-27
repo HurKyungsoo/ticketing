@@ -27,6 +27,7 @@ public class SecurityConfig {
                         "/api/admin/**", "/h2-console/**",
                         "/api/webhooks/**"
                 ).permitAll()
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

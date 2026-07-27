@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>관리자 대시보드</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="wrap">
+    <header class="masthead">
+        <h1><a th:href="@{/}">객석</a></h1>
+        <span class="tag">관리자 대시보드</span>
+    </header>
+
+    <form class="dashfilter" method="get" th:action="@{/admin/dashboard}">
+        <label>시작일 <input type="date" name="from" th:value="${from}"></label>
+        <label>종료일 <input type="date" name="to" th:value="${to}"></label>
+        <button type="submit">조회</button>
+    </form>
+
+    <div class="cards">
+        <div class="card-stat">
+            <span class="label">총 매출</span>
+            <strong th:text="${#numbers.formatInteger(totalAmount,0,'COMMA')} + '원'">0원</strong>
+        </div>
+        <div class="card-stat">
+            <span class="label">총 예매 건수</span>
+            <strong th:text="${#numbers.formatInteger(totalTicketCount,0,'COMMA')} + '건'">0건</strong>
+        </div>
+        <div class="card-stat">
+            <span class="label">취소율</span>
+            <strong th:text="${#numbers.formatDecimal(cancelRate,1,1)} + '%'">0%</strong>
+        </div>
+        <div class="card-stat">
+            <span class="label">평균 객단가</span>
+            <strong th:text="${#numbers.formatInteger(avgOrderAmount,0,'COMMA')} + '원'">0원</strong>
+        </div>
+    </div>
+
+    <div class="chartgrid">
+        <div class="chartbox chartbox-wide">
+            <h3>일자별 매출 추이</h3>
+            <canvas id="dailySalesChart" height="110"></canvas>
+        </div>
+        <div class="chartbox">
+            <h3>공연별 매출 TOP 5</h3>
+            <canvas id="topPerformanceChart"></canvas>
+        </div>
+        <div class="chartbox">
+            <h3>좌석 등급별 판매 비중</h3>
+            <canvas id="gradeChart"></canvas>
+        </div>
+    </div>
+
+    <div class="empty-state" th:if="${dailySales.isEmpty()}">
+        <p>선택한 기간에 결제 확정된 예매가 없습니다.</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script th:inline="javascript">
+    const dailyLabels = /*[[${dailyLabels}]]*/ [];
+    const dailyAmounts = /*[[${dailyAmounts}]]*/ [];
+    const topLabels = /*[[${topLabels}]]*/ [];
+    const topAmounts = /*[[${topAmounts}]]*/ [];
+    const gradeLabels = /*[[${gradeLabels}]]*/ [];
+    const gradeAmounts = /*[[${gradeAmounts}]]*/ [];
+
+    const brass = '#C9A227';
+    const brassDim = '#8A7220';
+    const rose = '#C4566B';
+    const mute = '#6B6480';
+    const line = 'rgba(242, 237, 228, 0.14)';
+
+    Chart.defaults.color = mute;
+    Chart.defaults.font.family = "'Pretendard', -apple-system, 'Malgun Gothic', sans-serif";
+    Chart.defaults.borderColor = line;
+
+    new Chart(document.getElementById('dailySalesChart'), {
+        type: 'line',
+        data: {
+            labels: dailyLabels,
+            datasets: [{
+                label: '매출',
+                data: dailyAmounts,
+                borderColor: brass,
+                backgroundColor: 'rgba(201,162,39,.18)',
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: brass
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: line } },
+                y: { grid: { color: line }, ticks: { callback: v => v.toLocaleString() } }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('topPerformanceChart'), {
+        type: 'bar',
+        data: {
+            labels: topLabels,
+            datasets: [{
+                label: '매출',
+                data: topAmounts,
+                backgroundColor: brass
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: line }, ticks: { callback: v => v.toLocaleString() } },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('gradeChart'), {
+        type: 'doughnut',
+        data: {
+            labels: gradeLabels,
+            datasets: [{
+                data: gradeAmounts,
+                backgroundColor: [brass, brassDim, rose, mute]
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+</script>
+</body>
+</html>
