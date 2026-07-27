@@ -83,7 +83,7 @@ public class LocalDataSeeder implements CommandLineRunner {
         performanceRepository.saveAndFlush(performance);
 
         for (PerformanceSchedule schedule : performance.getSchedules()) {
-            seatGenerator.generate(schedule.getId(), totalSeatCount, basePrice);
+            seatGenerator.generate(schedule.getId(), venue, totalSeatCount, basePrice);
         }
     }
 
