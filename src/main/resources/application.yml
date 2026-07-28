@@ -32,6 +32,10 @@ publicdata:
   culture-url: https://apis.data.go.kr/B553457/cultureinfo/period2
   sync-page-size: 100
   sync-max-pages: 5
+  # KOPIS(공연예술통합전산망) 인증키는 data.go.kr 이 아니라 www.kopis.or.kr 에서 별도 발급
+  kopis-service-key: ${KOPIS_SERVICE_KEY:REPLACE_ME}
+  # 목록(pblprfr) 엔드포인트. 상세는 이 URL 뒤에 /{mt20id} 를 붙여서 호출한다.
+  kopis-url: http://www.kopis.or.kr/openApi/restful/pblprfr
 
 # 토스페이먼츠 테스트 키 - 절대 커밋하지 말 것
 toss:

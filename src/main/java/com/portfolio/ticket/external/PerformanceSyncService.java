@@ -9,11 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 수집 → 정규화 → upsert → 회차/좌석 생성.
@@ -61,7 +63,7 @@ public class PerformanceSyncService {
 
             if (performance == null) {
                 performance = performanceRepository.save(toEntity(external));
-                createSchedules(performance);
+                createSchedules(performance, external);
                 saved++;
             } else {
                 performance.updateFromExternal(
@@ -91,29 +93,67 @@ public class PerformanceSyncService {
                 .build();
     }
 
-    private void createSchedules(Performance performance) {
-        LocalDate cursor = performance.getStartDate();
-        LocalDate end = performance.getEndDate();
+    private void createSchedules(Performance performance, ExternalPerformance external) {
+        Map<DayOfWeek, List<LocalTime>> showTimesByDay = external.getShowTimesByDay();
         int totalSeats = performance.getTotalSeatCount() == null ? 200 : performance.getTotalSeatCount();
-        int created = 0;
 
-        while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
-            PerformanceSchedule schedule = PerformanceSchedule.builder()
-                    .showAt(LocalDateTime.of(cursor, SHOW_TIME))
-                    .totalSeats(totalSeats)
-                    .remainingSeats(totalSeats)
-                    .build();
+        int created = (showTimesByDay == null || showTimesByDay.isEmpty())
+                ? createDefaultSchedules(performance, totalSeats)
+                : createGuidedSchedules(performance, showTimesByDay, totalSeats);
 
-            performance.addSchedule(schedule);
-            created++;
-            cursor = cursor.plusDays(1);
+        if (created == 0) {
+            // dtguidance 가 있었지만 해당 기간에 매칭되는 요일이 하나도 없는 경우 등 (안전망)
+            createDefaultSchedules(performance, totalSeats);
         }
 
         performanceRepository.flush();
 
         for (PerformanceSchedule schedule : performance.getSchedules()) {
             seatGenerator.generate(schedule.getId(), performance.getVenue(),
-                    performance.getTotalSeatCount(), performance.getBasePrice());
+                    performance.getTotalSeatCount(), performance.getBasePrice(), external.getPricesByGrade());
         }
+    }
+
+    /** 원본에 회차 개념이 없을 때 쓰는 기존 규칙: 공연 기간 내 최대 8일, 매일 19시. */
+    private int createDefaultSchedules(Performance performance, int totalSeats) {
+        LocalDate cursor = performance.getStartDate();
+        LocalDate end = performance.getEndDate();
+        int created = 0;
+
+        while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
+            addSchedule(performance, LocalDateTime.of(cursor, SHOW_TIME), totalSeats);
+            created++;
+            cursor = cursor.plusDays(1);
+        }
+        return created;
+    }
+
+    /** KOPIS dtguidance 파싱 결과(요일별 실제 공연시간)로 회차를 만든다. 하루에 여러 회차(마티네/저녁)도 반영. */
+    private int createGuidedSchedules(Performance performance, Map<DayOfWeek, List<LocalTime>> showTimesByDay,
+                                       int totalSeats) {
+        LocalDate cursor = performance.getStartDate();
+        LocalDate end = performance.getEndDate();
+        int created = 0;
+
+        while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
+            List<LocalTime> times = showTimesByDay.get(cursor.getDayOfWeek());
+            if (times != null) {
+                for (LocalTime time : times) {
+                    if (created >= MAX_SCHEDULES) break;
+                    addSchedule(performance, LocalDateTime.of(cursor, time), totalSeats);
+                    created++;
+                }
+            }
+            cursor = cursor.plusDays(1);
+        }
+        return created;
+    }
+
+    private void addSchedule(Performance performance, LocalDateTime showAt, int totalSeats) {
+        performance.addSchedule(PerformanceSchedule.builder()
+                .showAt(showAt)
+                .totalSeats(totalSeats)
+                .remainingSeats(totalSeats)
+                .build());
     }
 }

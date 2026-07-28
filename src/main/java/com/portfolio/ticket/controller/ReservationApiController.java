@@ -51,6 +51,7 @@ public class ReservationApiController {
         return ResponseEntity.ok(Map.of(
                 "standard", toResponse(summary.standard()),
                 "culture", toResponse(summary.culture()),
+                "kopis", toResponse(summary.kopis()),
                 "totalCreated", summary.totalCreated()
         ));
     }

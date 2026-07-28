@@ -15,4 +15,8 @@ public class PublicDataProperties {
     private String cultureUrl;
     private int syncPageSize = 100;
     private int syncMaxPages = 5;
+
+    /** KOPIS(공연예술통합전산망)는 data.go.kr 과 별도로 발급받는 인증키를 쓴다. */
+    private String kopisServiceKey;
+    private String kopisUrl;
 }

@@ -21,7 +21,7 @@
 | View | Thymeleaf |
 | Build | Gradle |
 | 배포 | Docker / Docker Compose (앱 + MariaDB), GitHub Actions CI |
-| 외부 연동 | 공공데이터포털 Open API(공연/문화정보), 토스페이먼츠 |
+| 외부 연동 | 공공데이터포털 Open API(공연/문화정보), KOPIS(공연예술통합전산망), 토스페이먼츠 |
 
 ---
 
@@ -32,19 +32,21 @@
       │  매일 04:00 배치 (PerformanceSyncScheduler)
       │  소스 하나가 실패해도 나머지 소스는 계속 진행
       ▼
-PublicPerformanceClient ─┐
+PublicPerformanceClient ──┐
 CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► PerformanceSyncService
-                          │                                        │ upsert
-                          └──────── PublicDataParser               ▼ (종료/상설전시류 제외)
-                                    (필드/날짜/요금 정제)      Performance
-                                                                   │ 회차 생성
-                                                                   ▼
+KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade                │ upsert
+                          │     는 KOPIS 만 채움)                            ▼ (종료/상설전시류 제외)
+                          └──────── PublicDataParser               Performance
+                                    (필드/날짜/요금 정제)                │ 회차 생성 (dtguidance 있으면
+                                                                          │  실제 요일별 시간, 없으면
+                                                                          ▼  8일 고정 19시)
                                                           PerformanceSchedule
                                                                    │ 공연장명 매칭
                                                                    ▼
                                                               SeatGenerator ◄── venue-layouts.yml
-                                                            (실제 레이아웃 있으면       (VenueLayoutProperties)
-                                                             그대로, 없으면 기본값)
+                                                            (등급별 실제가격        (VenueLayoutProperties)
+                                                             있으면 그대로, 없으면
+                                                             basePrice 비율 계산)
                                                                    │
                                                                    ▼
                                                                  Seat
@@ -201,6 +203,9 @@ CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► Perf
 | 한눈에보는문화정보 API 는 호스트가 이전됐고 정상 응답도 XML 전용인데, 옛 코드는 JSON 을 가정하고 `<` 로 시작하는 응답을 전부 오류로 간주해 조용히 폐기 → CIA- 레코드가 늘 0건 | `culture-url` 을 실제 End Point(`/B553457/cultureinfo/period2`)로 교체, `XmlMapper` 로 파싱 전환. 실제 필드명(`seq`/`title`/`place`/`realmName`/`area`/`sigungu` 등)은 data.go.kr 상세 페이지에 로그인해 Swagger Models 패널을 펼쳐 직접 확인 |
 | 문화정보 응답에 박물관 "상설전시" 류가 섞여 있음 (`startDate` 가 몇 년 전, `endDate` 는 먼 미래) — `createSchedules()` 가 `startDate` 기준 연속 8일치 회차만 만들다 보니 이미 다 지난, 예매 불가능한 회차만 생성됨 | 동기화 단계에서 기간 90일 초과 항목은 상설전시류로 보고 제외. 이미 종료된 공연도 동일하게 제외 |
 | 소스 하나(예: 문화정보)가 호출/파싱에 실패해도 다른 소스 동기화가 막히면 안 됨 | `PerformanceSyncScheduler` 가 소스별로 완전히 격리된 함수에서 try-catch, 실패해도 나머지 소스는 계속 진행. `/api/admin/sync` 응답도 소스별로 분리 |
+| KOPIS 목록(pblprfr) 응답에는 회차시간(dtguidance)/등급별가격(pcseguidance)이 없고 상세(pblprfr/{mt20id})에만 있음 | 목록 페이지 1건당 상세를 1회 더 호출. 상세 호출/파싱이 개별 건에서 실패해도 그 건만 목록 정보로 대체하고 나머지는 계속 진행 |
+| dtguidance/pcseguidance 는 자유 텍스트라 정규식으로 파싱해야 함. 실제 값(`"화요일(19:30), 금요일(19:30)"`, `"토요일(11:00,14:00)"`, `"VIP석 120,000원, R석 90,000원..."`)은 실제 키 발급 후 라이브 호출로 확인 | "요일명(시각)" / "요일명 ~ 요일명(시각)" / "매일(시각)" 패턴, 등급별로는 "등급+석+금액+원" 패턴을 추출. 패턴을 하나도 못 찾으면 `null` 반환 → 기존 8일 고정 19시 규칙 / basePrice 비율 계산으로 자동 대체 |
+| "화요일"의 "일" 한 글자가 요일 매칭용 단일 문자(월화수목금토**일**)와 겹쳐서 일요일로 오매칭됨 → 없는 일요일 회차가 만들어지고, 요일 범위("목요일 ~ 금요일")의 끝 요일이 단일 패턴에도 중복으로 잡혀 같은 회차를 두 번 만들려다 유니크 제약(`uk_schedule`) 위반으로 배치가 죽을 뻔함 | 반드시 "요일" 전체가 붙은 형태만 매칭하도록 정규식 수정(`(월\|화\|수\|목\|금\|토\|일)요일`), 요일별 시각을 `Set` 에 모아 중복 제거 후 리스트로 변환 |
 
 ---
 
@@ -222,8 +227,12 @@ CulturePerformanceClient ─┤─► ExternalPerformance(정규화) ─► Perf
 #    - 전국공연행사정보표준데이터 (공연장 주소/좌표/객석수도 이 안에 포함됨)
 #    - 한눈에보는문화정보조회서비스
 
+# 1-1) KOPIS(공연예술통합전산망)는 별도 사이트(www.kopis.or.kr)에서 인증키 발급
+#      data.go.kr 키와 다른 키이므로 재사용 불가
+
 # 2) 환경변수로 주입 (application.yml 에 직접 넣지 말 것)
 export PUBLICDATA_SERVICE_KEY="발급받은_인코딩된_키"
+export KOPIS_SERVICE_KEY="발급받은_KOPIS_키"
 
 # 2-1) 결제 기능을 쓰려면 토스페이먼츠 테스트 키도 발급 (developers.tosspayments.com)
 export TOSS_CLIENT_KEY="test_ck_..."
@@ -298,4 +307,5 @@ docker compose up --build
 - [x] 문화정보(CIA-) 연동 정상화 — 실제 엔드포인트/XML 파싱으로 재작성, 소스별 동기화 실패 격리 + 결과 분리 응답
 - [x] 동기화 데이터 정제 — 종료된 공연·상설전시류(90일 초과) 제외, 홈 화면 공연 목록 월별 그룹핑
 - [x] 로컬 개발 DB 영속화 (H2 파일 기반) + 테스트 전용 프로필 분리
+- [x] KOPIS 연동 — 목록+상세 조회, dtguidance(실제 회차시간)/pcseguidance(등급별 실제가격) 반영. 실제 서비스키로 라이브 호출 검증 완료
 - [ ] AWS EC2 + RDS 배포 (CD)

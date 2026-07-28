@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 공공데이터의 객석수(totalSeatCount)를 받아 구역/등급별 좌석을 생성한다.
@@ -33,6 +34,16 @@ public class SeatGenerator {
     /** venueName 이 venue-layouts.yml 의 실제 구역 구조와 일치하면 그 구조로, 아니면 기본 로직으로 생성한다. */
     @Transactional
     public int generate(Long scheduleId, String venueName, Integer totalSeatCount, Integer basePrice) {
+        return generate(scheduleId, venueName, totalSeatCount, basePrice, null);
+    }
+
+    /**
+     * pricesByGrade 가 있으면(KOPIS pcseguidance 파싱 결과) 등급별 실제 가격을 그대로 쓰고,
+     * 없는 등급이거나 맵 자체가 null 이면 기존처럼 basePrice 에 비율을 곱한다.
+     */
+    @Transactional
+    public int generate(Long scheduleId, String venueName, Integer totalSeatCount, Integer basePrice,
+                         Map<SeatGrade, Integer> pricesByGrade) {
         PerformanceSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다. id=" + scheduleId));
 
@@ -45,8 +56,8 @@ public class SeatGenerator {
         List<VenueLayoutProperties.SectionLayout> layout = findLayout(venueName);
 
         List<Seat> seats = (layout != null)
-                ? generateFromLayout(schedule, layout, price)
-                : generateDefault(schedule, totalSeatCount, price);
+                ? generateFromLayout(schedule, layout, price, pricesByGrade)
+                : generateDefault(schedule, totalSeatCount, price, pricesByGrade);
 
         seatRepository.saveAll(seats);
 
@@ -62,7 +73,8 @@ public class SeatGenerator {
         return venueLayoutProperties.findSections(venueName);
     }
 
-    private List<Seat> generateDefault(PerformanceSchedule schedule, Integer totalSeatCount, int price) {
+    private List<Seat> generateDefault(PerformanceSchedule schedule, Integer totalSeatCount, int price,
+                                        Map<SeatGrade, Integer> pricesByGrade) {
         int total = (totalSeatCount == null || totalSeatCount <= 0) ? DEFAULT_SEAT_COUNT : totalSeatCount;
 
         List<Seat> seats = new ArrayList<>(total);
@@ -77,7 +89,7 @@ public class SeatGenerator {
                     .seatNo(seatNo)
                     .grade(grade)
                     .status(SeatStatus.AVAILABLE)
-                    .price(grade.applyTo(price))
+                    .price(resolvePrice(grade, price, pricesByGrade))
                     .build());
         }
         return seats;
@@ -85,7 +97,8 @@ public class SeatGenerator {
 
     /** 구역마다 행(A, B, C...) x 열 구조로 좌석을 만든다. 등급은 구역 단위로 고정. */
     private List<Seat> generateFromLayout(PerformanceSchedule schedule,
-                                          List<VenueLayoutProperties.SectionLayout> layout, int price) {
+                                          List<VenueLayoutProperties.SectionLayout> layout, int price,
+                                          Map<SeatGrade, Integer> pricesByGrade) {
         List<Seat> seats = new ArrayList<>();
         for (VenueLayoutProperties.SectionLayout section : layout) {
             for (int row = 0; row < section.getRows(); row++) {
@@ -97,12 +110,19 @@ public class SeatGenerator {
                             .seatNo(seatNo)
                             .grade(section.getGrade())
                             .status(SeatStatus.AVAILABLE)
-                            .price(section.getGrade().applyTo(price))
+                            .price(resolvePrice(section.getGrade(), price, pricesByGrade))
                             .build());
                 }
             }
         }
         return seats;
+    }
+
+    private int resolvePrice(SeatGrade grade, int fallbackBasePrice, Map<SeatGrade, Integer> pricesByGrade) {
+        if (pricesByGrade != null && pricesByGrade.containsKey(grade)) {
+            return pricesByGrade.get(grade);
+        }
+        return grade.applyTo(fallbackBasePrice);
     }
 
     private SeatGrade gradeOf(int index, int total) {

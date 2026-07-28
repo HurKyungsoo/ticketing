@@ -21,6 +21,7 @@ public class PerformanceSyncScheduler {
 
     private final PublicPerformanceClient performanceClient;
     private final CulturePerformanceClient cultureClient;
+    private final KopisPerformanceClient kopisClient;
     private final PerformanceSyncService syncService;
     private final PublicDataProperties properties;
 
@@ -41,20 +42,21 @@ public class PerformanceSyncScheduler {
         }
     }
 
-    public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture) {
+    public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture, SourceSyncResult kopis) {
 
         public int totalCreated() {
-            return standard.created() + culture.created();
+            return standard.created() + culture.created() + kopis.created();
         }
     }
 
     public SyncSummary runSync() {
         SourceSyncResult standard = syncSource("표준데이터", performanceClient::fetchPage);
         SourceSyncResult culture = syncSource("문화정보", cultureClient::fetchPage);
+        SourceSyncResult kopis = syncSource("KOPIS", kopisClient::fetchPage);
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건",
-                standard.created(), culture.created());
-        return new SyncSummary(standard, culture);
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건",
+                standard.created(), culture.created(), kopis.created());
+        return new SyncSummary(standard, culture, kopis);
     }
 
     /**
