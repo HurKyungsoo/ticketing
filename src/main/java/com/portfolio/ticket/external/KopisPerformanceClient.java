@@ -46,6 +46,13 @@ public class KopisPerformanceClient {
     private static final String SOURCE_PREFIX = "KOPIS-";
     private static final DateTimeFormatter DATE_PARAM_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
 
+    /**
+     * 상세 API 를 지연 없이 연속 호출하면 KOPIS WAF 가 봇 트래픽으로 보고 전건을
+     * "400 Request Blocked" 로 막는다 (정상/오류 KOPIS XML 이 아니라 WAF 자체 HTML 응답).
+     * 건별 호출 사이에 최소한의 지연을 둬서 이를 피한다.
+     */
+    private static final long DETAIL_CALL_DELAY_MS = 150;
+
     private static final Pattern TIME_PATTERN = Pattern.compile("(\\d{1,2}):(\\d{2})");
     private static final Map<Character, DayOfWeek> DAY_CHAR = Map.of(
             '월', DayOfWeek.MONDAY, '화', DayOfWeek.TUESDAY, '수', DayOfWeek.WEDNESDAY,
@@ -84,8 +91,17 @@ public class KopisPerformanceClient {
         List<ExternalPerformance> result = new ArrayList<>(basics.size());
         for (ExternalPerformance basic : basics) {
             result.add(enrichWithDetail(basic));
+            sleepBetweenDetailCalls();
         }
         return result;
+    }
+
+    private void sleepBetweenDetailCalls() {
+        try {
+            Thread.sleep(DETAIL_CALL_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private URI listUri(int pageNo) {
