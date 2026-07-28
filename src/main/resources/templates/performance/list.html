@@ -9,11 +9,10 @@
 <body>
 <div class="wrap">
     <header class="masthead">
-        <h1>객석</h1>
+        <h1><a th:href="@{/}">객석</a></h1>
         <span class="tag">공공데이터 기반 공연 예매</span>
         <nav class="authnav">
             <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
-            <a sec:authorize="hasRole('ADMIN')" th:href="@{/admin/dashboard}">대시보드</a>
             <a sec:authorize="isAuthenticated()" th:href="@{/mypage/reservations}">마이페이지</a>
             <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
                 <button type="submit" class="linklike">로그아웃</button>
@@ -24,17 +23,92 @@
         </nav>
     </header>
 
-    <div th:if="${!performances.isEmpty()}">
-        <section class="month-group" th:each="entry : ${performancesByMonth}">
+    <button type="button" class="mobile-filter-btn" id="mobileFilterOpen">
+        필터
+        <em th:text="${#numbers.formatInteger(result.total,0,'COMMA')}">328</em>
+    </button>
+
+    <!--
+        필터는 전부 이 폼 하나에 들어있다. genre/month 도 <a> 링크가 아니라 라디오로 만든 이유는,
+        링크마다 다른 필터값을 URL 에 일일이 다시 실어주다가 하나라도 빠뜨리면 조건이 유실되기
+        때문 (LIBRE 에서 겪은 버그). 폼 하나면 제출 시 모든 필드가 자동으로 같이 실려간다.
+    -->
+    <form class="filterpanel" id="filterPanel" th:action="@{/}" method="get">
+        <div class="fp-head">
+            <span class="fp-title">필터</span>
+            <button type="button" class="fp-close" id="mobileFilterClose" aria-label="닫기">×</button>
+        </div>
+
+        <input type="hidden" name="page" value="0">
+
+        <label class="fp-keyword">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#6B6480" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="#6B6480" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" name="keyword" placeholder="공연명, 아티스트로 검색" th:value="${keyword}">
+        </label>
+
+        <!-- 진행 현황 / 시간대 / 공연장 / 지역: 데이터 성격상 몇 개 안 되는 select 로 -->
+        <div class="fp-selects">
+            <select name="status" aria-label="진행 현황">
+                <option value="all"     th:selected="${status == 'all'}">전체 공연</option>
+                <option value="ongoing" th:selected="${status == 'ongoing'}">진행·예정</option>
+                <option value="ended"   th:selected="${status == 'ended'}">종료작</option>
+            </select>
+            <select name="timeSlot" aria-label="시간대">
+                <option value="all"       th:selected="${timeSlot == 'all'}">시간대 전체</option>
+                <option value="morning"   th:selected="${timeSlot == 'morning'}">오전(6~12시)</option>
+                <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
+                <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
+            </select>
+            <select name="venue" aria-label="공연장">
+                <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
+                <option th:each="v : ${result.venues}" th:if="${v.value != null}"
+                        th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
+                        th:selected="${v.selected}">공연장명 (12)</option>
+                <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
+                        th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
+            </select>
+            <select name="area" aria-label="지역">
+                <option value="all" th:selected="${area == 'all'}">지역 전체</option>
+                <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
+            </select>
+        </div>
+
+        <!-- 장르 탭 -->
+        <nav class="cattabs">
+            <label class="cattab" th:each="c : ${result.categories}" th:classappend="${c.selected} ? ' active'">
+                <input type="radio" name="genre" th:value="${c.value}" th:checked="${c.selected}">
+                <span th:text="${c.label}">전체</span>
+                <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">328</em>
+            </label>
+        </nav>
+
+        <!-- 월 칩: 현재 월부터 6개월 -->
+        <nav class="cattabs monthchips">
+            <label class="cattab" th:classappend="${month == 'all'} ? ' active'">
+                <input type="radio" name="month" value="all" th:checked="${month == 'all'}">
+                <span>전체 월</span>
+            </label>
+            <label class="cattab" th:each="m : ${result.months}" th:classappend="${m.selected} ? ' active'">
+                <input type="radio" name="month" th:value="${m.value}" th:checked="${m.selected}">
+                <span th:text="${m.label}">8월</span>
+                <em th:text="${#numbers.formatInteger(m.count,0,'COMMA')}">42</em>
+            </label>
+        </nav>
+
+        <button type="submit" class="fp-apply">적용하기</button>
+    </form>
+    <div class="fp-backdrop" id="filterBackdrop"></div>
+
+    <div th:if="${!result.performances.isEmpty()}">
+        <div class="month-group" th:each="entry : ${performancesByMonth}">
             <h2 class="month-heading" th:text="${entry.key}">2026년 8월</h2>
             <div class="grid">
-                <a class="card" th:each="p : ${entry.value}"
-                   th:href="@{/performances/{id}(id=${p.id})}">
-                    <div class="poster" th:if="${p.posterUrl != null}">
-                        <img th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy">
+                <a class="card" th:each="p : ${entry.value}" th:href="@{/performances/{id}(id=${p.id})}">
+                    <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
+                        <img th:if="${p.posterUrl != null}" th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy"
+                             onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                        <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
                     </div>
-                    <div class="poster empty" th:unless="${p.posterUrl != null}"
-                         th:text="${#strings.substring(p.title, 0, 1)}">공</div>
                     <h3 th:text="${p.title}">공연명</h3>
                     <p class="meta">
                         <span th:text="${p.venue}">공연장</span> ·
@@ -43,13 +117,50 @@
                     </p>
                 </a>
             </div>
-        </section>
+        </div>
     </div>
 
-    <div class="empty-state" th:if="${performances.isEmpty()}">
-        <p>아직 수집된 공연이 없습니다.</p>
-        <p><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
+    <div class="empty-state" th:if="${result.performances.isEmpty()}">
+        <p>조건에 맞는 공연이 없습니다.</p>
+        <p th:if="${result.total == 0}"><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
     </div>
+
+    <nav class="pager" th:if="${result.totalPages > 1}">
+        <a class="pager-link" th:if="${result.page > 0}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page - 1})}">이전</a>
+        <a class="pager-link" th:each="p : ${#numbers.sequence(0, result.totalPages - 1)}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${p})}"
+           th:text="${p + 1}"
+           th:classappend="${p == result.page} ? ' active'">1</a>
+        <a class="pager-link" th:if="${result.page + 1 < result.totalPages}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page + 1})}">다음</a>
+    </nav>
 </div>
+
+<script>
+(function () {
+    var form = document.getElementById('filterPanel');
+    var isDesktop = function () { return window.matchMedia('(min-width: 860px)').matches; };
+
+    form.querySelectorAll('input[type=radio], select').forEach(function (el) {
+        el.addEventListener('change', function () {
+            var pageInput = form.querySelector('input[name=page]');
+            if (pageInput) { pageInput.value = '0'; }
+            if (isDesktop()) { form.submit(); }
+        });
+    });
+
+    var openBtn = document.getElementById('mobileFilterOpen');
+    var closeBtn = document.getElementById('mobileFilterClose');
+    var backdrop = document.getElementById('filterBackdrop');
+
+    function openPanel() { form.classList.add('open'); if (backdrop) backdrop.classList.add('open'); }
+    function closePanel() { form.classList.remove('open'); if (backdrop) backdrop.classList.remove('open'); }
+
+    if (openBtn) openBtn.addEventListener('click', openPanel);
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    if (backdrop) backdrop.addEventListener('click', closePanel);
+})();
+</script>
 </body>
 </html>

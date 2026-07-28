@@ -3,19 +3,18 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.mapper.SeatMapper;
+import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
+import com.portfolio.ticket.service.PerformanceListService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,25 +24,75 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PerformanceController {
 
+    /** KOPIS area 필드 값과 정확히 맞춰야 지역 필터의 exact-match 가 걸린다. */
+    private static final List<String> REGIONS = List.of(
+            "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시",
+            "세종특별자치시", "경기도", "강원특별자치도", "충청북도", "충청남도", "전북특별자치도", "전라남도",
+            "경상북도", "경상남도", "제주특별자치도");
+
     private final PerformanceRepository performanceRepository;
     private final PerformanceScheduleRepository scheduleRepository;
     private final SeatMapper seatMapper;
+    private final PerformanceListService performanceListService;
 
+    /**
+     * 필터는 전부 쿼리 파라미터로 관리하고 "all" 을 기본 센티넬로 쓴다 — 파라미터가 항상
+     * 존재해야 필터를 바꾸거나 페이지를 넘길 때 다른 조건이 URL 에서 유실되지 않는다.
+     */
     @GetMapping("/")
-    public String list(@RequestParam(defaultValue = "0") int page, Model model) {
-        Page<Performance> performances = performanceRepository
-                .findByEndDateGreaterThanEqualOrderByStartDateAsc(LocalDate.now(), PageRequest.of(page, 12));
+    public String list(@RequestParam(defaultValue = "all") String genre,
+                        @RequestParam(defaultValue = "all") String month,
+                        @RequestParam(defaultValue = "all") String timeSlot,
+                        @RequestParam(defaultValue = "ongoing") String status,
+                        @RequestParam(defaultValue = "all") String venue,
+                        @RequestParam(defaultValue = "all") String area,
+                        @RequestParam(required = false) String keyword,
+                        @RequestParam(defaultValue = "0") int page,
+                        Model model) {
+        PerformanceListService.Result result = performanceListService.search(
+                sentinel(genre), parseMonth(month), sentinel(timeSlot), sentinel(status),
+                sentinel(venue), sentinel(area), blankToNull(keyword), page);
 
-        // 시작월 기준으로 묶어서 보여준다. 쿼리가 이미 startDate 오름차순이라
-        // LinkedHashMap 에 순서대로 쌓으면 그대로 월별 순서가 된다.
-        Map<String, List<Performance>> performancesByMonth = performances.getContent().stream()
+        // 현재 페이지 12건을 시작월 기준으로 묶어서 sticky 헤딩으로 보여준다.
+        // 쿼리가 이미 startDate 오름차순이라 LinkedHashMap 에 순서대로 쌓으면 그대로 월별 순서가 된다.
+        Map<String, List<PerformanceListRow>> performancesByMonth = result.performances().stream()
                 .collect(Collectors.groupingBy(
                         p -> p.getStartDate().getYear() + "년 " + p.getStartDate().getMonthValue() + "월",
                         LinkedHashMap::new, Collectors.toList()));
 
-        model.addAttribute("performances", performances);
+        model.addAttribute("result", result);
         model.addAttribute("performancesByMonth", performancesByMonth);
+        model.addAttribute("regions", REGIONS);
+        // 필터 폼/링크가 현재 선택값을 그대로 다시 뿌릴 수 있도록 원본 파라미터 문자열도 넘긴다.
+        model.addAttribute("genre", genre);
+        model.addAttribute("month", month);
+        model.addAttribute("timeSlot", timeSlot);
+        model.addAttribute("status", status);
+        model.addAttribute("venue", venue);
+        model.addAttribute("area", area);
+        model.addAttribute("keyword", keyword);
         return "performance/list";
+    }
+
+    /** "all"(대소문자 무관) 또는 빈 값은 "필터 없음" 을 뜻하는 null 로 변환한다. */
+    private String sentinel(String value) {
+        return (value == null || value.isBlank() || "all".equalsIgnoreCase(value)) ? null : value;
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    /** 잘못된 month 파라미터(문자열, 범위 밖 숫자)로 화면이 500 에러 나면 안 되니 안전하게 무시한다. */
+    private Integer parseMonth(String month) {
+        String resolved = sentinel(month);
+        if (resolved == null) return null;
+        try {
+            int m = Integer.parseInt(resolved);
+            return (m >= 1 && m <= 12) ? m : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @GetMapping("/performances/{id}")
