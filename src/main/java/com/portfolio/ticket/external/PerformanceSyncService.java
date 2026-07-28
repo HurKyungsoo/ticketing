@@ -40,6 +40,7 @@ public class PerformanceSyncService {
 
     private final PerformanceRepository performanceRepository;
     private final SeatGenerator seatGenerator;
+    private final PerformanceCategoryResolver categoryResolver;
 
     /** 한 페이지 분량 동기화 결과. skipped(이미 존재해 갱신만 함)는 received - created 로 구한다. */
     public record SyncBatchResult(int received, int created) {}
@@ -69,7 +70,8 @@ public class PerformanceSyncService {
                 performance.updateFromExternal(
                         external.getTitle(), external.getGenre(), external.getVenue(),
                         external.getAddress(), external.getStartDate(), external.getEndDate(),
-                        external.getPosterUrl(), external.getTotalSeatCount(), external.getBasePrice());
+                        external.getPosterUrl(), external.getTotalSeatCount(), external.getBasePrice(),
+                        external.getSourceType(), categoryResolver.resolve(external.getGenre()));
             }
         }
         log.info("공연 동기화 완료. 수신={}, 신규={}", externals.size(), saved);
@@ -79,8 +81,10 @@ public class PerformanceSyncService {
     private Performance toEntity(ExternalPerformance e) {
         return Performance.builder()
                 .externalId(e.getExternalId())
+                .sourceType(e.getSourceType())
                 .title(e.getTitle())
                 .genre(e.getGenre())
+                .category(categoryResolver.resolve(e.getGenre()))
                 .venue(e.getVenue())
                 .address(e.getAddress())
                 .latitude(e.getLatitude())

@@ -1,6 +1,7 @@
 package com.portfolio.ticket.external;
 
 import com.portfolio.ticket.domain.SeatGrade;
+import com.portfolio.ticket.domain.SourceType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 public class ExternalPerformance {
 
     private String externalId;
+    private SourceType sourceType;
     private String title;
     private String genre;
     private String venue;

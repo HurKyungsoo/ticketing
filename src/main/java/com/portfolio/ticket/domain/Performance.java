@@ -29,11 +29,21 @@ public class Performance {
     @Column(name = "external_id", nullable = false, length = 100)
     private String externalId;
 
+    /** 어느 소스(KOPIS/STANDARD/CULTURE/SEED)에서 왔는지. 필터/카테고리 집계에 쓴다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 20)
+    private SourceType sourceType;
+
     @Column(nullable = false, length = 200)
     private String title;
 
     @Column(length = 100)
     private String genre;
+
+    /** genre 원본 문자열을 PerformanceCategoryResolver 로 정규화한 값. 카테고리 필터/탭에 쓴다. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private PerformanceCategory category;
 
     @Column(length = 200)
     private String venue;
@@ -63,10 +73,14 @@ public class Performance {
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PerformanceSchedule> schedules = new ArrayList<>();
 
-    /** 배치 재수집 시 변경분만 반영 */
+    /**
+     * 배치 재수집 시 변경분만 반영. category 는 매번 다시 계산해서 넣는다 — 예전에
+     * sourceType/category 컬럼이 없던 시절 저장된 행(null)도 재동기화되면서 자연히 채워진다.
+     */
     public void updateFromExternal(String title, String genre, String venue, String address,
                                    LocalDate startDate, LocalDate endDate,
-                                   String posterUrl, Integer totalSeatCount, Integer basePrice) {
+                                   String posterUrl, Integer totalSeatCount, Integer basePrice,
+                                   SourceType sourceType, PerformanceCategory category) {
         this.title = title;
         this.genre = genre;
         this.venue = venue;
@@ -76,6 +90,8 @@ public class Performance {
         if (posterUrl != null) this.posterUrl = posterUrl;
         if (totalSeatCount != null) this.totalSeatCount = totalSeatCount;
         if (basePrice != null) this.basePrice = basePrice;
+        this.sourceType = sourceType;
+        this.category = category;
     }
 
     public void addSchedule(PerformanceSchedule schedule) {

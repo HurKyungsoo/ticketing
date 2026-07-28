@@ -2,6 +2,7 @@ package com.portfolio.ticket.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.ticket.domain.SourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -89,6 +90,7 @@ public class PublicPerformanceClient {
 
         return ExternalPerformance.builder()
                 .externalId(SOURCE_PREFIX + buildKey(item, title))
+                .sourceType(SourceType.STANDARD)
                 .title(title)
                 .genre(parser.text(item, "eventCo", "장르"))
                 .venue(parser.text(item, "opar", "장소", "eventPlace"))

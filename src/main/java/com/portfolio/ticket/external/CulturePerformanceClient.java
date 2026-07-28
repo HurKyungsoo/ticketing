@@ -2,6 +2,7 @@ package com.portfolio.ticket.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.portfolio.ticket.domain.SourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -82,6 +83,7 @@ public class CulturePerformanceClient {
         for (JsonNode item : itemNodes) {
             ExternalPerformance parsed = ExternalPerformance.builder()
                     .externalId(SOURCE_PREFIX + parser.text(item, "seq"))
+                    .sourceType(SourceType.CULTURE)
                     .title(parser.text(item, "title"))
                     .genre(parser.text(item, "realmName"))
                     .venue(parser.text(item, "place"))

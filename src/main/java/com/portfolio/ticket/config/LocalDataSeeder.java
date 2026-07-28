@@ -4,6 +4,8 @@ import com.portfolio.ticket.domain.Member;
 import com.portfolio.ticket.domain.MemberRole;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
+import com.portfolio.ticket.domain.SourceType;
+import com.portfolio.ticket.external.PerformanceCategoryResolver;
 import com.portfolio.ticket.repository.MemberRepository;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.service.SeatGenerator;
@@ -37,6 +39,7 @@ public class LocalDataSeeder implements CommandLineRunner {
     private final SeatGenerator seatGenerator;
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PerformanceCategoryResolver categoryResolver;
 
     @Override
     @Transactional
@@ -62,8 +65,10 @@ public class LocalDataSeeder implements CommandLineRunner {
                                   int totalSeatCount, int basePrice) {
         Performance performance = Performance.builder()
                 .externalId(externalId)
+                .sourceType(SourceType.SEED)
                 .title(title)
                 .genre(genre)
+                .category(categoryResolver.resolve(genre))
                 .venue(venue)
                 .address("서울")
                 .startDate(LocalDate.now())

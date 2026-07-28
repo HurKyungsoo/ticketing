@@ -3,6 +3,7 @@ package com.portfolio.ticket.external;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.portfolio.ticket.domain.SeatGrade;
+import com.portfolio.ticket.domain.SourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -116,6 +117,7 @@ public class KopisPerformanceClient {
         for (JsonNode item : itemNodes) {
             ExternalPerformance parsed = ExternalPerformance.builder()
                     .externalId(SOURCE_PREFIX + parser.text(item, "mt20id"))
+                    .sourceType(SourceType.KOPIS)
                     .title(parser.text(item, "prfnm"))
                     .genre(parser.text(item, "genrenm"))
                     .venue(parser.text(item, "fcltynm"))
@@ -162,6 +164,7 @@ public class KopisPerformanceClient {
 
             return ExternalPerformance.builder()
                     .externalId(basic.getExternalId())
+                    .sourceType(basic.getSourceType())
                     .title(basic.getTitle())
                     .genre(basic.getGenre())
                     .venue(basic.getVenue())
