@@ -466,29 +466,29 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ==================================================================
-   공연 목록 화면 — bluesquare.kr "What's ON" 페이지 참고 라이트 테마.
-   다른 화면(상세/좌석도/결제 등)은 기존 다크 "프로그램북" 톤을 그대로
-   쓰므로, body.page-list 로 범위를 한정해서 이 페이지만 갈아 끼운다.
+   라이트 테마 페이지들 — bluesquare.kr 참고. 공연 목록(page-list)과
+   공연 상세(page-detail)가 이 톤을 쓰고, 나머지(좌석도/결제 등)는 기존
+   다크 "프로그램북" 톤을 그대로 쓰므로 body 클래스로 범위를 한정한다.
    (filterpanel, fp- 접두사 클래스, cattab, card-badge, pager-nav 등은 최근 마크업
    리팩터에서 클래스만 추가되고 스타일이 비어 있던 것들이라 여기서 채운다.)
    ================================================================== */
-body.page-list { background: #fff; color: #212121; }
-body.page-list .wrap { max-width: 1120px; }
+body.page-list, body.page-detail { background: #fff; color: #212121; }
+body.page-list .wrap, body.page-detail .wrap { max-width: 1120px; }
 
-body.page-list .masthead { border-bottom-color: #ececec; }
-body.page-list .masthead h1 {
+body.page-list .masthead, body.page-detail .masthead { border-bottom-color: #ececec; }
+body.page-list .masthead h1, body.page-detail .masthead h1 {
   font-family: var(--body);
   font-size: 22px;
   letter-spacing: 0;
   color: #171717;
 }
-body.page-list .masthead .tag { color: #9a9a9a; }
-body.page-list .masthead .authnav { color: #6b6b6b; }
-body.page-list .masthead .authnav a,
-body.page-list .masthead .authnav .linklike { color: #171717; }
+body.page-list .masthead .tag, body.page-detail .masthead .tag { color: #9a9a9a; }
+body.page-list .masthead .authnav, body.page-detail .masthead .authnav { color: #6b6b6b; }
+body.page-list .masthead .authnav a, body.page-detail .masthead .authnav a,
+body.page-list .masthead .authnav .linklike, body.page-detail .masthead .authnav .linklike { color: #171717; }
 
-body.page-list .authbtns { display: flex; align-items: center; gap: 8px; }
-body.page-list .authbtns a {
+body.page-list .authbtns, body.page-detail .authbtns { display: flex; align-items: center; gap: 8px; }
+body.page-list .authbtns a, body.page-detail .authbtns a {
   display: inline-flex; align-items: center;
   padding: 7px 16px;
   border-radius: 999px;
@@ -496,7 +496,7 @@ body.page-list .authbtns a {
   font-size: 13px; font-weight: 600; color: #171717 !important;
   transition: border-color .12s;
 }
-body.page-list .authbtns a:hover { border-color: #171717; }
+body.page-list .authbtns a:hover, body.page-detail .authbtns a:hover { border-color: #171717; }
 
 /* ---- 모바일 필터 토글 버튼 (기본 숨김, 860px 이하에서만 노출) ---- */
 body.page-list .mobile-filter-btn {
@@ -636,10 +636,10 @@ body.page-list .empty-state code { background: #f4f4f4; padding: 2px 6px; border
 @media (max-width: 860px) {
   /* "객석" 로고+태그는 한 줄 유지, authnav("로그인 · 회원가입")는 폭이 좁으면
      제 몫의 공간을 못 받아 두 글자짜리 로고까지 세로로 쪼개지므로 아래 줄로 내린다. */
-  body.page-list .masthead { flex-wrap: wrap; row-gap: 8px; }
-  body.page-list .masthead h1 { white-space: nowrap; }
-  body.page-list .masthead .tag { white-space: nowrap; }
-  body.page-list .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
+  body.page-list .masthead, body.page-detail .masthead { flex-wrap: wrap; row-gap: 8px; }
+  body.page-list .masthead h1, body.page-detail .masthead h1 { white-space: nowrap; }
+  body.page-list .masthead .tag, body.page-detail .masthead .tag { white-space: nowrap; }
+  body.page-list .masthead .authnav, body.page-detail .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
 
   body.page-list .mobile-filter-btn { display: inline-flex; }
   body.page-list .filterpanel {
@@ -663,4 +663,51 @@ body.page-list .empty-state code { background: #f4f4f4; padding: 2px 6px; border
     z-index: 30;
   }
   body.page-list .fp-backdrop.open { opacity: 1; pointer-events: auto; }
+}
+
+/* ==================================================================
+   공연 상세 화면 — bluesquare.kr 상세 페이지(view.php) 참고 라이트 테마.
+   ================================================================== */
+body.page-detail .detail {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+body.page-detail .detail > div:first-child { position: sticky; top: 24px; }
+
+body.page-detail .poster {
+  aspect-ratio: 3 / 4;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f0f0f0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+body.page-detail .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+body.page-detail h2 { font-family: var(--body); font-size: 26px; font-weight: 700; color: #171717; margin: 0 0 8px; }
+body.page-detail .meta { font-size: 14px; color: #8a8a8a; margin: 0 0 28px; }
+
+body.page-detail .detail-heading { font-size: 16px; font-weight: 700; color: #171717; margin: 0 0 16px; }
+
+body.page-detail .spec { border-top: 1px solid #ececec; margin: 0 0 36px; }
+body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ececec; font-size: 14px; }
+body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: #6b6b6b; margin: 0; }
+body.page-detail .spec dd { margin: 0; color: #212121; }
+
+body.page-detail .schedules { display: flex; flex-wrap: wrap; gap: 10px; }
+body.page-detail .schedules a {
+  border: 1.5px solid #d8d8d8;
+  border-radius: 12px;
+  color: #171717;
+  padding: 12px 18px;
+  font-size: 14px; font-weight: 600;
+  transition: border-color .12s, color .12s;
+}
+body.page-detail .schedules a:hover { border-color: #171717; }
+body.page-detail .schedules a.soldout { border-color: #ececec; color: #c9c9c9; }
+
+@media (max-width: 860px) {
+  body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
+  body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
 }

@@ -6,7 +6,7 @@
     <title th:text="${performance.title}">공연 상세</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
+<body class="page-detail">
 <div class="wrap">
     <header class="masthead">
         <h1><a th:href="@{/}">객석</a></h1>
@@ -16,18 +16,17 @@
             <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
                 <button type="submit" class="linklike">로그아웃</button>
             </form>
-            <span sec:authorize="isAnonymous()">
-                <a th:href="@{/login}">로그인</a> · <a th:href="@{/signup}">회원가입</a>
+            <span sec:authorize="isAnonymous()" class="authbtns">
+                <a th:href="@{/login}" class="btn-login">로그인</a>
+                <a th:href="@{/signup}" class="btn-signup">회원가입</a>
             </span>
         </nav>
     </header>
 
     <div class="detail">
         <div>
-            <div class="poster" style="aspect-ratio:3/4;border:1px solid var(--line);overflow:hidden"
-                 th:if="${performance.posterUrl != null}">
-                <img th:src="${performance.posterUrl}" th:alt="${performance.title}"
-                     style="width:100%;height:100%;object-fit:cover;display:block">
+            <div class="poster" th:if="${performance.posterUrl != null}">
+                <img th:src="${performance.posterUrl}" th:alt="${performance.title}">
             </div>
         </div>
 
@@ -35,6 +34,7 @@
             <h2 th:text="${performance.title}">공연명</h2>
             <p class="meta" th:text="${performance.genre}">장르</p>
 
+            <h3 class="detail-heading">공연 정보</h3>
             <dl class="spec">
                 <div><dt>공연장</dt><dd th:text="${performance.venue}">-</dd></div>
                 <div><dt>주소</dt><dd th:text="${performance.address} ?: '-'">-</dd></div>
@@ -44,6 +44,7 @@
                 <div><dt>객석수</dt><dd th:text="${performance.totalSeatCount} ?: '미상'">-</dd></div>
             </dl>
 
+            <h3 class="detail-heading">회차 선택</h3>
             <div class="schedules">
                 <a th:each="s : ${schedules}"
                    th:href="@{/schedules/{id}/seats(id=${s.id})}"
