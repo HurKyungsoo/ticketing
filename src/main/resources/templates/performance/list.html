@@ -17,8 +17,9 @@
             <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
                 <button type="submit" class="linklike">로그아웃</button>
             </form>
-            <span sec:authorize="isAnonymous()">
-                <a th:href="@{/login}">로그인</a> · <a th:href="@{/signup}">회원가입</a>
+            <span sec:authorize="isAnonymous()" class="authbtns">
+                <a th:href="@{/login}" class="btn-login">로그인</a>
+                <a th:href="@{/signup}" class="btn-signup">회원가입</a>
             </span>
         </nav>
     </header>
@@ -54,7 +55,6 @@
                         <label class="cattab" th:each="c : ${result.categories}" th:classappend="${c.selected} ? ' active'">
                             <input type="radio" name="genre" th:value="${c.value}" th:checked="${c.selected}">
                             <span th:text="${c.label}">전체</span>
-                            <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">328</em>
                         </label>
                     </div>
                 </div>
@@ -91,15 +91,14 @@
                             <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
                         </select>
                         <select name="venue" aria-label="공연장">
-                            <option value="all" th:selected="${venue == 'all'}"
-                                    th:text="${area == 'all'} ? '공연장 전체 (전국 상위 8곳)' : '공연장 전체'">공연장 전체</option>
+                            <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
                             <option th:each="v : ${result.venues}" th:if="${v.value != null}"
                                     th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
                                     th:selected="${v.selected}">공연장명 (12)</option>
                             <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
                                     th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
                         </select>
-                        <span class="fp-hint" th:if="${area == 'all'}">지역을 먼저 고르면 그 지역 공연장이 다 나와요</span>
+                        <span class="fp-grouplabel">월 · 시간대</span>
                         <select name="month" aria-label="월 선택">
                             <option value="all" th:selected="${month == 'all'}">월 전체</option>
                             <option th:each="m : ${result.months}" th:value="${m.value}"
@@ -112,6 +111,7 @@
                             <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
                             <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
                         </select>
+                        <span class="fp-hint" th:classappend="${area != 'all'} ? ' fp-hint--hidden'">지역을 먼저 고르면 그 지역 공연장이 다 나와요</span>
                     </div>
                 </div>
             </div>

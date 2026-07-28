@@ -487,6 +487,17 @@ body.page-list .masthead .authnav { color: #6b6b6b; }
 body.page-list .masthead .authnav a,
 body.page-list .masthead .authnav .linklike { color: #171717; }
 
+body.page-list .authbtns { display: flex; align-items: center; gap: 8px; }
+body.page-list .authbtns a {
+  display: inline-flex; align-items: center;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1.5px solid #d8d8d8;
+  font-size: 13px; font-weight: 600; color: #171717 !important;
+  transition: border-color .12s;
+}
+body.page-list .authbtns a:hover { border-color: #171717; }
+
 /* ---- 모바일 필터 토글 버튼 (기본 숨김, 860px 이하에서만 노출) ---- */
 body.page-list .mobile-filter-btn {
   display: none;
@@ -531,6 +542,9 @@ body.page-list .fp-grid { display: flex; flex-direction: column; gap: 14px; }
 body.page-list .fp-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 body.page-list .fp-label { flex: none; width: 76px; font-size: 13px; font-weight: 600; color: #6b6b6b; }
 body.page-list .fp-col-wide .fp-row { align-items: flex-start; }
+/* fp-row 는 flex-start 라 라벨이 맨 위에 붙는데, 드롭다운(select)은 라벨보다 키가 커서
+   그대로 두면 라벨이 위로 치우쳐 보인다. 드롭다운 한 줄 높이 기준으로 세로 중앙에 오도록 내려준다. */
+body.page-list .fp-col-wide .fp-label { margin-top: 9px; }
 
 body.page-list .fp-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 body.page-list .cattab {
@@ -544,11 +558,13 @@ body.page-list .cattab {
   transition: background .12s, color .12s, border-color .12s;
 }
 body.page-list .cattab input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
-body.page-list .cattab em { font-style: normal; opacity: .7; }
 body.page-list .cattab:hover { border-color: #b5b5b5; }
 body.page-list .cattab.active { background: #171717; border-color: #171717; color: #fff; font-weight: 600; }
 
-body.page-list .fp-dropdowns { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* flex: 1 1 0%; min-width: 0 이 필요한 이유: 안의 fp-hint 가 flex-basis:100% 라서
+   이 컨테이너의 "내용 기준 너비"를 브라우저가 이상하게 크게 잡아버려, 실제로는
+   한 줄에 다 들어가는데도 fp-row 가 불필요하게 줄바꿈되는 버그가 있었다. */
+body.page-list .fp-dropdowns { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex: 1 1 0%; min-width: 0; }
 body.page-list .fp-dropdowns select {
   appearance: none;
   -webkit-appearance: none;
@@ -557,8 +573,20 @@ body.page-list .fp-dropdowns select {
   padding: 8px 34px 8px 16px;
   background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 14px center;
   cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* 선택값 텍스트 길이에 따라 각 드롭다운 폭이 들쭉날쭉해지지 않도록 고정폭을 준다. */
+body.page-list .fp-dropdowns select[name="area"] { width: 140px; }
+body.page-list .fp-dropdowns select[name="venue"] { width: 240px; }
+body.page-list .fp-dropdowns select[name="month"] { width: 120px; }
+body.page-list .fp-dropdowns select[name="timeSlot"] { width: 140px; }
+/* 지역·장소 그룹과 분명히 구분되도록 간격을 주되, 행 맨 끝까지는 밀지 않는다.
+   고정값이라 지역/공연장 값 길이와 상관없이 위치가 항상 동일하다. */
+body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: #6b6b6b; margin-left: 32px; }
 body.page-list .fp-hint { font-size: 12px; color: #b3b3b3; flex-basis: 100%; }
+/* 지역을 고르면 힌트 문구가 사라지면서 줄바꿈 위치가 바뀌어 패널 전체 높이가 들쭉날쭉했다.
+   엘리먼트 자체(= flex-basis:100% 의 줄바꿈 효과)는 항상 유지하고 텍스트만 숨긴다. */
+body.page-list .fp-hint--hidden { visibility: hidden; }
 
 body.page-list .fp-apply {
   display: none;
