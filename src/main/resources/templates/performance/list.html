@@ -49,18 +49,6 @@
         <div class="fp-grid">
             <div class="fp-col">
                 <div class="fp-row">
-                    <span class="fp-label">공연장</span>
-                    <div class="fp-pills">
-                        <label class="cattab" th:each="v : ${result.venues}" th:if="${v.value != null}"
-                               th:classappend="${v.selected} ? ' active'">
-                            <input type="radio" name="venue" th:value="${v.value}" th:checked="${v.selected}">
-                            <span th:text="${v.label}">공연장명</span>
-                        </label>
-                        <span class="fp-etc" th:each="v : ${result.venues}" th:if="${v.value == null}"
-                              th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</span>
-                    </div>
-                </div>
-                <div class="fp-row">
                     <span class="fp-label">장르</span>
                     <div class="fp-pills">
                         <label class="cattab" th:each="c : ${result.categories}" th:classappend="${c.selected} ? ' active'">
@@ -90,9 +78,26 @@
                         </label>
                     </div>
                 </div>
+            </div>
+
+            <!-- 지역/공연장/월/시간대: 전부 드롭다운. 지역을 고르면 공연장 옵션(건수)도 그 지역 것만 남는다
+                 (PerformanceListService.buildVenueOptions 가 venue 만 빼고 region 은 그대로 반영해서 집계함) -->
+            <div class="fp-col fp-col-wide">
                 <div class="fp-row">
-                    <span class="fp-label">기간 · 시간</span>
+                    <span class="fp-label">지역 · 장소</span>
                     <div class="fp-dropdowns">
+                        <select name="area" aria-label="지역">
+                            <option value="all" th:selected="${area == 'all'}">지역 전체</option>
+                            <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
+                        </select>
+                        <select name="venue" aria-label="공연장">
+                            <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
+                            <option th:each="v : ${result.venues}" th:if="${v.value != null}"
+                                    th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
+                                    th:selected="${v.selected}">공연장명 (12)</option>
+                            <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
+                                    th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
+                        </select>
                         <select name="month" aria-label="월 선택">
                             <option value="all" th:selected="${month == 'all'}">월 전체</option>
                             <option th:each="m : ${result.months}" th:value="${m.value}"
@@ -104,10 +109,6 @@
                             <option value="morning"   th:selected="${timeSlot == 'morning'}">오전(6~12시)</option>
                             <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
                             <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
-                        </select>
-                        <select name="area" aria-label="지역">
-                            <option value="all" th:selected="${area == 'all'}">지역 전체</option>
-                            <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
                         </select>
                     </div>
                 </div>
