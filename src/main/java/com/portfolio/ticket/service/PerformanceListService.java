@@ -28,6 +28,7 @@ public class PerformanceListService {
     private static final int PAGE_SIZE = 12;
     private static final int MONTH_CHIP_COUNT = 6;
     private static final int VENUE_TOP_N = 8;
+    private static final int PAGE_WINDOW = 5;
 
     private final PerformanceMapper performanceMapper;
 
@@ -39,6 +40,7 @@ public class PerformanceListService {
             long total,
             int page,
             int totalPages,
+            List<Integer> pageWindow,
             List<Option> categories,
             List<Option> months,
             List<Option> venues
@@ -56,8 +58,20 @@ public class PerformanceListService {
         List<Option> categories = buildCategoryOptions(filter, category);
         List<Option> months = buildMonthOptions(filter, month);
         List<Option> venues = buildVenueOptions(filter, venue);
+        List<Integer> pageWindow = buildPageWindow(safePage, totalPages);
 
-        return new Result(rows, total, safePage, totalPages, categories, months, venues);
+        return new Result(rows, total, safePage, totalPages, pageWindow, categories, months, venues);
+    }
+
+    /** 현재 페이지를 가운데 두고 최대 PAGE_WINDOW 개만 보여준다 (전체 페이지 수가 많아도 번호가 안 늘어나게). */
+    private List<Integer> buildPageWindow(int page, int totalPages) {
+        int start = Math.max(0, Math.min(page - PAGE_WINDOW / 2, totalPages - PAGE_WINDOW));
+        int end = Math.min(totalPages - 1, start + PAGE_WINDOW - 1);
+        List<Integer> window = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            window.add(i);
+        }
+        return window;
     }
 
     private PerformanceFilter buildFilter(String category, Integer month, String timeSlot, String status,

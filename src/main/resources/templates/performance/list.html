@@ -29,9 +29,9 @@
     </button>
 
     <!--
-        필터는 전부 이 폼 하나에 들어있다. genre/month 도 <a> 링크가 아니라 라디오로 만든 이유는,
-        링크마다 다른 필터값을 URL 에 일일이 다시 실어주다가 하나라도 빠뜨리면 조건이 유실되기
-        때문 (LIBRE 에서 겪은 버그). 폼 하나면 제출 시 모든 필드가 자동으로 같이 실려간다.
+        필터는 전부 이 폼 하나에 들어있다. genre/venue/status 도 <a> 링크가 아니라 라디오로 만든
+        이유는, 링크마다 다른 필터값을 URL 에 일일이 다시 실어주다가 하나라도 빠뜨리면 조건이
+        유실되기 때문 (LIBRE 에서 겪은 버그). 폼 하나면 제출 시 모든 필드가 자동으로 같이 실려간다.
     -->
     <form class="filterpanel" id="filterPanel" th:action="@{/}" method="get">
         <div class="fp-head">
@@ -46,78 +46,93 @@
             <input type="text" name="keyword" placeholder="공연명, 아티스트로 검색" th:value="${keyword}">
         </label>
 
-        <!-- 진행 현황 / 시간대 / 공연장 / 지역: 데이터 성격상 몇 개 안 되는 select 로 -->
-        <div class="fp-selects">
-            <select name="status" aria-label="진행 현황">
-                <option value="all"     th:selected="${status == 'all'}">전체 공연</option>
-                <option value="ongoing" th:selected="${status == 'ongoing'}">진행·예정</option>
-                <option value="ended"   th:selected="${status == 'ended'}">종료작</option>
-            </select>
-            <select name="timeSlot" aria-label="시간대">
-                <option value="all"       th:selected="${timeSlot == 'all'}">시간대 전체</option>
-                <option value="morning"   th:selected="${timeSlot == 'morning'}">오전(6~12시)</option>
-                <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
-                <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
-            </select>
-            <select name="venue" aria-label="공연장">
-                <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
-                <option th:each="v : ${result.venues}" th:if="${v.value != null}"
-                        th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
-                        th:selected="${v.selected}">공연장명 (12)</option>
-                <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
-                        th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
-            </select>
-            <select name="area" aria-label="지역">
-                <option value="all" th:selected="${area == 'all'}">지역 전체</option>
-                <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
-            </select>
+        <div class="fp-grid">
+            <div class="fp-col">
+                <div class="fp-row">
+                    <span class="fp-label">공연장</span>
+                    <div class="fp-pills">
+                        <label class="cattab" th:each="v : ${result.venues}" th:if="${v.value != null}"
+                               th:classappend="${v.selected} ? ' active'">
+                            <input type="radio" name="venue" th:value="${v.value}" th:checked="${v.selected}">
+                            <span th:text="${v.label}">공연장명</span>
+                        </label>
+                        <span class="fp-etc" th:each="v : ${result.venues}" th:if="${v.value == null}"
+                              th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</span>
+                    </div>
+                </div>
+                <div class="fp-row">
+                    <span class="fp-label">장르</span>
+                    <div class="fp-pills">
+                        <label class="cattab" th:each="c : ${result.categories}" th:classappend="${c.selected} ? ' active'">
+                            <input type="radio" name="genre" th:value="${c.value}" th:checked="${c.selected}">
+                            <span th:text="${c.label}">전체</span>
+                            <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">328</em>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fp-col">
+                <div class="fp-row">
+                    <span class="fp-label">진행 현황</span>
+                    <div class="fp-pills">
+                        <label class="cattab" th:classappend="${status == 'all'} ? ' active'">
+                            <input type="radio" name="status" value="all" th:checked="${status == 'all'}">
+                            <span>전체</span>
+                        </label>
+                        <label class="cattab" th:classappend="${status == 'ongoing'} ? ' active'">
+                            <input type="radio" name="status" value="ongoing" th:checked="${status == 'ongoing'}">
+                            <span>진행·예정작</span>
+                        </label>
+                        <label class="cattab" th:classappend="${status == 'ended'} ? ' active'">
+                            <input type="radio" name="status" value="ended" th:checked="${status == 'ended'}">
+                            <span>종료작</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="fp-row">
+                    <span class="fp-label">기간 · 시간</span>
+                    <div class="fp-dropdowns">
+                        <select name="month" aria-label="월 선택">
+                            <option value="all" th:selected="${month == 'all'}">월 전체</option>
+                            <option th:each="m : ${result.months}" th:value="${m.value}"
+                                    th:text="${m.label + ' (' + #numbers.formatInteger(m.count,0,'COMMA') + ')'}"
+                                    th:selected="${m.selected}">8월 (42)</option>
+                        </select>
+                        <select name="timeSlot" aria-label="시간대">
+                            <option value="all"       th:selected="${timeSlot == 'all'}">시간대 전체</option>
+                            <option value="morning"   th:selected="${timeSlot == 'morning'}">오전(6~12시)</option>
+                            <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
+                            <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
+                        </select>
+                        <select name="area" aria-label="지역">
+                            <option value="all" th:selected="${area == 'all'}">지역 전체</option>
+                            <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <!-- 장르 탭 -->
-        <nav class="cattabs">
-            <label class="cattab" th:each="c : ${result.categories}" th:classappend="${c.selected} ? ' active'">
-                <input type="radio" name="genre" th:value="${c.value}" th:checked="${c.selected}">
-                <span th:text="${c.label}">전체</span>
-                <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">328</em>
-            </label>
-        </nav>
-
-        <!-- 월 칩: 현재 월부터 6개월 -->
-        <nav class="cattabs monthchips">
-            <label class="cattab" th:classappend="${month == 'all'} ? ' active'">
-                <input type="radio" name="month" value="all" th:checked="${month == 'all'}">
-                <span>전체 월</span>
-            </label>
-            <label class="cattab" th:each="m : ${result.months}" th:classappend="${m.selected} ? ' active'">
-                <input type="radio" name="month" th:value="${m.value}" th:checked="${m.selected}">
-                <span th:text="${m.label}">8월</span>
-                <em th:text="${#numbers.formatInteger(m.count,0,'COMMA')}">42</em>
-            </label>
-        </nav>
 
         <button type="submit" class="fp-apply">적용하기</button>
     </form>
     <div class="fp-backdrop" id="filterBackdrop"></div>
 
-    <div th:if="${!result.performances.isEmpty()}">
-        <div class="month-group" th:each="entry : ${performancesByMonth}">
-            <h2 class="month-heading" th:text="${entry.key}">2026년 8월</h2>
-            <div class="grid">
-                <a class="card" th:each="p : ${entry.value}" th:href="@{/performances/{id}(id=${p.id})}">
-                    <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
-                        <img th:if="${p.posterUrl != null}" th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy"
-                             onerror="this.remove(); this.parentElement.classList.add('no-img')">
-                        <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
-                    </div>
-                    <h3 th:text="${p.title}">공연명</h3>
-                    <p class="meta">
-                        <span th:text="${p.venue}">공연장</span> ·
-                        <span th:text="${#temporals.format(p.startDate, 'M.d')}">시작</span> –
-                        <span th:text="${#temporals.format(p.endDate, 'M.d')}">종료</span>
-                    </p>
-                </a>
+    <div class="grid" th:if="${!result.performances.isEmpty()}">
+        <a class="card" th:each="p : ${result.performances}" th:href="@{/performances/{id}(id=${p.id})}">
+            <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
+                <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                <img th:if="${p.posterUrl != null}" th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy"
+                     onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
             </div>
-        </div>
+            <p class="meta">
+                <span th:text="${p.venue}">공연장</span> ·
+                <span th:text="${#temporals.format(p.startDate, 'yyyy.MM.dd')}">시작</span> –
+                <span th:text="${#temporals.format(p.endDate, 'yyyy.MM.dd')}">종료</span>
+            </p>
+            <h3 th:text="${p.title}">공연명</h3>
+        </a>
     </div>
 
     <div class="empty-state" th:if="${result.performances.isEmpty()}">
@@ -126,14 +141,18 @@
     </div>
 
     <nav class="pager" th:if="${result.totalPages > 1}">
-        <a class="pager-link" th:if="${result.page > 0}"
-           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page - 1})}">이전</a>
-        <a class="pager-link" th:each="p : ${#numbers.sequence(0, result.totalPages - 1)}"
+        <a class="pager-nav" th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=0)}">«</a>
+        <a class="pager-nav" th:if="${result.page > 0}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page - 1})}">‹</a>
+
+        <a class="pager-num" th:each="p : ${result.pageWindow}"
            th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${p})}"
            th:text="${p + 1}"
            th:classappend="${p == result.page} ? ' active'">1</a>
-        <a class="pager-link" th:if="${result.page + 1 < result.totalPages}"
-           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page + 1})}">다음</a>
+
+        <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page + 1})}">›</a>
+        <a class="pager-nav" th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.totalPages - 1})}">»</a>
     </nav>
 </div>
 

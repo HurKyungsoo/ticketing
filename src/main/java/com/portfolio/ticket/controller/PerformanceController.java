@@ -3,7 +3,6 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.mapper.SeatMapper;
-import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
@@ -53,15 +52,7 @@ public class PerformanceController {
                 sentinel(genre), parseMonth(month), sentinel(timeSlot), sentinel(status),
                 sentinel(venue), sentinel(area), blankToNull(keyword), page);
 
-        // 현재 페이지 12건을 시작월 기준으로 묶어서 sticky 헤딩으로 보여준다.
-        // 쿼리가 이미 startDate 오름차순이라 LinkedHashMap 에 순서대로 쌓으면 그대로 월별 순서가 된다.
-        Map<String, List<PerformanceListRow>> performancesByMonth = result.performances().stream()
-                .collect(Collectors.groupingBy(
-                        p -> p.getStartDate().getYear() + "년 " + p.getStartDate().getMonthValue() + "월",
-                        LinkedHashMap::new, Collectors.toList()));
-
         model.addAttribute("result", result);
-        model.addAttribute("performancesByMonth", performancesByMonth);
         model.addAttribute("regions", REGIONS);
         // 필터 폼/링크가 현재 선택값을 그대로 다시 뿌릴 수 있도록 원본 파라미터 문자열도 넘긴다.
         model.addAttribute("genre", genre);
