@@ -73,7 +73,7 @@ public class KopisPerformanceClient {
     public List<ExternalPerformance> fetchPage(int pageNo) {
         List<ExternalPerformance> basics;
         try {
-            String body = publicDataRestClient.get().uri(listUri(pageNo)).retrieve().body(String.class);
+            byte[] body = publicDataRestClient.get().uri(listUri(pageNo)).retrieve().body(byte[].class);
             basics = parseList(body);
         } catch (Exception e) {
             log.warn("KOPIS 목록 API 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
@@ -101,18 +101,13 @@ public class KopisPerformanceClient {
                 .toUri();
     }
 
-    private List<ExternalPerformance> parseList(String body) throws Exception {
-        if (body == null || body.isBlank()) return List.of();
-        if (!body.stripLeading().startsWith("<")) {
-            log.warn("KOPIS 목록 응답이 XML 이 아님: {}", body.substring(0, Math.min(200, body.length())));
-            return List.of();
-        }
+    private List<ExternalPerformance> parseList(byte[] body) throws Exception {
+        if (body == null || body.length == 0) return List.of();
 
-        JsonNode root = xmlMapper.readTree(body.getBytes());
+        JsonNode root = xmlMapper.readTree(body);
         JsonNode items = root.path("db");
         if (items.isMissingNode()) {
-            log.warn("KOPIS 목록 응답에 db 노드 없음 (인증키 오류 가능성): {}",
-                    body.substring(0, Math.min(200, body.length())));
+            log.warn("KOPIS 목록 응답에 db 노드 없음 (인증키 오류 가능성): {}", preview(body));
             return List.of();
         }
 
@@ -145,7 +140,7 @@ public class KopisPerformanceClient {
                 .toUri();
 
         try {
-            String body = publicDataRestClient.get().uri(uri).retrieve().body(String.class);
+            byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
             return applyDetail(basic, body);
         } catch (Exception e) {
             log.warn("KOPIS 상세 API 호출 실패. mt20id={}, msg={}", mt20id, e.getMessage());
@@ -153,11 +148,11 @@ public class KopisPerformanceClient {
         }
     }
 
-    private ExternalPerformance applyDetail(ExternalPerformance basic, String body) {
-        if (body == null || body.isBlank()) return basic;
+    private ExternalPerformance applyDetail(ExternalPerformance basic, byte[] body) {
+        if (body == null || body.length == 0) return basic;
 
         try {
-            JsonNode root = xmlMapper.readTree(body.getBytes());
+            JsonNode root = xmlMapper.readTree(body);
             JsonNode item = root.path("db");
             if (item.isArray()) item = item.get(0);
             if (item == null || item.isMissingNode()) return basic;
@@ -288,5 +283,10 @@ public class KopisPerformanceClient {
         List<JsonNode> list = new ArrayList<>();
         arrayNode.forEach(list::add);
         return list;
+    }
+
+    /** 경고 로그용으로만 쓴다 — 응답이 UTF-8 XML 이라는 전제로 앞부분만 잘라 보여준다. */
+    private String preview(byte[] body) {
+        return new String(body, 0, Math.min(body.length, 200), java.nio.charset.StandardCharsets.UTF_8);
     }
 }

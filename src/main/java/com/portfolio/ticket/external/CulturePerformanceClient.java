@@ -49,7 +49,7 @@ public class CulturePerformanceClient {
                 .toUri();
 
         try {
-            String body = publicDataRestClient.get().uri(uri).retrieve().body(String.class);
+            byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
             return parse(body);
         } catch (Exception e) {
             log.warn("문화정보 API 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
@@ -57,10 +57,10 @@ public class CulturePerformanceClient {
         }
     }
 
-    private List<ExternalPerformance> parse(String body) throws Exception {
-        if (body == null || body.isBlank()) return List.of();
+    private List<ExternalPerformance> parse(byte[] body) throws Exception {
+        if (body == null || body.length == 0) return List.of();
 
-        JsonNode root = xmlMapper.readTree(body.getBytes());
+        JsonNode root = xmlMapper.readTree(body);
 
         JsonNode header = root.path("header");
         String resultCode = header.path("resultCode").asText(null);
