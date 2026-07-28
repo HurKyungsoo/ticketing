@@ -91,13 +91,15 @@
                             <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
                         </select>
                         <select name="venue" aria-label="공연장">
-                            <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
+                            <option value="all" th:selected="${venue == 'all'}"
+                                    th:text="${area == 'all'} ? '공연장 전체 (전국 상위 8곳)' : '공연장 전체'">공연장 전체</option>
                             <option th:each="v : ${result.venues}" th:if="${v.value != null}"
                                     th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
                                     th:selected="${v.selected}">공연장명 (12)</option>
                             <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
                                     th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
                         </select>
+                        <span class="fp-hint" th:if="${area == 'all'}">지역을 먼저 고르면 그 지역 공연장이 다 나와요</span>
                         <select name="month" aria-label="월 선택">
                             <option value="all" th:selected="${month == 'all'}">월 전체</option>
                             <option th:each="m : ${result.months}" th:value="${m.value}"

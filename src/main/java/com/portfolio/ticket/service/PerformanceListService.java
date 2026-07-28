@@ -27,7 +27,10 @@ public class PerformanceListService {
 
     private static final int PAGE_SIZE = 12;
     private static final int MONTH_CHIP_COUNT = 6;
-    private static final int VENUE_TOP_N = 8;
+    /** 지역 미지정(전국) 일 때는 상위 8개만 — 서울만 해도 공연장이 100곳 넘어서 안 거르면 목록이 안 쓸만해진다. */
+    private static final int VENUE_TOP_N_NATIONWIDE = 8;
+    /** 지역을 고르면 그 지역 안에서는 사실상 다 보여준다 (서울이 제일 많아도 100여 곳 수준이라 select 로 감당됨). */
+    private static final int VENUE_TOP_N_IN_REGION = 150;
     private static final int PAGE_WINDOW = 5;
 
     private final PerformanceMapper performanceMapper;
@@ -143,14 +146,19 @@ public class PerformanceListService {
         return options;
     }
 
-    /** 건수 상위 N개 + "기타"(나머지 합). "기타"는 특정 공연장이 아니라서 value 없이 건수만 보여준다. */
+    /**
+     * 건수 상위 N개 + "기타"(나머지 합). "기타"는 특정 공연장이 아니라서 value 없이 건수만 보여준다.
+     * 지역이 정해져 있으면 그 지역 안에서 집계되므로(withoutVenue 가 region 은 그대로 반영) N 을
+     * 크게 잡아서 사실상 전부 보여준다 — 지역별로 좁혀진 목록에서까지 "기타"에 묻히면 못 고른다.
+     */
     private List<Option> buildVenueOptions(PerformanceFilter filter, String selected) {
         PerformanceFilter withoutVenue = copyWithout(filter, f -> f.setVenue(null));
         List<FacetCountRow> rows = performanceMapper.selectVenueCounts(withoutVenue);
 
+        int topN = filter.getRegion() != null ? VENUE_TOP_N_IN_REGION : VENUE_TOP_N_NATIONWIDE;
         List<Option> options = new ArrayList<>();
         long shown = 0;
-        int n = Math.min(VENUE_TOP_N, rows.size());
+        int n = Math.min(topN, rows.size());
         for (int i = 0; i < n; i++) {
             FacetCountRow row = rows.get(i);
             options.add(new Option(row.getLabel(), row.getLabel(), row.getCount(), row.getLabel().equals(selected)));
