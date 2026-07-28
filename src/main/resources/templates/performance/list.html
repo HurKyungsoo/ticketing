@@ -125,7 +125,7 @@
         <a class="card" th:each="p : ${result.performances}" th:href="@{/performances/{id}(id=${p.id})}">
             <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
                 <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
-                <img th:if="${p.posterUrl != null}" th:src="${p.posterUrl}" th:alt="${p.title}" loading="lazy"
+                <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                      onerror="this.remove(); this.parentElement.classList.add('no-img')">
                 <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
             </div>

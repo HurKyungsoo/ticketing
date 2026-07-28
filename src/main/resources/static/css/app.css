@@ -1,20 +1,33 @@
 @charset "UTF-8";
 /* ------------------------------------------------------------------
    공연 예매 - 공통 스타일
-   컨셉: 극장 프로그램북. 어두운 객석 + 조명 받는 무대.
+   컨셉: 어두운 객석 + 조명 받는 무대.
+
+   배경을 보라 섞인 남색이 아니라 "중성 근검정"으로 둔 이유:
+   이 서비스의 주인공은 포스터 이미지다. 배경에 색기가 있으면 포스터 색과
+   싸워서 탁해 보인다. 배경에서 색을 빼야 콘텐츠가 유일한 색이 된다.
+
+   변수명은 예전 그대로 두고 값만 교체했다. 기존 규칙들이 전부 자동으로
+   새 값을 따라오므로 화면별 수정이 필요 없다.
    ------------------------------------------------------------------ */
 :root {
-  --ink:        #17122B;   /* 객석 어둠 */
-  --ink-soft:   #221B3A;
-  --paper:      #F2EDE4;   /* 프로그램북 종이 */
-  --brass:      #C9A227;   /* 무대 조명 */
-  --brass-dim:  #8A7220;
-  --rose:       #C4566B;   /* 매진 */
-  --mute:       #6B6480;
-  --line:       rgba(242, 237, 228, 0.14);
+  --ink:        #0B0B0C;   /* 객석 어둠 (중성) */
+  --ink-soft:   #151517;   /* 카드/표면 */
+  --ink-raised: #1C1C1F;   /* 한 단계 더 뜬 표면 (입력창 등) */
+  --paper:      #FAFAFA;   /* 본문 */
+  --brass:      #FFC940;   /* 무대 조명 (채도만 올린 앰버) */
+  --brass-dim:  #A8842B;
+  --rose:       #FF5C7A;   /* 매진 */
+  --mute:       #A1A1AA;   /* 보조 텍스트 */
+  --line:       rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
 
-  --display: 'Gowun Batang', 'Nanum Myeongjo', serif;
+  /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다. */
+  --display: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
   --body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+
+  --radius: 14px;
+  --radius-sm: 10px;
 }
 
 * { box-sizing: border-box; }
@@ -32,25 +45,32 @@ a { color: inherit; text-decoration: none; }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
 
+/* 스크롤해도 따라오는 반투명 헤더. 배경을 반투명 + blur 로 깔아
+   아래 콘텐츠가 비쳐 지나가게 한다. */
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  align-items: baseline;
-  gap: 16px;
-  padding-bottom: 20px;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 40px;
+  margin-bottom: 36px;
+  background: rgba(11, 11, 12, 0.72);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
 }
 .masthead h1 {
   font-family: var(--display);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 .masthead .tag {
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: -0.01em;
   color: var(--mute);
 }
 .masthead .authnav {
@@ -202,8 +222,8 @@ a { color: inherit; text-decoration: none; }
   height: 70px;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
   border-top: 2px solid var(--brass);
-  box-shadow: 0 0 24px 1px rgba(201,162,39,.35), inset 0 18px 30px -14px rgba(201,162,39,.5);
-  background: linear-gradient(to bottom, rgba(201,162,39,.22), transparent 80%);
+  box-shadow: 0 0 24px 1px rgba(255,201,64,.35), inset 0 18px 30px -14px rgba(255,201,64,.5);
+  background: linear-gradient(to bottom, rgba(255,201,64,.22), transparent 80%);
   display: grid;
   place-items: center;
   font-family: var(--display);
@@ -218,7 +238,7 @@ a { color: inherit; text-decoration: none; }
   top: 100%; left: 50%;
   width: 92%; height: 130px;
   transform: translateX(-50%);
-  background: linear-gradient(to bottom, rgba(201,162,39,.14), transparent);
+  background: linear-gradient(to bottom, rgba(255,201,64,.14), transparent);
   clip-path: polygon(38% 0, 62% 0, 100% 100%, 0% 100%);
   pointer-events: none;
 }
@@ -277,9 +297,9 @@ a { color: inherit; text-decoration: none; }
 .seat:hover::after, .seat:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .seat:hover::before, .seat:focus-visible::before { opacity: 1; }
 /* 등급: 색이 아닌 테두리 강도로 구분 */
-.seat.grade-VIP { border-width: 3px;   border-color: var(--brass); box-shadow: 0 0 0 1px rgba(201,162,39,.28); }
-.seat.grade-R   { border-width: 2px;   border-color: rgba(201,162,39,.68); }
-.seat.grade-S   { border-width: 1.5px; border-color: rgba(201,162,39,.32); }
+.seat.grade-VIP { border-width: 3px;   border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
+.seat.grade-R   { border-width: 2px;   border-color: rgba(255,201,64,.68); }
+.seat.grade-S   { border-width: 1.5px; border-color: rgba(255,201,64,.32); }
 .seat.grade-A   { border-width: 1px;   border-color: var(--line); }
 .seat[data-status="HELD"] { background: var(--brass-dim); border-color: transparent; cursor: not-allowed; }
 .seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
@@ -307,15 +327,15 @@ a { color: inherit; text-decoration: none; }
   width: 13px; height: 13px; border-radius: 3px; display: inline-block;
   background: var(--ink-soft);
 }
-.legend-grade.grade-VIP { border-width: 3px;   border-style: solid; border-color: var(--brass); box-shadow: 0 0 0 1px rgba(201,162,39,.28); }
-.legend-grade.grade-R   { border-width: 2px;   border-style: solid; border-color: rgba(201,162,39,.68); }
-.legend-grade.grade-S   { border-width: 1.5px; border-style: solid; border-color: rgba(201,162,39,.32); }
+.legend-grade.grade-VIP { border-width: 3px;   border-style: solid; border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
+.legend-grade.grade-R   { border-width: 2px;   border-style: solid; border-color: rgba(255,201,64,.68); }
+.legend-grade.grade-S   { border-width: 1.5px; border-style: solid; border-color: rgba(255,201,64,.32); }
 .legend-grade.grade-A   { border-width: 1px;   border-style: solid; border-color: var(--line); }
 
 /* ---------- 예매 바 ---------- */
 .bookbar {
   position: fixed; left: 0; right: 0; bottom: 0;
-  background: rgba(23,18,43,.94);
+  background: rgba(11,11,12,.88);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line);
   padding: 14px 24px;
@@ -349,24 +369,44 @@ a { color: inherit; text-decoration: none; }
 }
 .empty-state p { margin: 0 0 6px; }
 
-/* ---------- 로그인 / 회원가입 ---------- */
-.authwrap { max-width: 380px; }
-.authform { display: flex; flex-direction: column; gap: 18px; }
+/* ---------- 로그인 / 회원가입 ----------
+   폼만 왼쪽 위에 덩그러니 떠 있으면 미완성처럼 보인다.
+   화면 중앙에 카드로 띄우고, 입력창 경계를 또렷하게 해서 누를 수 있는 요소로 읽히게 한다. */
+.authwrap {
+  max-width: 400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 160px);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.authform {
+  display: flex; flex-direction: column; gap: 18px;
+  background: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+}
 .authform label {
   display: flex; flex-direction: column; gap: 8px;
   font-size: 13px; color: var(--mute);
 }
 .authform input {
   font-family: var(--body); font-size: 15px;
-  background: var(--ink-soft); color: var(--paper);
-  border: 1px solid var(--line); padding: 11px 12px;
+  background: var(--ink-raised); color: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: border-color .12s;
 }
-.authform input:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.authform input:hover { border-color: var(--mute); }
+.authform input:focus-visible { outline: none; border-color: var(--brass); }
 .authform button {
-  font-family: var(--body); font-size: 15px; font-weight: 600;
-  background: var(--brass); color: var(--ink);
-  border: 0; padding: 13px; cursor: pointer;
+  font-family: var(--body); font-size: 15px; font-weight: 700;
+  background: var(--brass); color: #0B0B0C;
+  border: 0; border-radius: var(--radius-sm);
+  padding: 14px; cursor: pointer;
+  transition: filter .12s;
 }
+.authform button:hover { filter: brightness(1.08); }
 .authform .autherror { color: var(--rose); font-size: 13px; margin: 0; }
 .authform .authlink { font-size: 13px; color: var(--mute); text-align: center; margin: 0; }
 .authform .authlink a { color: var(--brass); }
@@ -466,37 +506,27 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ==================================================================
-   라이트 테마 페이지들 — bluesquare.kr 참고. 공연 목록(page-list)과
-   공연 상세(page-detail)가 이 톤을 쓰고, 나머지(좌석도/결제 등)는 기존
-   다크 "프로그램북" 톤을 그대로 쓰므로 body 클래스로 범위를 한정한다.
-   (filterpanel, fp- 접두사 클래스, cattab, card-badge, pager-nav 등은 최근 마크업
-   리팩터에서 클래스만 추가되고 스타일이 비어 있던 것들이라 여기서 채운다.)
-   ================================================================== */
-body.page-list, body.page-detail { background: #fff; color: #212121; }
-body.page-list .wrap, body.page-detail .wrap { max-width: 1120px; }
+   공연 목록(page-list) / 공연 상세(page-detail).
 
-body.page-list .masthead, body.page-detail .masthead { border-bottom-color: #ececec; }
-body.page-list .masthead h1, body.page-detail .masthead h1 {
-  font-family: var(--body);
-  font-size: 22px;
-  letter-spacing: 0;
-  color: #171717;
-}
-body.page-list .masthead .tag, body.page-detail .masthead .tag { color: #9a9a9a; }
-body.page-list .masthead .authnav, body.page-detail .masthead .authnav { color: #6b6b6b; }
-body.page-list .masthead .authnav a, body.page-detail .masthead .authnav a,
-body.page-list .masthead .authnav .linklike, body.page-detail .masthead .authnav .linklike { color: #171717; }
+   레이아웃은 bluesquare.kr 을 참고한 그대로(필터 pill, 카드 그리드, 라벨-값 행)
+   두고, 색·타이포만 공통 다크 토큰으로 맞췄다. 좌석 배치도의 무대 조명 연출이
+   어두운 배경에 기대고 있어서, 화면마다 테마가 갈리면 같은 서비스로 안 읽힌다.
+   ================================================================== */
+body.page-list .wrap, body.page-detail .wrap { max-width: 1120px; }
 
 body.page-list .authbtns, body.page-detail .authbtns { display: flex; align-items: center; gap: 8px; }
 body.page-list .authbtns a, body.page-detail .authbtns a {
   display: inline-flex; align-items: center;
   padding: 7px 16px;
   border-radius: 999px;
-  border: 1.5px solid #d8d8d8;
-  font-size: 13px; font-weight: 600; color: #171717 !important;
-  transition: border-color .12s;
+  border: 1px solid var(--line-strong);
+  font-size: 13px; font-weight: 600; color: var(--paper) !important;
+  transition: border-color .12s, background .12s;
 }
-body.page-list .authbtns a:hover, body.page-detail .authbtns a:hover { border-color: #171717; }
+body.page-list .authbtns a:hover, body.page-detail .authbtns a:hover {
+  border-color: var(--brass);
+  background: rgba(255, 201, 64, 0.08);
+}
 
 /* ---- 모바일 필터 토글 버튼 (기본 숨김, 860px 이하에서만 노출) ---- */
 body.page-list .mobile-filter-btn {
@@ -505,42 +535,44 @@ body.page-list .mobile-filter-btn {
   gap: 8px;
   margin-bottom: 16px;
   padding: 10px 18px;
-  border: 1.5px solid #d8d8d8;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: #fff;
-  color: #171717;
+  background: var(--ink-soft);
+  color: var(--paper);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
-body.page-list .mobile-filter-btn em { font-style: normal; color: #9a9a9a; }
+body.page-list .mobile-filter-btn em { font-style: normal; color: var(--mute); }
 
 /* ---- 필터 패널 ---- */
 body.page-list .filterpanel {
-  background: #fafafa;
-  border: 1px solid #ececec;
+  background: var(--ink-soft);
+  border: 1px solid var(--line);
   border-radius: 20px;
   padding: 24px 28px;
   margin-bottom: 32px;
 }
 body.page-list .fp-head { display: none; }
-body.page-list .fp-close { border: 0; background: none; font-size: 22px; line-height: 1; color: #9a9a9a; cursor: pointer; }
+body.page-list .fp-close { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--mute); cursor: pointer; }
 
 body.page-list .fp-keyword {
   display: flex; align-items: center; gap: 10px;
-  background: #fff; border: 1.5px solid #ddd; border-radius: 999px;
+  background: var(--ink); border: 1px solid var(--line-strong); border-radius: 999px;
   padding: 12px 20px; margin-bottom: 20px;
+  transition: border-color .12s;
 }
+body.page-list .fp-keyword:focus-within { border-color: var(--brass); }
 body.page-list .fp-keyword svg { flex: none; }
 body.page-list .fp-keyword input {
   border: 0; outline: 0; flex: 1; min-width: 0;
-  font: inherit; font-size: 14px; background: none; color: #212121;
+  font: inherit; font-size: 14px; background: none; color: var(--paper);
 }
-body.page-list .fp-keyword input::placeholder { color: #b3b3b3; }
+body.page-list .fp-keyword input::placeholder { color: var(--mute); }
 
 body.page-list .fp-grid { display: flex; flex-direction: column; gap: 14px; }
 body.page-list .fp-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-body.page-list .fp-label { flex: none; width: 76px; font-size: 13px; font-weight: 600; color: #6b6b6b; }
+body.page-list .fp-label { flex: none; width: 76px; font-size: 13px; font-weight: 600; color: var(--mute); }
 body.page-list .fp-col-wide .fp-row { align-items: flex-start; }
 /* fp-row 는 flex-start 라 라벨이 맨 위에 붙는데, 드롭다운(select)은 라벨보다 키가 커서
    그대로 두면 라벨이 위로 치우쳐 보인다. 드롭다운 한 줄 높이 기준으로 세로 중앙에 오도록 내려준다. */
@@ -551,15 +583,19 @@ body.page-list .cattab {
   position: relative;
   display: inline-flex; align-items: center; gap: 4px;
   padding: 8px 16px;
-  border: 1.5px solid #d8d8d8;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  font-size: 13px; color: #4a4a4a;
+  font-size: 13px; color: var(--mute);
   cursor: pointer;
   transition: background .12s, color .12s, border-color .12s;
 }
 body.page-list .cattab input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
-body.page-list .cattab:hover { border-color: #b5b5b5; }
-body.page-list .cattab.active { background: #171717; border-color: #171717; color: #fff; font-weight: 600; }
+body.page-list .cattab:hover { border-color: var(--paper); color: var(--paper); }
+/* 선택된 필터는 강조색으로 채운다. 어두운 배경에서 앰버 위 검정 글씨가 대비가 가장 크다. */
+body.page-list .cattab.active {
+  background: var(--brass); border-color: var(--brass);
+  color: #0B0B0C; font-weight: 700;
+}
 
 /* flex: 1 1 0%; min-width: 0 이 필요한 이유: 안의 fp-hint 가 flex-basis:100% 라서
    이 컨테이너의 "내용 기준 너비"를 브라우저가 이상하게 크게 잡아버려, 실제로는
@@ -568,13 +604,17 @@ body.page-list .fp-dropdowns { display: flex; flex-wrap: wrap; align-items: cent
 body.page-list .fp-dropdowns select {
   appearance: none;
   -webkit-appearance: none;
-  font: inherit; font-size: 13px; color: #212121;
-  border: 1.5px solid #d8d8d8; border-radius: 999px;
+  font: inherit; font-size: 13px; color: var(--paper);
+  border: 1px solid var(--line-strong); border-radius: 999px;
   padding: 8px 34px 8px 16px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 14px center;
+  background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23A1A1AA'/%3E%3C/svg%3E") no-repeat right 14px center;
   cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: border-color .12s;
 }
+body.page-list .fp-dropdowns select:hover { border-color: var(--paper); }
+/* 드롭다운을 펼쳤을 때의 목록은 OS 가 그리므로 배경/글자색을 따로 지정해야 한다. */
+body.page-list .fp-dropdowns select option { background: var(--ink-soft); color: var(--paper); }
 /* 선택값 텍스트 길이에 따라 각 드롭다운 폭이 들쭉날쭉해지지 않도록 고정폭을 준다. */
 body.page-list .fp-dropdowns select[name="area"] { width: 140px; }
 body.page-list .fp-dropdowns select[name="venue"] { width: 240px; }
@@ -582,8 +622,8 @@ body.page-list .fp-dropdowns select[name="month"] { width: 120px; }
 body.page-list .fp-dropdowns select[name="timeSlot"] { width: 140px; }
 /* 지역·장소 그룹과 분명히 구분되도록 간격을 주되, 행 맨 끝까지는 밀지 않는다.
    고정값이라 지역/공연장 값 길이와 상관없이 위치가 항상 동일하다. */
-body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: #6b6b6b; margin-left: 32px; }
-body.page-list .fp-hint { font-size: 12px; color: #b3b3b3; flex-basis: 100%; }
+body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: var(--mute); margin-left: 32px; }
+body.page-list .fp-hint { font-size: 12px; color: var(--mute); opacity: .7; flex-basis: 100%; }
 /* 지역을 고르면 힌트 문구가 사라지면서 줄바꿈 위치가 바뀌어 패널 전체 높이가 들쭉날쭉했다.
    엘리먼트 자체(= flex-basis:100% 의 줄바꿈 효과)는 항상 유지하고 텍스트만 숨긴다. */
 body.page-list .fp-hint--hidden { visibility: hidden; }
@@ -591,7 +631,7 @@ body.page-list .fp-hint--hidden { visibility: hidden; }
 body.page-list .fp-apply {
   display: none;
   width: 100%; margin-top: 20px;
-  background: #171717; color: #fff; border: 0; border-radius: 999px;
+  background: var(--brass); color: #0B0B0C; border: 0; border-radius: 999px;
   padding: 14px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
 }
 body.page-list .fp-backdrop { display: none; }
@@ -600,38 +640,76 @@ body.page-list .fp-backdrop { display: none; }
 body.page-list .grid { gap: 32px 24px; }
 body.page-list .card .poster {
   position: relative;
-  border: 0;
-  border-radius: 14px;
-  background: #f0f0f0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--ink-soft);
 }
-body.page-list .card .poster.no-img { display: grid; place-items: center; }
+/*
+   로딩 중 shimmer.
+
+   주의: 이 애니메이션을 .poster 자체에 걸면 안 된다. 무한 애니메이션이 걸린
+   요소는 별도 합성 레이어로 올라가는데, 그러면 자식 <img> 가 배경 뒤로 묻혀
+   포스터가 통째로 안 보인다(실제로 그렇게 만들었다가 잡음).
+   그래서 shimmer 는 뒤에 깔리는 ::before 로 분리하고, 이미지에 z-index 를 줘서
+   항상 위에 오게 한다. 이미지가 도착하면 자연히 덮인다.
+*/
+body.page-list .card .poster::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(100deg, #151517 30%, #1F1F23 50%, #151517 70%);
+  background-size: 220% 100%;
+  animation: poster-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes poster-shimmer {
+  from { background-position: 180% 0; }
+  to   { background-position: -80% 0; }
+}
+body.page-list .card .poster img { position: relative; z-index: 1; }
+body.page-list .card .poster.no-img {
+  display: grid; place-items: center;
+  background: var(--ink-soft);
+}
+body.page-list .card .poster.no-img::before { animation: none; background: none; }
 body.page-list .card .posterfallback {
   display: none;
-  font-family: var(--body); font-size: 34px; font-weight: 700; color: #c9c9c9;
+  position: relative; z-index: 1;
+  font-family: var(--body); font-size: 34px; font-weight: 700; color: var(--mute);
 }
 body.page-list .card .poster.no-img .posterfallback { display: block; }
+
+/* 클릭 가능한 카드라는 신호. 포스터만 살짝 확대되고 카드가 떠오른다. */
+body.page-list .card .poster img { transition: transform .25s ease; }
+body.page-list .card { transition: transform .18s ease; }
+body.page-list .card:hover { transform: translateY(-4px); }
+body.page-list .card:hover .poster img { transform: scale(1.04); }
+body.page-list .card:hover h3 { color: var(--brass); }
+
 body.page-list .card-badge {
   position: absolute; top: 10px; left: 10px; z-index: 1;
-  background: rgba(0, 0, 0, .54); color: #fff;
+  background: rgba(0, 0, 0, .62); color: #fff;
+  backdrop-filter: blur(4px);
   font-size: 12px; font-weight: 500;
   border-radius: 999px; padding: 5px 12px;
 }
-body.page-list .card h3 { font-size: 16px; font-weight: 700; color: #171717; }
-body.page-list .card .meta { color: #8a8a8a; }
+body.page-list .card h3 { font-size: 16px; font-weight: 700; color: var(--paper); transition: color .12s; }
+body.page-list .card .meta { color: var(--mute); }
 
 /* ---- 페이지네이션 (pager-nav/pager-num 은 이 페이지 전용 마크업) ---- */
 body.page-list .pager-nav, body.page-list .pager-num {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 32px; height: 32px; padding: 0 8px;
-  border: 1.5px solid #e2e2e2; border-radius: 999px;
-  font-size: 13px; color: #6b6b6b;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 13px; color: var(--mute);
+  transition: border-color .12s, color .12s;
 }
-body.page-list .pager-nav:hover, body.page-list .pager-num:hover { border-color: #171717; color: #171717; }
-body.page-list .pager-num.active { background: #171717; border-color: #171717; color: #fff; font-weight: 600; }
+body.page-list .pager-nav:hover, body.page-list .pager-num:hover { border-color: var(--paper); color: var(--paper); }
+body.page-list .pager-num.active {
+  background: var(--brass); border-color: var(--brass); color: #0B0B0C; font-weight: 700;
+}
 
-body.page-list .empty-state { color: #9a9a9a; }
-body.page-list .empty-state code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+body.page-list .empty-state { color: var(--mute); }
+body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px; border-radius: 4px; }
 
 @media (max-width: 860px) {
   /* "객석" 로고+태그는 한 줄 유지, authnav("로그인 · 회원가입")는 폭이 좁으면
@@ -666,7 +744,7 @@ body.page-list .empty-state code { background: #f4f4f4; padding: 2px 6px; border
 }
 
 /* ==================================================================
-   공연 상세 화면 — bluesquare.kr 상세 페이지(view.php) 참고 라이트 테마.
+   공연 상세 화면 — 레이아웃은 bluesquare.kr 상세(view.php) 참고, 톤은 공통 다크.
    ================================================================== */
 body.page-detail .detail {
   display: grid;
@@ -674,38 +752,47 @@ body.page-detail .detail {
   gap: 48px;
   align-items: start;
 }
-body.page-detail .detail > div:first-child { position: sticky; top: 24px; }
+body.page-detail .detail > div:first-child { position: sticky; top: 96px; }
 
 body.page-detail .poster {
   aspect-ratio: 3 / 4;
-  border-radius: 14px;
+  border-radius: var(--radius);
   overflow: hidden;
-  background: #f0f0f0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  border: 1px solid var(--line);
+  background: var(--ink-soft);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
 }
 body.page-detail .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-body.page-detail h2 { font-family: var(--body); font-size: 26px; font-weight: 700; color: #171717; margin: 0 0 8px; }
-body.page-detail .meta { font-size: 14px; color: #8a8a8a; margin: 0 0 28px; }
+body.page-detail h2 {
+  font-family: var(--display); font-size: 30px; font-weight: 800;
+  letter-spacing: -0.02em; color: var(--paper); margin: 0 0 8px;
+}
+body.page-detail .meta { font-size: 14px; color: var(--mute); margin: 0 0 32px; }
 
-body.page-detail .detail-heading { font-size: 16px; font-weight: 700; color: #171717; margin: 0 0 16px; }
+body.page-detail .detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
 
-body.page-detail .spec { border-top: 1px solid #ececec; margin: 0 0 36px; }
-body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ececec; font-size: 14px; }
-body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: #6b6b6b; margin: 0; }
-body.page-detail .spec dd { margin: 0; color: #212121; }
+body.page-detail .spec { border-top: 1px solid var(--line); margin: 0 0 36px; }
+body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: var(--mute); margin: 0; }
+body.page-detail .spec dd { margin: 0; color: var(--paper); }
 
 body.page-detail .schedules { display: flex; flex-wrap: wrap; gap: 10px; }
 body.page-detail .schedules a {
-  border: 1.5px solid #d8d8d8;
-  border-radius: 12px;
-  color: #171717;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--paper);
   padding: 12px 18px;
   font-size: 14px; font-weight: 600;
-  transition: border-color .12s, color .12s;
+  transition: border-color .12s, color .12s, background .12s;
 }
-body.page-detail .schedules a:hover { border-color: #171717; }
-body.page-detail .schedules a.soldout { border-color: #ececec; color: #c9c9c9; }
+body.page-detail .schedules a:hover {
+  border-color: var(--brass); color: var(--brass);
+  background: rgba(255, 201, 64, 0.08);
+}
+body.page-detail .schedules a.soldout {
+  border-color: var(--line); color: var(--mute); opacity: .5; pointer-events: none;
+}
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }

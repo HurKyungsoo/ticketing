@@ -26,7 +26,7 @@
     <div class="detail">
         <div>
             <div class="poster" th:if="${performance.posterUrl != null}">
-                <img th:src="${performance.posterUrl}" th:alt="${performance.title}">
+                <img th:src="@{/img/poster(u=${performance.posterUrl})}" th:alt="${performance.title}">
             </div>
         </div>
 
