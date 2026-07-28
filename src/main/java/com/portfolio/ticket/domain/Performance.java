@@ -51,6 +51,13 @@ public class Performance {
     @Column(length = 300)
     private String address;
 
+    /**
+     * 시/도 단위 지역 필터용 (예: "서울특별시"). KOPIS 목록의 area 필드에서만 채워진다.
+     * 표준데이터/문화정보는 지역 코드가 따로 없어 null — 지역 필터에서 "기타"로 묶인다.
+     */
+    @Column(length = 50)
+    private String region;
+
     private Double latitude;
     private Double longitude;
 
@@ -80,7 +87,7 @@ public class Performance {
     public void updateFromExternal(String title, String genre, String venue, String address,
                                    LocalDate startDate, LocalDate endDate,
                                    String posterUrl, Integer totalSeatCount, Integer basePrice,
-                                   SourceType sourceType, PerformanceCategory category) {
+                                   SourceType sourceType, PerformanceCategory category, String region) {
         this.title = title;
         this.genre = genre;
         this.venue = venue;
@@ -92,6 +99,7 @@ public class Performance {
         if (basePrice != null) this.basePrice = basePrice;
         this.sourceType = sourceType;
         this.category = category;
+        this.region = region;
     }
 
     public void addSchedule(PerformanceSchedule schedule) {

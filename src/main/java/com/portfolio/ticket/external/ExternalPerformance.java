@@ -25,6 +25,8 @@ public class ExternalPerformance {
     private String genre;
     private String venue;
     private String address;
+    /** 시/도 단위 지역 (KOPIS/문화정보의 area). 표준데이터는 없어서 null. */
+    private String region;
     private Double latitude;
     private Double longitude;
     private LocalDate startDate;

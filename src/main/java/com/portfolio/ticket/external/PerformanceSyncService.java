@@ -71,7 +71,8 @@ public class PerformanceSyncService {
                         external.getTitle(), external.getGenre(), external.getVenue(),
                         external.getAddress(), external.getStartDate(), external.getEndDate(),
                         external.getPosterUrl(), external.getTotalSeatCount(), external.getBasePrice(),
-                        external.getSourceType(), categoryResolver.resolve(external.getGenre()));
+                        external.getSourceType(), categoryResolver.resolve(external.getGenre()),
+                        external.getRegion());
             }
         }
         log.info("공연 동기화 완료. 수신={}, 신규={}", externals.size(), saved);
@@ -87,6 +88,7 @@ public class PerformanceSyncService {
                 .category(categoryResolver.resolve(e.getGenre()))
                 .venue(e.getVenue())
                 .address(e.getAddress())
+                .region(e.getRegion())
                 .latitude(e.getLatitude())
                 .longitude(e.getLongitude())
                 .startDate(e.getStartDate())

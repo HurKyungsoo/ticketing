@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.portfolio.ticket.mapper.PerformanceMapper">
+
+    <!--
+        category/month/venue 를 제외한 공통 필터. selectPerformances/countPerformances 는
+        여기에 category/month/venue 조건을 전부 추가하고, select*Counts 는 자기 자신의
+        축(facet)만 빼고 나머지 둘을 추가한다.
+    -->
+    <sql id="commonFilters">
+        <if test="f.status == 'ONGOING'">AND p.end_date &gt;= #{f.today}</if>
+        <if test="f.status == 'ENDED'">AND p.end_date &lt; #{f.today}</if>
+        <if test="f.timeSlotFrom != null and f.timeSlotTo != null">
+            AND EXISTS (
+                SELECT 1 FROM performance_schedule ps
+                 WHERE ps.performance_id = p.id
+                   AND CAST(ps.show_at AS TIME) &gt;= #{f.timeSlotFrom}
+                   AND CAST(ps.show_at AS TIME) &lt;  #{f.timeSlotTo}
+            )
+        </if>
+        <if test="f.keyword != null and f.keyword != ''">
+            AND p.title LIKE CONCAT('%', #{f.keyword}, '%')
+        </if>
+        <if test="f.region != null and f.region != ''">
+            AND p.region = #{f.region}
+        </if>
+    </sql>
+
+    <select id="selectPerformances" resultType="com.portfolio.ticket.mapper.dto.PerformanceListRow">
+        SELECT p.id          AS id,
+               p.title        AS title,
+               p.venue        AS venue,
+               p.poster_url   AS poster_url,
+               p.category     AS category,
+               p.start_date   AS start_date,
+               p.end_date     AS end_date
+          FROM performance p
+         WHERE 1 = 1
+        <include refid="commonFilters"/>
+        <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
+        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
+        <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
+         ORDER BY (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
+                  p.start_date ASC
+         LIMIT #{f.limit} OFFSET #{f.offset}
+    </select>
+
+    <select id="countPerformances" resultType="long">
+        SELECT COUNT(*)
+          FROM performance p
+         WHERE 1 = 1
+        <include refid="commonFilters"/>
+        <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
+        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
+        <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
+    </select>
+
+    <!-- category 필터는 무시(다른 카테고리를 골랐을 때의 건수를 보여줘야 하니까), month/venue 는 반영 -->
+    <select id="selectCategoryCounts" resultType="com.portfolio.ticket.mapper.dto.FacetCountRow">
+        SELECT p.category AS label, COUNT(*) AS count
+          FROM performance p
+         WHERE 1 = 1
+        <include refid="commonFilters"/>
+        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
+        <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
+         GROUP BY p.category
+         ORDER BY count DESC
+    </select>
+
+    <!-- month 필터는 무시, category/venue 는 반영 -->
+    <select id="selectMonthCounts" resultType="com.portfolio.ticket.mapper.dto.FacetCountRow">
+        SELECT MONTH(p.start_date) AS label, COUNT(*) AS count
+          FROM performance p
+         WHERE 1 = 1
+        <include refid="commonFilters"/>
+        <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
+        <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
+         GROUP BY MONTH(p.start_date)
+         ORDER BY label ASC
+    </select>
+
+    <!-- venue 필터는 무시, category/month 는 반영. 상위 N + "기타" 로 묶는 건 호출부 몫 -->
+    <select id="selectVenueCounts" resultType="com.portfolio.ticket.mapper.dto.FacetCountRow">
+        SELECT p.venue AS label, COUNT(*) AS count
+          FROM performance p
+         WHERE 1 = 1
+        <include refid="commonFilters"/>
+        <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
+        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
+         GROUP BY p.venue
+         ORDER BY count DESC
+    </select>
+
+</mapper>

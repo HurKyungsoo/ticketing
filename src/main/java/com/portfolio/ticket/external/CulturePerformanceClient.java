@@ -88,6 +88,7 @@ public class CulturePerformanceClient {
                     .genre(parser.text(item, "realmName"))
                     .venue(parser.text(item, "place"))
                     .address(joinNonBlank(parser.text(item, "area"), parser.text(item, "sigungu")))
+                    .region(parser.text(item, "area"))
                     .latitude(parser.decimal(item, "gpsY"))
                     .longitude(parser.decimal(item, "gpsX"))
                     .startDate(parser.date(item, "startDate"))
