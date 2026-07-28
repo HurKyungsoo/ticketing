@@ -2,6 +2,9 @@
    공연 예매 - 공통 스타일
    컨셉: 극장 프로그램북. 어두운 객석 + 조명 받는 무대.
    ------------------------------------------------------------------ */
+/* 폰트는 시스템 설치 여부에 기대지 않고 CDN 에서 직접 받는다 (없으면 그냥 시스템 기본체로 조용히 대체됨) */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
 :root {
   --ink:        #17122B;   /* 객석 어둠 */
   --ink-soft:   #221B3A;
@@ -20,7 +23,7 @@
   --gel-violet: #B285C9;
   --gel-olive:  #9CAE5E;
 
-  --display: 'Gowun Batang', 'Nanum Myeongjo', serif;
+  --display: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
   --body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 }
 
@@ -179,6 +182,7 @@ a { color: inherit; text-decoration: none; }
 .fp-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 18px 40px;
   border: 1px solid var(--line);
+  border-radius: 14px;
   padding: 24px;
 }
 .fp-col-wide { grid-column: 1 / -1; }
@@ -242,6 +246,7 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   background: var(--ink-soft);
   border: 1px solid var(--line);
+  border-radius: 12px;
   overflow: hidden;
   margin-bottom: 12px;
 }
