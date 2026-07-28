@@ -15,6 +15,17 @@
         <span class="tag" th:text="${performance.title} + ' · ' + ${#temporals.format(schedule.showAt, 'M/d(E) HH:mm')}">회차</span>
     </header>
 
+    <div class="partysize">
+        <label for="partySize">인원수</label>
+        <select id="partySize">
+            <option value="1">1명</option>
+            <option value="2">2명</option>
+            <option value="3">3명</option>
+            <option value="4">4명</option>
+        </select>
+        <span class="hint">선택한 인원수만큼 좌석을 고를 수 있습니다.</span>
+    </div>
+
     <div class="stage">STAGE</div>
 
     <div class="house">
@@ -22,11 +33,13 @@
             <span class="rowlabel" th:text="${row.key}">A</span>
             <button type="button" class="seat"
                     th:each="seat : ${row.value}"
-                    th:classappend="'grade-' + ${seat.grade}"
+                    th:classappend="|grade-${seat.grade}${seat.seatNo % 5 == 0 ? ' aisle' : ''}|"
                     th:attr="data-status=${seat.status},
                              data-seat-id=${seat.seatId},
                              data-label=${seat.section} + '-' + ${seat.seatNo},
-                             data-price=${seat.price}"
+                             data-price=${seat.price},
+                             data-grade=${seat.grade},
+                             data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'"
                     th:disabled="${seat.status != 'AVAILABLE'}"
                     th:title="|${seat.section}-${seat.seatNo} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
             </button>
@@ -34,16 +47,26 @@
     </div>
 
     <div class="legend">
-        <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
-        <span><i style="background:var(--brass)"></i> 선택함</span>
-        <span><i style="background:var(--brass-dim)"></i> 결제 대기</span>
-        <span><i style="background:var(--rose);opacity:.55"></i> 판매 완료</span>
+        <div class="legend-row">
+            <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
+            <span><i style="background:var(--brass)"></i> 선택함</span>
+            <span><i style="background:var(--brass-dim)"></i> 결제 대기</span>
+            <span><i style="background:var(--rose);opacity:.55"></i> 판매 완료</span>
+        </div>
+        <div class="legend-row legend-grades">
+            <span><i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b></span>
+            <span><i class="legend-grade grade-R"></i> R석 <b class="legend-price" data-grade="R"></b></span>
+            <span><i class="legend-grade grade-S"></i> S석 <b class="legend-price" data-grade="S"></b></span>
+            <span><i class="legend-grade grade-A"></i> A석 <b class="legend-price" data-grade="A"></b></span>
+        </div>
     </div>
 </div>
 
 <div class="bookbar">
     <div class="inner">
-        <p class="picked" id="picked">좌석을 선택하세요</p>
+        <div class="picked" id="picked">
+            <p class="pickedlist">좌석을 선택하세요</p>
+        </div>
         <button type="button" id="bookBtn" disabled>예매하기</button>
     </div>
 </div>
@@ -51,31 +74,84 @@
 <script th:inline="javascript">
     const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
-    let picked = null;
+
+    // 각 등급의 대표 가격을 범럈에 표시한다 (이번 회차에 실매한 증 개수로 직적 읽어온다).
+    document.querySelectorAll('.legend-price').forEach(el => {
+        const sample = document.querySelector(`.seat[data-grade="${el.dataset.grade}"]`);
+        if (sample) el.textContent = Number(sample.dataset.price).toLocaleString() + '원';
+    });
+
+    const partySizeSelect = document.getElementById('partySize');
+    const pickedBox = document.getElementById('picked');
+    const bookBtn = document.getElementById('bookBtn');
+
+    /** 선택한 좌석 DOM 엘리먼트들. 선택 순서를 그대로 유지한다. */
+    let selectedSeats = [];
+
+    function partySize() {
+        return Number(partySizeSelect.value);
+    }
+
+    function renderPicked() {
+        if (selectedSeats.length === 0) {
+            pickedBox.innerHTML = '<p class="pickedlist">좌석을 선택하세요</p>';
+            bookBtn.disabled = true;
+            return;
+        }
+        const chips = selectedSeats.map(s => `<span class="pickchip">${s.dataset.label}</span>`).join('');
+        const total = selectedSeats.reduce((sum, s) => sum + Number(s.dataset.price), 0).toLocaleString();
+        pickedBox.innerHTML =
+            `<p class="pickedlist">${chips}</p>` +
+            `<p class="pickedtotal">${selectedSeats.length}석 · 총 <strong>${total}원</strong></p>`;
+        bookBtn.disabled = false;
+    }
+
+    function deselect(seat) {
+        seat.classList.remove('selected');
+        selectedSeats = selectedSeats.filter(s => s !== seat);
+    }
+
+    // 인원수를 줄이면 초과분은 선택 해제한다.
+    partySizeSelect.addEventListener('change', () => {
+        while (selectedSeats.length > partySize()) {
+            deselect(selectedSeats[selectedSeats.length - 1]);
+        }
+        renderPicked();
+    });
 
     document.querySelectorAll('.seat').forEach(seat => {
         seat.addEventListener('click', () => {
-            document.querySelectorAll('.seat.selected').forEach(s => s.classList.remove('selected'));
+            if (seat.classList.contains('selected')) {
+                deselect(seat);
+                renderPicked();
+                return;
+            }
+            if (selectedSeats.length >= partySize()) {
+                alert(`인원수(${partySize()}명)만큼만 좌석을 선택할 수 있습니다.`);
+                return;
+            }
             seat.classList.add('selected');
-            picked = seat;
-
-            const price = Number(seat.dataset.price).toLocaleString();
-            document.getElementById('picked').innerHTML =
-                `<strong>${seat.dataset.label}</strong> · ${price}원`;
-            document.getElementById('bookBtn').disabled = false;
+            selectedSeats.push(seat);
+            renderPicked();
         });
     });
 
-    document.getElementById('bookBtn').addEventListener('click', async () => {
-        if (!picked) return;
-        const btn = document.getElementById('bookBtn');
-        btn.disabled = true;
-        btn.textContent = '선점 중...';
+    bookBtn.addEventListener('click', async () => {
+        if (selectedSeats.length === 0) return;
+        bookBtn.disabled = true;
+        bookBtn.textContent = '선점 중...';
+
+        const seatIds = selectedSeats.map(s => Number(s.dataset.seatId));
 
         try {
-            const res = await fetch(
-                `/api/seats/${picked.dataset.seatId}/hold?strategy=PESSIMISTIC`,
-                { method: 'POST', headers: { [CSRF_HEADER]: CSRF_TOKEN } });
+            const res = await fetch('/api/reservations/hold', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [CSRF_HEADER]: CSRF_TOKEN
+                },
+                body: JSON.stringify({ seatIds, strategy: 'PESSIMISTIC' })
+            });
 
             if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
                 location.href = '/login';
@@ -88,17 +164,22 @@
                 location.href = `/reservations/${data.reservationNo}/payment`;
             } else {
                 alert(data.message);
-                picked.dataset.status = 'HELD';
-                picked.disabled = true;
-                picked.classList.remove('selected');
-                picked = null;
-                document.getElementById('picked').textContent = '좌석을 선택하세요';
+                // 실패한 좌석만 선택 해제하고 판매 불가로 표시한다. 나머지는 여전히 선택된 채로 둬서
+                // 사용자가 실패한 좌석만 바꿔 다시 시도할 수 있게 한다 (전체 재선택 강요 X).
+                const failedIds = new Set(data.failedSeatIds || []);
+                selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
+                    s.dataset.status = 'HELD';
+                    s.disabled = true;
+                    s.classList.remove('selected');
+                });
+                selectedSeats = selectedSeats.filter(s => !failedIds.has(Number(s.dataset.seatId)));
+                renderPicked();
             }
         } catch (e) {
             alert('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
         } finally {
-            btn.textContent = '예매하기';
-            btn.disabled = picked === null;
+            bookBtn.textContent = '예매하기';
+            bookBtn.disabled = selectedSeats.length === 0;
         }
     });
 </script>

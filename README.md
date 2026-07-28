@@ -184,6 +184,9 @@ KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade            
 | 문제 | 해결 |
 |---|---|
 | 결제창에서 10분(선점 만료)을 넘기면 `HoldExpireScheduler` 가 좌석을 `AVAILABLE` 로 되돌리는데, 그 사이 토스 승인이 끝나 "돈은 나갔는데 좌석은 없는" 상태 발생 | 컨트롤러가 토스 승인 호출 **전**에 만료 여부를 조기 검사 + `confirmPayment`/스케줄러 양쪽에서 `Seat` 를 `findByIdForUpdate` 로 잠가 경쟁을 없앰(락 순서 Seat → PerformanceSchedule) + 그래도 승인 후 확정 실패 시 토스 결제취소 API로 자동 환불 |
+| 다중 좌석 예매를 도입하며 FK 를 `reservation.seat_id` → `seat.reservation_id` 로 뒤집었더니, 좌석이 예매를 참조하는 상태에서 예매를 먼저 지우는 `ReservationConcurrencyTest` 의 `@BeforeEach` 가 제약 위반으로 터져 4전략 중 3개가 실패 (첫 케이스만 DB 가 비어 있어 통과해 원인이 가려짐) | 테스트 정리 순서를 FK 방향에 맞게 `seat → reservation` 으로 교체. 운영 경로는 예매를 삭제하지 않고 상태만 바꾸며 `Seat.release()` 가 연결을 끊으므로 영향 없음 |
+| 좌석을 여러 개 잠그면 두 요청이 겹치는 좌석을 서로 다른 순서로 잠가 데드락 가능 | 기존 "Seat → PerformanceSchedule" 규칙에 **"여러 Seat 사이에도 id 오름차순"** 을 추가. `sortedIds()` / `lockSeatsInOrder()` 로 강제 |
+| 예매–좌석이 1:N 이 되면서 통계 쿼리가 `seat` 를 join 하면 예매 행이 좌석 수만큼 늘어나 `SUM(r.amount)` 가 중복 합산됨 | 집계를 좌석 단위 `SUM(s.price)` 로 변경 (늘어난 행 수와 일치). JPA 쪽 `join fetch` 도 `distinct` 로 행 뻥튀기를 접음 |
 
 ---
 
@@ -310,4 +313,5 @@ docker compose up --build
 - [x] 로컬 개발 DB 영속화 (H2 파일 기반) + 테스트 전용 프로필 분리
 - [x] KOPIS 연동 — 목록+상세 조회, dtguidance(실제 회차시간)/pcseguidance(등급별 실제가격) 반영. 실제 서비스키로 라이브 호출 검증 완료
 - [x] KOPIS 공연시설(prfplc) 연동 — 상세의 mt10id/mt13id 로 실제 좌석수(seatscale) 조회, 공연장 단위 캐시로 중복 호출 방지. 라이브 호출로 실제 좌석수(200석 고정이 아닌 20~458석 등 다양한 값) 반영 확인
+- [x] 다중 좌석 예매 — 예매 1건이 좌석 여러 개를 갖도록 도메인 확장(FK 를 `seat.reservation_id` 로 이동). 좌석은 항상 id 오름차순으로 잠가 데드락 방지, 하나라도 실패하면 전체 롤백(`PartialSeatHoldException`)
 - [ ] AWS EC2 + RDS 배포 (CD)

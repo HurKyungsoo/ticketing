@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,22 +40,37 @@ public class HoldExpireScheduler {
                 reservationRepository.findByStatusAndHoldExpiresAtBefore(ReservationStatus.PENDING, now);
 
         for (Reservation reservation : expired) {
-            Long seatId = reservation.getSeat().getId();
+            // 락 순서: Seat(오름차순) -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
+            // 결제 확정(ReservationService.confirmPayment)도 같은 좌석들을 잠그므로,
+            // 이미 SOLD 로 넘어간 좌석은(=결제가 우리보다 먼저 확정됨) 건드리지 않고 건너뛴다.
+            List<Long> sortedSeatIds = reservation.getSeats().stream()
+                    .map(Seat::getId).sorted().toList();
 
-            // 락 순서: Seat -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
-            // 결제 확정(ReservationService.confirmPayment)도 같은 좌석을 잠그므로,
-            // 좌석이 이미 SOLD 로 넘어갔다면(=결제가 우리보다 먼저 확정됨) 만료 처리를 건너뛴다.
-            Seat seat = seatRepository.findByIdForUpdate(seatId).orElse(null);
-            if (seat == null || seat.getStatus() != SeatStatus.HELD) {
+            List<Seat> releasable = new ArrayList<>();
+            for (Long seatId : sortedSeatIds) {
+                Seat seat = seatRepository.findByIdForUpdate(seatId).orElse(null);
+                if (seat != null && seat.getStatus() == SeatStatus.HELD) {
+                    releasable.add(seat);
+                }
+            }
+            if (releasable.isEmpty()) {
                 continue;
             }
 
             reservation.expire();
-            seat.release();
-            seatHoldRepository.deleteById(seatId);
+            for (Seat seat : releasable) {
+                seat.release();
+                seatHoldRepository.deleteById(seat.getId());
+            }
 
-            scheduleRepository.findByIdForUpdate(seat.getSchedule().getId())
-                    .ifPresent(schedule -> schedule.increaseRemaining());
+            Long scheduleId = releasable.get(0).getSchedule().getId();
+            int releasedCount = releasable.size();
+            scheduleRepository.findByIdForUpdate(scheduleId)
+                    .ifPresent(schedule -> {
+                        for (int i = 0; i < releasedCount; i++) {
+                            schedule.increaseRemaining();
+                        }
+                    });
         }
 
         // 예매 생성 전에 죽은 고아 hold 도 정리

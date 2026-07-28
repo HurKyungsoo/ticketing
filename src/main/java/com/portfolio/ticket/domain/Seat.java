@@ -50,6 +50,11 @@ public class Seat {
     @Version
     private Long version;
 
+    /** 어떤 예매에 묶여 있는지. 예매 1건이 좌석 여러 개를 가질 수 있어 FK 는 이 쪽(Seat)이 든다. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reservation_id")
+    private Reservation reservation;
+
     public boolean isAvailable() {
         return this.status == SeatStatus.AVAILABLE;
     }
@@ -68,8 +73,14 @@ public class Seat {
         this.status = SeatStatus.SOLD;
     }
 
+    /** 선점 해제 + 만료/취소로 예매 연결도 함께 끊는다. */
     public void release() {
         this.status = SeatStatus.AVAILABLE;
+        this.reservation = null;
+    }
+
+    public void assignReservation(Reservation reservation) {
+        this.reservation = reservation;
     }
 
     public String seatLabel() {

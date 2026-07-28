@@ -4,6 +4,7 @@ import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.external.PerformanceSyncScheduler;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.HoldStrategy;
+import com.portfolio.ticket.service.PartialSeatHoldException;
 import com.portfolio.ticket.service.ReservationFacade;
 import com.portfolio.ticket.service.ReservationService;
 import com.portfolio.ticket.service.SeatAlreadyTakenException;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -36,6 +38,21 @@ public class ReservationApiController {
                 "holdExpiresAt", reservation.getHoldExpiresAt()
         ));
     }
+
+    /** 좌석 여러 개를 한 번에 선점해 예매번호 하나로 묶는다. */
+    @PostMapping("/reservations/hold")
+    public ResponseEntity<?> holdMultiple(@RequestBody MultiSeatHoldRequest request,
+                                           @AuthenticationPrincipal CustomUserDetails principal) {
+        Reservation reservation = reservationFacade.holdMultiple(
+                request.strategy(), request.seatIds(), principal.getMemberId());
+        return ResponseEntity.ok(Map.of(
+                "reservationNo", reservation.getReservationNo(),
+                "amount", reservation.getAmount(),
+                "holdExpiresAt", reservation.getHoldExpiresAt()
+        ));
+    }
+
+    public record MultiSeatHoldRequest(List<Long> seatIds, HoldStrategy strategy) {}
 
     @PostMapping("/reservations/{reservationNo}/cancel")
     public ResponseEntity<?> cancel(@PathVariable String reservationNo,
@@ -72,6 +89,12 @@ public class ReservationApiController {
     public ResponseEntity<?> handleTaken(SeatAlreadyTakenException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", e.getMessage()));
+    }
+
+    @ExceptionHandler(PartialSeatHoldException.class)
+    public ResponseEntity<?> handlePartialTaken(PartialSeatHoldException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", e.getMessage(), "failedSeatIds", e.getFailedSeatIds()));
     }
 
     @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})

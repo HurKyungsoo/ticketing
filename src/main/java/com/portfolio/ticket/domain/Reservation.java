@@ -5,13 +5,14 @@ import lombok.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
     name = "reservation",
     indexes = {
-        @Index(name = "idx_reservation_member", columnList = "memberId"),
-        @Index(name = "idx_reservation_seat", columnList = "seat_id")
+        @Index(name = "idx_reservation_member", columnList = "memberId")
     }
 )
 @Getter
@@ -29,15 +30,17 @@ public class Reservation {
     @Column(nullable = false)
     private Long memberId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "seat_id")
-    private Seat seat;
+    /** FK 는 Seat 쪽에 있다 (seat.reservation_id) — 예매 1건이 좌석 여러 개를 가질 수 있어서. */
+    @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Seat> seats = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     @Builder.Default
     private ReservationStatus status = ReservationStatus.PENDING;
 
+    /** 이 예매에 속한 좌석 전체 가격 합계. */
     @Column(nullable = false)
     private int amount;
 

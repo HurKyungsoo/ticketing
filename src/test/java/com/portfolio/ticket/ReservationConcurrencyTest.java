@@ -48,9 +48,12 @@ class ReservationConcurrencyTest {
 
     @BeforeEach
     void setUp() {
-        reservationRepository.deleteAll();
+        // 삭제 순서는 FK 방향을 따라야 한다. 예매 1건이 좌석 여러 개를 갖게 되면서
+        // FK 가 seat.reservation_id 로 옮겨졌으므로, 좌석을 먼저 지우지 않고 예매를 지우면
+        // 좌석이 아직 예매를 참조하고 있어 제약 위반이 난다.
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();
+        reservationRepository.deleteAll();
         scheduleRepository.deleteAll();
         performanceRepository.deleteAll();
 

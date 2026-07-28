@@ -16,13 +16,19 @@
          ORDER BY s.section ASC, s.seat_no ASC
     </select>
 
-    <!-- 일자별 매출 집계. 관리자 대시보드 차트용 -->
+    <!--
+        일자별 매출 집계. 관리자 대시보드 차트용.
+        예매 1건이 좌석 여러 개를 가질 수 있어 seat 로 join 하면 예매 행이 좌석 수만큼 늘어난다.
+        그래서 총액은 r.amount(예매 전체 합계) 를 그대로 더하면 안 되고(중복 합산),
+        좌석 하나하나의 s.price 를 더해야 늘어난 행 수와 맞아떨어져 결과가 맞는다.
+        COUNT(*) 도 마찬가지로 "예매 건수"가 아니라 "판매된 좌석(티켓) 수"가 된다.
+    -->
     <select id="selectDailySales" resultType="com.portfolio.ticket.mapper.dto.SalesStatRow">
         SELECT DATE(r.confirmed_at) AS sale_date,
                COUNT(*)             AS ticket_count,
-               SUM(r.amount)        AS total_amount
+               SUM(s.price)         AS total_amount
           FROM reservation r
-          JOIN seat s                ON s.id = r.seat_id
+          JOIN seat s                ON s.reservation_id = r.id
           JOIN performance_schedule ps ON ps.id = s.schedule_id
          WHERE r.status = 'CONFIRMED'
         <if test="from != null">
@@ -43,9 +49,9 @@
         SELECT p.id                AS performance_id,
                p.title              AS title,
                COUNT(*)             AS ticket_count,
-               SUM(r.amount)        AS total_amount
+               SUM(s.price)         AS total_amount
           FROM reservation r
-          JOIN seat s                 ON s.id = r.seat_id
+          JOIN seat s                 ON s.reservation_id = r.id
           JOIN performance_schedule ps ON ps.id = s.schedule_id
           JOIN performance p          ON p.id = ps.performance_id
          WHERE r.status = 'CONFIRMED'
@@ -64,9 +70,9 @@
     <select id="selectSalesByGrade" resultType="com.portfolio.ticket.mapper.dto.GradeSalesRow">
         SELECT s.grade              AS grade,
                COUNT(*)             AS ticket_count,
-               SUM(r.amount)        AS total_amount
+               SUM(s.price)         AS total_amount
           FROM reservation r
-          JOIN seat s                 ON s.id = r.seat_id
+          JOIN seat s                 ON s.reservation_id = r.id
           JOIN performance_schedule ps ON ps.id = s.schedule_id
          WHERE r.status = 'CONFIRMED'
         <if test="from != null">
@@ -82,12 +88,16 @@
          ORDER BY s.grade ASC
     </select>
 
-    <!-- 취소율 계산용 확정/취소 건수. created_at 기준 (취소 건은 confirmed_at 이 없을 수 있음) -->
+    <!--
+        취소율 계산용 확정/취소 건수. created_at 기준 (취소 건은 confirmed_at 이 없을 수 있음).
+        seat 로 join 하므로 "예매 건수"가 아니라 "좌석(티켓) 기준 확정/취소 수"다 — 취소율 지표로는
+        오히려 이쪽이 더 정확하다 (예매 1건이 몇 석짜리든 표 단위로 비율을 보게 되므로).
+    -->
     <select id="selectCancelStats" resultType="com.portfolio.ticket.mapper.dto.CancelStatsRow">
         SELECT SUM(CASE WHEN r.status = 'CONFIRMED' THEN 1 ELSE 0 END) AS confirmed_count,
                SUM(CASE WHEN r.status = 'CANCELED'  THEN 1 ELSE 0 END) AS canceled_count
           FROM reservation r
-          JOIN seat s                 ON s.id = r.seat_id
+          JOIN seat s                 ON s.reservation_id = r.id
           JOIN performance_schedule ps ON ps.id = s.schedule_id
          WHERE r.status IN ('CONFIRMED', 'CANCELED')
         <if test="from != null">

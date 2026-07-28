@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Controller
@@ -113,7 +114,11 @@ public class PaymentController {
     }
 
     private String orderName(Reservation reservation) {
-        Seat seat = reservation.getSeat();
-        return seat.getSchedule().getPerformance().getTitle() + " - " + seat.seatLabel();
+        List<Seat> seats = reservation.getSeats();
+        String title = seats.get(0).getSchedule().getPerformance().getTitle();
+        if (seats.size() == 1) {
+            return title + " - " + seats.get(0).seatLabel();
+        }
+        return title + " - " + seats.get(0).seatLabel() + " 외 " + (seats.size() - 1) + "석";
     }
 }

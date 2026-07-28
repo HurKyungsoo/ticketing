@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -110,6 +111,108 @@ public class ReservationService {
     }
 
     /* ------------------------------------------------------------------
+     *  다중 좌석 선점 - 위 4가지 전략을 좌석 여러 개에 그대로 적용한다.
+     *  좌석은 항상 id 오름차순으로 잠근다. 동시에 들어온 두 다중선점 요청이
+     *  겹치는 좌석을 서로 다른 순서로 잠그면 데드락이 나므로, 기존
+     *  "Seat -> PerformanceSchedule" 순서 규칙에 "Seat 여러 개 사이의 순서"도
+     *  추가된 셈이다. 하나라도 실패하면 PartialSeatHoldException 을 던져
+     *  트랜잭션 전체를 롤백한다(부분 성공 없음).
+     * ------------------------------------------------------------------ */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Reservation holdMultipleWithoutLock(List<Long> seatIds, Long memberId) {
+        List<Seat> seats = new ArrayList<>();
+        List<Long> failed = new ArrayList<>();
+        for (Long seatId : sortedIds(seatIds)) {
+            Seat seat = seatRepository.findByIdPlain(seatId)
+                    .orElseThrow(() -> new IllegalArgumentException("좌석 없음. id=" + seatId));
+            if (!seat.isAvailable()) {
+                failed.add(seatId);
+                continue;
+            }
+            seat.hold();
+            seats.add(seat);
+        }
+        if (!failed.isEmpty()) {
+            throw new PartialSeatHoldException("이미 선점된 좌석이 있습니다.", failed);
+        }
+        return createReservation(seats, memberId);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Reservation holdMultipleWithPessimisticLock(List<Long> seatIds, Long memberId) {
+        List<Seat> seats = new ArrayList<>();
+        List<Long> failed = new ArrayList<>();
+        for (Long seatId : sortedIds(seatIds)) {
+            Seat seat = seatRepository.findByIdForUpdate(seatId)
+                    .orElseThrow(() -> new IllegalArgumentException("좌석 없음. id=" + seatId));
+            if (!seat.isAvailable()) {
+                failed.add(seatId);
+                continue;
+            }
+            seat.hold();
+            seats.add(seat);
+        }
+        if (!failed.isEmpty()) {
+            throw new PartialSeatHoldException("이미 선점된 좌석이 있습니다.", failed);
+        }
+        return createReservation(seats, memberId);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Reservation holdMultipleWithOptimisticLock(List<Long> seatIds, Long memberId) {
+        List<Seat> seats = new ArrayList<>();
+        List<Long> failed = new ArrayList<>();
+        for (Long seatId : sortedIds(seatIds)) {
+            Seat seat = seatRepository.findByIdPlain(seatId)
+                    .orElseThrow(() -> new IllegalArgumentException("좌석 없음. id=" + seatId));
+            if (!seat.isAvailable()) {
+                failed.add(seatId);
+                continue;
+            }
+            seat.hold();
+            seats.add(seat);
+        }
+        if (!failed.isEmpty()) {
+            throw new PartialSeatHoldException("이미 선점된 좌석이 있습니다.", failed);
+        }
+        return createReservation(seats, memberId);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Reservation holdMultipleWithUniqueConstraint(List<Long> seatIds, Long memberId) {
+        List<Seat> seats = new ArrayList<>();
+        List<Long> failed = new ArrayList<>();
+        for (Long seatId : sortedIds(seatIds)) {
+            Seat seat = seatRepository.findByIdPlain(seatId)
+                    .orElseThrow(() -> new IllegalArgumentException("좌석 없음. id=" + seatId));
+            try {
+                seatHoldRepository.saveAndFlush(SeatHold.builder()
+                        .seatId(seatId)
+                        .memberId(memberId)
+                        .expiresAt(LocalDateTime.now().plusMinutes(HOLD_MINUTES))
+                        .build());
+            } catch (DataIntegrityViolationException e) {
+                failed.add(seatId);
+                continue;
+            }
+            if (!seat.isAvailable()) {
+                failed.add(seatId);
+                continue;
+            }
+            seat.hold();
+            seats.add(seat);
+        }
+        if (!failed.isEmpty()) {
+            throw new PartialSeatHoldException("이미 선점된 좌석이 있습니다.", failed);
+        }
+        return createReservation(seats, memberId);
+    }
+
+    private List<Long> sortedIds(List<Long> seatIds) {
+        return seatIds.stream().distinct().sorted().toList();
+    }
+
+    /* ------------------------------------------------------------------
      *  결제 확정 / 취소
      * ------------------------------------------------------------------ */
     /** 토스 결제 승인이 끝난 뒤 호출한다. paymentKey 는 이후 취소/환불 API 호출에 쓰인다. */
@@ -118,19 +221,20 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
                 .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
 
-        // 락 순서: Seat -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
+        // 락 순서: Seat(오름차순) -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
         // HoldExpireScheduler 가 같은 좌석을 만료 처리 중일 수 있어 좌석 행을 먼저 잠가
         // "결제는 승인됐는데 좌석은 이미 풀렸다" 경쟁을 막는다.
-        Seat seat = seatRepository.findByIdForUpdate(reservation.getSeat().getId())
-                .orElseThrow(() -> new IllegalStateException("좌석 없음"));
+        List<Seat> seats = lockSeatsInOrder(reservation);
 
         if (reservation.isHoldExpired(LocalDateTime.now())) {
             throw new IllegalStateException("결제 가능 시간이 지났습니다.");
         }
         reservation.confirm(paymentKey);
-        seat.sell();
-        seatHoldRepository.deleteById(seat.getId());
-        externalInventoryClient.notifySold(seat.getSchedule().getId(), 1);
+        for (Seat seat : seats) {
+            seat.sell();
+            seatHoldRepository.deleteById(seat.getId());
+        }
+        externalInventoryClient.notifySold(seats.get(0).getSchedule().getId(), seats.size());
         return reservation;
     }
 
@@ -143,10 +247,9 @@ public class ReservationService {
             throw new IllegalStateException("본인 예매만 취소할 수 있습니다.");
         }
 
-        Seat seat = seatRepository.findByIdForUpdate(reservation.getSeat().getId())
-                .orElseThrow(() -> new IllegalStateException("좌석 없음"));
+        List<Seat> seats = lockSeatsInOrder(reservation);
 
-        LocalDateTime showAt = seat.getSchedule().getShowAt();
+        LocalDateTime showAt = seats.get(0).getSchedule().getShowAt();
         int feeRate = reservation.refundFeeRate(showAt, LocalDateTime.now());
         int refund = reservation.getAmount() * (100 - feeRate) / 100;
 
@@ -157,36 +260,64 @@ public class ReservationService {
         }
 
         reservation.cancel();
-        seat.release();
-        seatHoldRepository.deleteById(seat.getId());
+        for (Seat seat : seats) {
+            seat.release();
+            seatHoldRepository.deleteById(seat.getId());
+        }
 
-        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(seat.getSchedule().getId())
+        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(seats.get(0).getSchedule().getId())
                 .orElseThrow(() -> new IllegalStateException("회차 없음"));
-        schedule.increaseRemaining();
-        externalInventoryClient.notifyReleased(schedule.getId(), 1);
+        for (int i = 0; i < seats.size(); i++) {
+            schedule.increaseRemaining();
+        }
+        externalInventoryClient.notifyReleased(schedule.getId(), seats.size());
 
         log.info("예매 취소. no={}, feeRate={}%, refund={}", reservationNo, feeRate, refund);
         return refund;
+    }
+
+    /** 예매에 속한 좌석들을 id 오름차순으로 하나씩 잠근다 (데드락 방지 순서 고정). */
+    private List<Seat> lockSeatsInOrder(Reservation reservation) {
+        List<Long> sortedSeatIds = reservation.getSeats().stream().map(Seat::getId).sorted().toList();
+        List<Seat> seats = new ArrayList<>();
+        for (Long seatId : sortedSeatIds) {
+            seats.add(seatRepository.findByIdForUpdate(seatId)
+                    .orElseThrow(() -> new IllegalStateException("좌석 없음")));
+        }
+        return seats;
     }
 
     /* ------------------------------------------------------------------
      *  내부 공통
      * ------------------------------------------------------------------ */
     private Reservation createReservation(Seat seat, Long memberId) {
-        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(seat.getSchedule().getId())
+        return createReservation(List.of(seat), memberId);
+    }
+
+    private Reservation createReservation(List<Seat> seats, Long memberId) {
+        Long scheduleId = seats.get(0).getSchedule().getId();
+        boolean sameSchedule = seats.stream().allMatch(s -> s.getSchedule().getId().equals(scheduleId));
+        if (!sameSchedule) {
+            throw new IllegalArgumentException("서로 다른 회차의 좌석을 한 번에 예매할 수 없습니다.");
+        }
+
+        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new IllegalStateException("회차 없음"));
-        schedule.decreaseRemaining();
+        for (int i = 0; i < seats.size(); i++) {
+            schedule.decreaseRemaining();
+        }
 
         LocalDateTime now = LocalDateTime.now();
-        return reservationRepository.save(Reservation.builder()
+        Reservation reservation = reservationRepository.save(Reservation.builder()
                 .reservationNo(generateReservationNo())
                 .memberId(memberId)
-                .seat(seat)
                 .status(ReservationStatus.PENDING)
-                .amount(seat.getPrice())
+                .amount(seats.stream().mapToInt(Seat::getPrice).sum())
                 .createdAt(now)
                 .holdExpiresAt(now.plusMinutes(HOLD_MINUTES))
                 .build());
+        seats.forEach(seat -> seat.assignReservation(reservation));
+        return reservation;
     }
 
     /** yyMMdd + 8자리 난수 */
