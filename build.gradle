@@ -22,6 +22,10 @@ dependencies {
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
+    // 분산 락(HoldStrategy.DISTRIBUTED) 용. 커넥션은 지연 생성이라
+    // Redis 가 안 떠 있어도 앱 기동에는 영향이 없다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // 공공데이터 API 응답이 XML 이라 Jackson XML 모듈 필요
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
@@ -33,6 +37,10 @@ dependencies {
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // DISTRIBUTED 전략 측정용 실제 Redis. 로컬/CI 에 Docker 가 없어도
+    // 테스트 프로세스가 직접 redis-server 를 띄운다.
+    testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'
 }
 
 tasks.named('test') { useJUnitPlatform() }

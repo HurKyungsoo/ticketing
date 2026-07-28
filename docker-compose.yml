@@ -16,10 +16,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # HoldStrategy.DISTRIBUTED 전용. 앱은 Redis 없이도 기동되며,
+  # 이 컨테이너가 없으면 DISTRIBUTED 전략만 사용할 수 없다.
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build: .
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -31,6 +45,8 @@ services:
       PUBLICDATA_SERVICE_KEY: ${PUBLICDATA_SERVICE_KEY:-REPLACE_ME}
       TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-REPLACE_ME}
       TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-REPLACE_ME}
+      # application.yml 기본값은 localhost 라, 컨테이너 네트워크에서는 서비스명으로 덮어쓴다.
+      SPRING_DATA_REDIS_HOST: redis
     ports:
       - "8080:8080"
 

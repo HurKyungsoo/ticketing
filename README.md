@@ -143,17 +143,18 @@ KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade            
 
 ---
 
-## 4. 핵심: 동시성 제어 4종 비교
+## 4. 핵심: 동시성 제어 5종 비교
 
 좌석 1석에 **스레드 100개가 동시에** 예매를 시도하는 테스트
 (`ReservationConcurrencyTest`)를 전략별로 실행합니다.
 
-| 전략 | 구현 | 기대 결과 |
-|---|---|---|
-| `NONE` | 락 없음. 조회 → 검사 → 갱신 | **성공 2건 이상 (오버부킹 발생)** |
-| `PESSIMISTIC` | `@Lock(PESSIMISTIC_WRITE)` = `SELECT … FOR UPDATE` | 성공 1건 |
-| `OPTIMISTIC` | `@Version` + 3회 재시도(백오프) | 성공 1건 (충돌 재시도 발생) |
-| `UNIQUE` | `seat_hold` PK 충돌 → `DataIntegrityViolationException` | 성공 1건 |
+| 전략 | 조정자 | 구현 | 기대 결과 |
+|---|---|---|---|
+| `NONE` | 없음 | 락 없음. 조회 → 검사 → 갱신 | **성공 2건 이상 (오버부킹 발생)** |
+| `PESSIMISTIC` | DB | `@Lock(PESSIMISTIC_WRITE)` = `SELECT … FOR UPDATE` | 성공 1건 |
+| `OPTIMISTIC` | DB | `@Version` + 3회 재시도(백오프) | 성공 1건 (충돌 재시도 발생) |
+| `UNIQUE` | DB | `seat_hold` PK 충돌 → `DataIntegrityViolationException` | 성공 1건 |
+| `DISTRIBUTED` | Redis | `SET NX PX` + Lua CAS 해제 | 성공 1건 |
 
 실행:
 
@@ -161,11 +162,64 @@ KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade            
 ./gradlew test --tests '*ReservationConcurrencyTest*'
 ```
 
-콘솔에 아래 형태로 출력되므로 그대로 표로 옮기면 됩니다.
+실측 (로컬, H2, 100스레드/1좌석, 2회 실행):
 
 ```
-| PESSIMISTIC | 성공   1 | 실패  99 | 실제 예매행   1 |   xxx ms |
+| NONE        | 성공   1 | 실패  99 | 실제 예매행   1 |  139 / 198 ms |
+| PESSIMISTIC | 성공   1 | 실패  99 | 실제 예매행   1 |   63 /  85 ms |
+| OPTIMISTIC  | 성공   1 | 실패  99 | 실제 예매행   1 |  100 / 119 ms |
+| UNIQUE      | 성공   1 | 실패  99 | 실제 예매행   1 |   96 / 140 ms |
+| DISTRIBUTED | 성공   1 | 실패  99 | 실제 예매행   1 |  166 / 189 ms |
 ```
+
+> `NONE` 이 성공 1건으로 나온 것은 오버부킹이 "안 나는" 것이 아니라, H2 +
+> 단일 머신에서는 조회~갱신 사이 간격이 짧아 재현이 잘 안 되기 때문입니다.
+> 테스트는 이 경우를 `>= 1` 로 느슨하게 검증합니다.
+
+### 왜 분산 락(DISTRIBUTED)인가
+
+앞의 네 전략은 구현이 달라도 **조정자가 전부 하나의 DB** 입니다. 그래서
+앱 서버를 늘리는 순간 두 가지가 문제가 됩니다.
+
+- **JVM 락은 아예 못 씁니다.** `synchronized` / `ReentrantLock` 은 프로세스
+  안에서만 유효해서, 서버 3대면 3명이 같은 좌석을 동시에 잡습니다.
+- **DB 가 병목이 됩니다.** 비관적 락으로 버티면 오픈런 때 경쟁에서 진 요청까지
+  전부 DB 커넥션을 쥔 채 줄을 섭니다. 커넥션 풀이 마르면 좌석과 무관한
+  조회 요청까지 같이 죽습니다.
+
+`DISTRIBUTED` 는 그 조정자를 DB 밖으로 뺍니다.
+
+```
+SET seat:lock:{seatId} {token} NX PX 3000
+```
+
+- `NX` — 키가 없을 때만 세팅. "검사 후 설정"이 한 명령으로 원자 처리되므로
+  `GET` → 없으면 `SET` 같은 2단계 구현에서 생기는 경쟁이 없습니다.
+- `PX`(TTL) — **필수**입니다. DB 락은 커넥션이 끊기면 자동으로 풀리지만
+  Redis 키는 안 그래서, 락을 쥔 서버가 죽으면 TTL 만이 유일한 안전장치입니다.
+- 해제는 **Lua 스크립트로 "내 토큰일 때만 삭제"**. 단순 `DEL` 로 지우면 내 작업이
+  TTL 을 넘겨 락이 이미 만료되고 다른 요청이 같은 키를 새로 잡은 상태에서
+  **남의 락을 지워버릴 수 있습니다.** `GET` 후 `DEL` 하는 2단계도 그 사이에 만료가
+  끼어들 수 있어, Redis 가 단일 스레드로 원자 실행하는 Lua 안에서 비교와 삭제를
+  함께 합니다.
+
+**트레이드오프 (측정으로 확인됨)**
+
+- **단일 서버에서는 오히려 느립니다.** 위 실측에서 `DISTRIBUTED`(166/189ms)가
+  `PESSIMISTIC`(63/85ms)보다 2배 이상 느립니다. 네트워크 왕복이 추가되기
+  때문이며, 분산 락은 *속도*가 아니라 *확장성*을 사는 선택입니다.
+- **단일 Redis 인스턴스 락은 엄밀히 안전하지 않습니다.** 마스터가 락을 내주고
+  복제 전에 죽으면, 승격된 replica 에는 그 키가 없어 두 클라이언트가 같은 락을
+  쥡니다. 이를 풀려는 Redlock 에 대해서도 "GC 멈춤 앞에서는 여전히 안전하지 않다"는
+  Kleppmann 의 반박이 있습니다.
+- 그래서 이 프로젝트는 **최종 방어선을 DB 에 그대로 남겨뒀습니다.** Redis 락을
+  통과해도 `Seat.hold()` 가 `isAvailable()` 을 다시 검사하고, 좌석 유니크 제약도
+  유지됩니다. Redis 는 "빠른 1차 필터", DB 는 "최종 정합성" 역할입니다.
+
+**Redis 없이도 앱은 기동됩니다.** 커넥션이 지연 생성이라 `DISTRIBUTED` 전략만
+사용할 수 없고 나머지는 그대로 동작합니다. 로컬에서는 `docker compose up redis`,
+테스트는 `embedded-redis` 로 테스트 프로세스가 직접 redis-server 를 띄웁니다
+(Docker 없이도 5전략을 같은 조건에서 비교하기 위해).
 
 ### 설계 판단
 
@@ -314,4 +368,5 @@ docker compose up --build
 - [x] KOPIS 연동 — 목록+상세 조회, dtguidance(실제 회차시간)/pcseguidance(등급별 실제가격) 반영. 실제 서비스키로 라이브 호출 검증 완료
 - [x] KOPIS 공연시설(prfplc) 연동 — 상세의 mt10id/mt13id 로 실제 좌석수(seatscale) 조회, 공연장 단위 캐시로 중복 호출 방지. 라이브 호출로 실제 좌석수(200석 고정이 아닌 20~458석 등 다양한 값) 반영 확인
 - [x] 다중 좌석 예매 — 예매 1건이 좌석 여러 개를 갖도록 도메인 확장(FK 를 `seat.reservation_id` 로 이동). 좌석은 항상 id 오름차순으로 잠가 데드락 방지, 하나라도 실패하면 전체 롤백(`PartialSeatHoldException`)
+- [x] Redis 분산 락(`DISTRIBUTED`) — `SET NX PX` + Lua CAS 해제, 5번째 전략으로 동일 조건 비교. Redis 없이도 앱 기동, 테스트는 embedded-redis 로 Docker 없이 측정
 - [ ] AWS EC2 + RDS 배포 (CD)
