@@ -19,4 +19,6 @@ public class PublicDataProperties {
     /** KOPIS(공연예술통합전산망)는 data.go.kr 과 별도로 발급받는 인증키를 쓴다. */
     private String kopisServiceKey;
     private String kopisUrl;
+    /** 공연시설상세정보(좌석수 등). /{mt10id} 를 붙여서 호출한다. */
+    private String kopisFacilityUrl;
 }

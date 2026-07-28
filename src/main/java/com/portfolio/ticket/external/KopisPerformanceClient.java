@@ -22,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,8 +33,11 @@ import java.util.regex.Pattern;
  * 없어서, 목록으로 받은 mt20id 로 상세(pblprfr/{mt20id})를 건별로 한 번 더 호출해 채운다.
  * 상세 호출이 실패해도 목록 자체는 버리지 않고, 그 건만 기본값(회차/등급가격 없음)으로 둔다.
  *
- * 객석수(totalSeatCount)는 KOPIS 목록/상세 어디에도 없다 (공연시설상세정보 API 로 별도 조회해야
- * 하며 이번 연동 범위 밖). venue-layouts.yml 에 공연장명이 없으면 SeatGenerator 기본값(200석)이 적용된다.
+ * 객석수(totalSeatCount)는 KOPIS 목록/상세(pblprfr) 어디에도 없어서, 상세에 같이 오는
+ * 시설 ID(mt10id)/홀 ID(mt13id)로 공연시설상세정보(prfplc/{mt10id})를 한 번 더 호출해 채운다.
+ * 같은 공연장이 여러 공연에 반복 등장하므로 시설 단위로 캐시해 중복 호출을 막는다.
+ * 그래도 못 채우면(호출 실패, 시설 정보 없음 등) venue-layouts.yml 에 공연장명이 없는 경우와
+ * 마찬가지로 SeatGenerator 기본값(200석)이 적용된다.
  *
  * 주의: 인증키는 data.go.kr 이 아니라 www.kopis.or.kr 에서 별도 발급한다.
  *       정상/오류 응답 모두 XML 이다.
@@ -77,6 +81,9 @@ public class KopisPerformanceClient {
     private final PublicDataProperties properties;
     private final PublicDataParser parser;
     private final XmlMapper xmlMapper = new XmlMapper();
+
+    /** 시설/홀 ID -> 좌석수. 앱 기동 내내 유지 — 같은 공연장이 배치마다 계속 재등장하므로 유효하다. */
+    private final Map<String, Integer> facilitySeatCountCache = new ConcurrentHashMap<>();
 
     public List<ExternalPerformance> fetchPage(int pageNo) {
         List<ExternalPerformance> basics;
@@ -178,6 +185,7 @@ public class KopisPerformanceClient {
 
             String area = parser.text(item, "area");
             String pcsGuidance = parser.text(item, "pcseguidance");
+            Integer seatCount = resolveSeatCount(item);
 
             return ExternalPerformance.builder()
                     .externalId(basic.getExternalId())
@@ -192,7 +200,7 @@ public class KopisPerformanceClient {
                     .startDate(basic.getStartDate())
                     .endDate(basic.getEndDate())
                     .posterUrl(basic.getPosterUrl())
-                    .totalSeatCount(basic.getTotalSeatCount())
+                    .totalSeatCount(seatCount != null ? seatCount : basic.getTotalSeatCount())
                     .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
                     .showTimesByDay(parseDtGuidance(parser.text(item, "dtguidance")))
                     .pricesByGrade(parsePcseGuidance(pcsGuidance))
@@ -200,6 +208,70 @@ public class KopisPerformanceClient {
         } catch (Exception e) {
             log.debug("KOPIS 상세 파싱 실패, 목록 정보만 사용. mt20id={}, msg={}", basic.getExternalId(), e.getMessage());
             return basic;
+        }
+    }
+
+    /**
+     * 상세 응답의 mt10id(시설)/mt13id(홀)로 공연시설상세정보를 조회해 실제 좌석수를 얻는다.
+     * 캐시에 없을 때만 새로 호출하고, 그때만 호출 간 지연을 적용한다 (캐시 히트는 지연 없이 즉시 반환).
+     * 실패하면 null — 호출부가 기존 로직(venue-layouts.yml 또는 기본값 200석)으로 대체한다.
+     */
+    private Integer resolveSeatCount(JsonNode item) {
+        String mt10id = parser.text(item, "mt10id");
+        if (mt10id == null) return null;
+        String mt13id = parser.text(item, "mt13id");
+        String cacheKey = mt13id != null ? mt13id : mt10id;
+
+        Integer cached = facilitySeatCountCache.get(cacheKey);
+        if (cached != null) return cached;
+
+        Integer seatCount = fetchFacilitySeatCount(mt10id, mt13id);
+        if (seatCount != null) {
+            facilitySeatCountCache.put(cacheKey, seatCount);
+            sleepBetweenDetailCalls();
+        }
+        return seatCount;
+    }
+
+    private Integer fetchFacilitySeatCount(String mt10id, String mt13id) {
+        URI uri = UriComponentsBuilder.fromUriString(properties.getKopisFacilityUrl() + "/" + mt10id)
+                .queryParam("service", properties.getKopisServiceKey())
+                .build(true)
+                .toUri();
+
+        try {
+            byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
+            return parseFacilitySeatCount(body, mt13id);
+        } catch (Exception e) {
+            log.debug("KOPIS 공연시설 조회 실패. mt10id={}, msg={}", mt10id, e.getMessage());
+            return null;
+        }
+    }
+
+    /** 다관 시설이면 mt13id 에 해당하는 홀의 좌석수를 우선 쓰고, 못 찾으면 시설 전체 좌석수로 대체한다. */
+    private Integer parseFacilitySeatCount(byte[] body, String mt13id) {
+        if (body == null || body.length == 0) return null;
+
+        try {
+            JsonNode root = xmlMapper.readTree(body);
+            JsonNode item = root.path("db");
+            if (item.isArray()) item = item.get(0);
+            if (item == null || item.isMissingNode()) return null;
+
+            if (mt13id != null) {
+                JsonNode halls = item.path("mt13s").path("mt13");
+                List<JsonNode> hallList = halls.isMissingNode() ? List.of() : (halls.isArray() ? toList(halls) : List.of(halls));
+                for (JsonNode hall : hallList) {
+                    if (mt13id.equals(parser.text(hall, "mt13id"))) {
+                        Integer hallSeats = parser.number(hall, "seatscale");
+                        if (hallSeats != null) return hallSeats;
+                    }
+                }
+            }
+            return parser.number(item, "seatscale");
+        } catch (Exception e) {
+            log.debug("KOPIS 공연시설 응답 파싱 실패. msg={}", e.getMessage());
+            return null;
         }
     }
 

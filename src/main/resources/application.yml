@@ -36,6 +36,8 @@ publicdata:
   kopis-service-key: ${KOPIS_SERVICE_KEY:REPLACE_ME}
   # 목록(pblprfr) 엔드포인트. 상세는 이 URL 뒤에 /{mt20id} 를 붙여서 호출한다.
   kopis-url: http://www.kopis.or.kr/openApi/restful/pblprfr
+  # 공연시설상세정보(좌석수 등). 상세는 이 URL 뒤에 /{mt10id} 를 붙여서 호출한다.
+  kopis-facility-url: http://www.kopis.or.kr/openApi/restful/prfplc
 
 # 토스페이먼츠 테스트 키 - 절대 커밋하지 말 것
 toss:
