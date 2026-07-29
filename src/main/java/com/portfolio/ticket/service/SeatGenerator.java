@@ -17,6 +17,13 @@ import java.util.Map;
  *
  * 배치 규칙: 한 줄 20석 고정, 앞에서부터
  *   상위 15% VIP / 다음 25% R / 다음 35% S / 나머지 A
+ *
+ * 구역(층) 구성은 공연장 규모에 따라 달라진다. 소극장을 1층 단일 구역으로,
+ * 대극장을 3층 구조로 나누는 식이다. 구간 경계는 KOPIS 공통코드의
+ * srchseatscale(0/100/300/500/1000/5000/10000)을 따랐다 — 임의로 정한 값이 아니다.
+ *
+ * 특정 극장의 실제 좌석도가 필요하면 venue-layouts.yml 로 지정한다.
+ * 여기서 만드는 건 어디까지나 규모에 맞춘 일반 구조이지 실존 극장의 좌석 배치가 아니다.
  */
 @Slf4j
 @Service
@@ -26,6 +33,18 @@ public class SeatGenerator {
     private static final int SEATS_PER_ROW = 20;
     private static final int DEFAULT_SEAT_COUNT = 200;
     private static final int DEFAULT_BASE_PRICE = 50_000;
+
+    /**
+     * 한 회차에 만들 좌석 수 상한.
+     *
+     * 공공데이터에는 대구스타디움(66,422석) 같은 대형 공연장도 들어온다. 그 수만큼 좌석 행을
+     * 만들면 회차 하나가 DB 를 수만 행씩 차지하고, 화면에는 6만 칸짜리 격자가 그려진다.
+     * 실제 예매 서비스도 아레나·스타디움은 개별 좌석이 아니라 구역 단위로 팔고 블록을 나눠
+     * 순차 오픈한다. 여기서는 그 방식을 단순화해 상한만큼만 "오픈된 구역"으로 만든다.
+     *
+     * 공연장 전체 객석수는 performance.totalSeatCount 에 그대로 남으므로 정보는 잃지 않는다.
+     */
+    private static final int MAX_SEATS_PER_SCHEDULE = 1_500;
 
     private final SeatRepository seatRepository;
     private final PerformanceScheduleRepository scheduleRepository;
@@ -75,24 +94,71 @@ public class SeatGenerator {
 
     private List<Seat> generateDefault(PerformanceSchedule schedule, Integer totalSeatCount, int price,
                                         Map<SeatGrade, Integer> pricesByGrade) {
-        int total = (totalSeatCount == null || totalSeatCount <= 0) ? DEFAULT_SEAT_COUNT : totalSeatCount;
+        int capacity = (totalSeatCount == null || totalSeatCount <= 0) ? DEFAULT_SEAT_COUNT : totalSeatCount;
+        int total = Math.min(capacity, MAX_SEATS_PER_SCHEDULE);
+
+        if (total < capacity) {
+            log.info("공연장 규모가 커서 일부 구역만 오픈한다. scheduleId={}, 공연장 객석={}, 생성={}",
+                    schedule.getId(), capacity, total);
+        }
 
         List<Seat> seats = new ArrayList<>(total);
-        for (int i = 0; i < total; i++) {
-            String section = String.valueOf((char) ('A' + i / SEATS_PER_ROW));
-            int seatNo = (i % SEATS_PER_ROW) + 1;
-            SeatGrade grade = gradeOf(i, total);
+        int index = 0;
+        // 층 구성은 상한이 아니라 공연장 실제 규모로 정한다.
+        // 6만석 공연장에서 1,500석만 열더라도 구조는 아레나여야 하기 때문이다.
+        for (FloorSpec floor : planFloors(capacity, total)) {
+            for (int i = 0; i < floor.seats(); i++) {
+                SeatGrade grade = gradeOf(index, total);
 
-            seats.add(Seat.builder()
-                    .schedule(schedule)
-                    .section(section)
-                    .seatNo(seatNo)
-                    .grade(grade)
-                    .status(SeatStatus.AVAILABLE)
-                    .price(resolvePrice(grade, price, pricesByGrade))
-                    .build());
+                seats.add(Seat.builder()
+                        .schedule(schedule)
+                        .section(floor.name() + (char) ('A' + i / SEATS_PER_ROW))
+                        .seatNo((i % SEATS_PER_ROW) + 1)
+                        .grade(grade)
+                        .status(SeatStatus.AVAILABLE)
+                        .price(resolvePrice(grade, price, pricesByGrade))
+                        .build());
+                index++;
+            }
         }
         return seats;
+    }
+
+    /** 층 이름과 그 층에 배정된 좌석 수. */
+    private record FloorSpec(String name, int seats) {}
+
+    /**
+     * 공연장 규모(capacity)로 층 구성을 정하고, 실제로 만들 좌석 수(total)를 층별 비율로 나눈다.
+     * 나누어떨어지지 않는 잔여분은 1층에 몰아준다.
+     */
+    private List<FloorSpec> planFloors(int capacity, int total) {
+        String[] names;
+        double[] ratios;
+
+        if (capacity <= 300) {            // 소극장
+            names = new String[]{""};
+            ratios = new double[]{1.0};
+        } else if (capacity <= 1000) {    // 중극장
+            names = new String[]{"1층", "2층"};
+            ratios = new double[]{0.70, 0.30};
+        } else if (capacity <= 5000) {    // 대극장
+            names = new String[]{"1층", "2층", "3층"};
+            ratios = new double[]{0.55, 0.30, 0.15};
+        } else {                          // 아레나 / 스타디움
+            names = new String[]{"플로어", "1층", "2층"};
+            ratios = new double[]{0.40, 0.35, 0.25};
+        }
+
+        List<FloorSpec> floors = new ArrayList<>(names.length);
+        int assigned = 0;
+        for (int i = 1; i < names.length; i++) {
+            int seats = (int) Math.round(total * ratios[i]);
+            floors.add(new FloorSpec(names[i], seats));
+            assigned += seats;
+        }
+        // 첫 층을 마지막에 계산해 합이 total 과 정확히 맞도록 한다.
+        floors.add(0, new FloorSpec(names[0], total - assigned));
+        return floors;
     }
 
     /** 구역마다 행(A, B, C...) x 열 구조로 좌석을 만든다. 등급은 구역 단위로 고정. */
