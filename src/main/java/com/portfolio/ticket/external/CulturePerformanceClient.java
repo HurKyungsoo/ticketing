@@ -44,8 +44,10 @@ public class CulturePerformanceClient {
                 .queryParam("serviceKey", properties.getServiceKey())
                 .queryParam("from", from.format(DATE_PARAM_FORMAT))
                 .queryParam("to", to.format(DATE_PARAM_FORMAT))
-                .queryParam("cPage", pageNo)
-                .queryParam("rows", properties.getSyncPageSize())
+                // 페이징 파라미터명이 KOPIS(cpage/rows)와 다르다. 이 API 는 PageNo/numOfrows 만 인식하고
+                // 모르는 이름은 조용히 무시한 채 1페이지 10건을 돌려주므로, 틀리면 같은 10건을 계속 받게 된다.
+                .queryParam("PageNo", pageNo)
+                .queryParam("numOfrows", properties.getSyncPageSize())
                 .build(true)
                 .toUri();
 
