@@ -1,5 +1,6 @@
 package com.portfolio.ticket.controller;
 
+import com.portfolio.ticket.config.NaverMapProperties;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.mapper.SeatMapper;
@@ -34,6 +35,7 @@ public class PerformanceController {
     private final PerformanceScheduleRepository scheduleRepository;
     private final SeatMapper seatMapper;
     private final PerformanceListService performanceListService;
+    private final NaverMapProperties naverMapProperties;
 
     /**
      * 필터는 전부 쿼리 파라미터로 관리하고 "all" 을 기본 센티넬로 쓴다 — 파라미터가 항상
@@ -117,6 +119,8 @@ public class PerformanceController {
         model.addAttribute("performance", performance);
         model.addAttribute("schedules", schedules);
         model.addAttribute("gradePrices", gradePrices);
+        // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
+        model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         return "performance/detail";
     }
 

@@ -842,6 +842,24 @@ body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-b
 body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: var(--mute); margin: 0; }
 body.page-detail .spec dd { margin: 0; color: var(--paper); }
 
+/* 공연장 위치 지도. 네이버 지도는 컨테이너에 높이가 없으면 아무것도 그리지 않으므로
+   height 를 반드시 지정해야 한다. */
+.venue-map {
+  width: 100%;
+  height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.map-link {
+  margin-left: 10px;
+  font-size: 13px;
+  color: var(--brass);
+  border-bottom: 1px solid var(--brass-dim);
+  white-space: nowrap;
+}
+
 /* white-space: pre-line 으로 원문의 줄바꿈(\n)을 그대로 살린다.
    th:text 로 이스케이프해 넣으므로 <br> 없이도 안전하게 줄바꿈이 보인다. */
 body.page-detail .description {

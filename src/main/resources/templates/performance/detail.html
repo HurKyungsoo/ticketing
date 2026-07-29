@@ -25,7 +25,32 @@
             <h3 class="detail-heading">공연 정보</h3>
             <dl class="spec">
                 <div><dt>공연장</dt><dd th:text="${performance.venue}">-</dd></div>
-                <div><dt>주소</dt><dd th:text="${performance.address} ?: '-'">-</dd></div>
+                <div>
+                    <dt>주소</dt>
+                    <dd>
+                        <span th:text="${performance.address} ?: '-'">-</span>
+                        <!-- 좌표가 있으면 목적지를 좌표로 넘겨 정확히 찍고, 없으면(수집 소스에 따라
+                             10% 정도) 공연장명 검색으로 대체한다. 둘 다 네이버 지도가 알아서
+                             PC 는 웹, 모바일은 앱으로 연결한다. -->
+                        <a class="map-link" target="_blank" rel="noopener"
+                           th:if="${performance.latitude != null and performance.longitude != null}"
+                           th:href="|https://map.naver.com/p/directions/-/${performance.longitude},${performance.latitude},${#uris.escapePathSegment(performance.venue)}/-/transit|">길찾기</a>
+                        <a class="map-link" target="_blank" rel="noopener"
+                           th:if="${performance.latitude == null or performance.longitude == null}"
+                           th:href="|https://map.naver.com/p/search/${#uris.escapePathSegment(performance.venue)}|">지도에서 찾기</a>
+                    </dd>
+                </div>
+                <!-- 지도는 좌표와 API 키가 둘 다 있을 때만 그린다. 키 없이 스크립트를 부르면
+                     화면에 인증 실패 오버레이가 뜨므로, 없으면 위 링크만 남긴다. -->
+                <div th:if="${naverMapScriptUrl != null and performance.latitude != null and performance.longitude != null}">
+                    <dt>위치</dt>
+                    <dd style="flex: 1;">
+                        <div id="venue-map" class="venue-map"
+                             th:attr="data-lat=${performance.latitude},
+                                      data-lng=${performance.longitude},
+                                      data-name=${performance.venue}"></div>
+                    </dd>
+                </div>
                 <div><dt>기간</dt>
                     <dd th:text="|${#temporals.format(performance.startDate,'yyyy.MM.dd')} – ${#temporals.format(performance.endDate,'yyyy.MM.dd')}|">-</dd>
                 </div>
@@ -78,5 +103,22 @@
         </div>
     </div>
 </div>
+
+<!-- 지도를 그리는 경우에만 스크립트를 내려받는다. 325KB 라 필요 없는 페이지에서 받을 이유가 없다. -->
+<th:block th:if="${naverMapScriptUrl != null and performance.latitude != null and performance.longitude != null}">
+    <script th:src="${naverMapScriptUrl}"></script>
+    <script>
+      (function () {
+        var el = document.getElementById('venue-map');
+        // 키가 잘못됐거나 스크립트가 막히면 naver.maps 가 없다. 이때는 조용히 넘어간다 —
+        // 지도가 안 뜨는 것 때문에 페이지 전체가 깨지면 안 된다.
+        if (!el || !window.naver || !window.naver.maps) return;
+
+        var pos = new naver.maps.LatLng(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng));
+        var map = new naver.maps.Map(el, { center: pos, zoom: 16 });
+        new naver.maps.Marker({ position: pos, map: map, title: el.dataset.name });
+      })();
+    </script>
+</th:block>
 </body>
 </html>

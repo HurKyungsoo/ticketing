@@ -82,6 +82,20 @@ toss:
   secret-key: ${TOSS_SECRET_KEY:REPLACE_ME}
   api-base-url: https://api.tosspayments.com
 
+# 네이버 지도 JS API - 절대 커밋하지 말 것
+naver:
+  map:
+    client-id: ${NAVER_MAP_CLIENT_ID:REPLACE_ME}
+    # 인증 파라미터명. maps.js 번들이 둘 다 받지만 검증 엔드포인트가 다르다.
+    #   ncpKeyId    -> /v3/auth        (신규 Maps 콘솔 console.ncloud.com/maps)
+    #   ncpClientId -> /v1/validatev3  (구 AI·NAVER API 콘솔)
+    #
+    # 주의: 신규 Maps 콘솔도 인증 정보 화면에서 키를 "Client ID"(X-NCP-APIGW-API-KEY-ID)
+    # 라고 표시하지만, 그건 서버 REST API 호출용 헤더 이름이고 웹 JS 인증과는 별개다.
+    # 화면 문구만 보고 ncpClientId 로 잡으면 Authentication Failed 가 난다.
+    # 두 엔드포인트를 직접 호출해 확인한 결과 /v3/auth + ncpKeyId 가 정상 응답한다.
+    key-param: ncpKeyId
+
 ---
 spring:
   config:
