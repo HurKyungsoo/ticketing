@@ -85,10 +85,14 @@ public class KopisPerformanceClient {
     /** 시설/홀 ID -> 좌석수. 앱 기동 내내 유지 — 같은 공연장이 배치마다 계속 재등장하므로 유효하다. */
     private final Map<String, Integer> facilitySeatCountCache = new ConcurrentHashMap<>();
 
-    public List<ExternalPerformance> fetchPage(int pageNo) {
+    /**
+     * @param afterDate 이 날짜 이후 등록/수정된 항목만 받는다(증분 수집). null 이면 전체.
+     *                  목록 1건마다 상세를 또 호출하는 구조라, 증분이면 상세 호출 수가 그만큼 줄어든다.
+     */
+    public List<ExternalPerformance> fetchPage(int pageNo, LocalDate afterDate) {
         List<ExternalPerformance> basics;
         try {
-            byte[] body = publicDataRestClient.get().uri(listUri(pageNo)).retrieve().body(byte[].class);
+            byte[] body = publicDataRestClient.get().uri(listUri(pageNo, afterDate)).retrieve().body(byte[].class);
             basics = parseList(body);
         } catch (Exception e) {
             log.warn("KOPIS 목록 API 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
@@ -111,18 +115,21 @@ public class KopisPerformanceClient {
         }
     }
 
-    private URI listUri(int pageNo) {
+    private URI listUri(int pageNo, LocalDate afterDate) {
         LocalDate from = LocalDate.now();
         LocalDate to = from.plusYears(1);
 
-        return UriComponentsBuilder.fromUriString(properties.getKopisUrl())
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(properties.getKopisUrl())
                 .queryParam("service", properties.getKopisServiceKey())
                 .queryParam("stdate", from.format(DATE_PARAM_FORMAT))
                 .queryParam("eddate", to.format(DATE_PARAM_FORMAT))
                 .queryParam("cpage", pageNo)
-                .queryParam("rows", properties.getSyncPageSize())
-                .build(true)
-                .toUri();
+                .queryParam("rows", properties.getSyncPageSize());
+
+        if (afterDate != null) {
+            builder.queryParam("afterdate", afterDate.format(DATE_PARAM_FORMAT));
+        }
+        return builder.build(true).toUri();
     }
 
     private List<ExternalPerformance> parseList(byte[] body) throws Exception {

@@ -61,16 +61,22 @@ public class ReservationApiController {
         return ResponseEntity.ok(Map.of("refundAmount", refund));
     }
 
-    /** 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 결과를 분리해서 반환한다. */
+    /**
+     * 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 결과를 분리해서 반환한다.
+     * KOPIS 는 기본이 증분 수집이라, 전체를 다시 받으려면 {@code ?full=true} 를 붙인다.
+     */
     @PostMapping("/admin/sync")
-    public ResponseEntity<?> sync() {
-        PerformanceSyncScheduler.SyncSummary summary = syncScheduler.runSync();
-        return ResponseEntity.ok(Map.of(
-                "standard", toResponse(summary.standard()),
-                "culture", toResponse(summary.culture()),
-                "kopis", toResponse(summary.kopis()),
-                "totalCreated", summary.totalCreated()
-        ));
+    public ResponseEntity<?> sync(@RequestParam(defaultValue = "false") boolean full) {
+        PerformanceSyncScheduler.SyncSummary summary = syncScheduler.runSync(full);
+
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("standard", toResponse(summary.standard()));
+        body.put("culture", toResponse(summary.culture()));
+        body.put("kopis", toResponse(summary.kopis()));
+        body.put("totalCreated", summary.totalCreated());
+        body.put("kopisMode", summary.kopisIncremental() ? "INCREMENTAL" : "FULL");
+        body.put("kopisAfterDate", summary.kopisAfterDate());
+        return ResponseEntity.ok(body);
     }
 
     private Map<String, Object> toResponse(PerformanceSyncScheduler.SourceSyncResult result) {

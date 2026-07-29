@@ -1,10 +1,14 @@
 package com.portfolio.ticket.external;
 
+import com.portfolio.ticket.domain.SourceType;
+import com.portfolio.ticket.domain.SyncState;
+import com.portfolio.ticket.repository.SyncStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.function.IntFunction;
 
@@ -24,6 +28,14 @@ public class PerformanceSyncScheduler {
     private final KopisPerformanceClient kopisClient;
     private final PerformanceSyncService syncService;
     private final PublicDataProperties properties;
+    private final SyncStateRepository syncStateRepository;
+
+    /**
+     * 증분 수집 시 마지막 성공일보다 하루 더 앞에서부터 다시 받는다.
+     * afterdate 가 일 단위라, 배치가 도는 도중 등록된 건이 경계에서 새는 것을 막는 안전마진이다.
+     * 겹친 만큼은 이미 있는 건이라 갱신만 되고 새로 만들어지지 않는다.
+     */
+    private static final int OVERLAP_DAYS = 1;
 
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
     public void syncDaily() {
@@ -42,21 +54,62 @@ public class PerformanceSyncScheduler {
         }
     }
 
-    public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture, SourceSyncResult kopis) {
+    public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture, SourceSyncResult kopis,
+                              LocalDate kopisAfterDate) {
 
         public int totalCreated() {
             return standard.created() + culture.created() + kopis.created();
         }
+
+        /** KOPIS 를 증분으로 돌렸는지. 표준데이터/문화정보는 afterdate 에 해당하는 파라미터가 없어 항상 전체다. */
+        public boolean kopisIncremental() {
+            return kopisAfterDate != null;
+        }
     }
 
     public SyncSummary runSync() {
+        return runSync(false);
+    }
+
+    /** @param full true 면 마지막 수집 이력을 무시하고 전체를 다시 받는다. */
+    public SyncSummary runSync(boolean full) {
         SourceSyncResult standard = syncSource("표준데이터", performanceClient::fetchPage);
         SourceSyncResult culture = syncSource("문화정보", cultureClient::fetchPage);
-        SourceSyncResult kopis = syncSource("KOPIS", kopisClient::fetchPage);
+
+        LocalDate afterDate = full ? null : resolveKopisAfterDate();
+        LocalDate startedOn = LocalDate.now();
+        SourceSyncResult kopis = syncSource(
+                afterDate == null ? "KOPIS(전체)" : "KOPIS(증분 " + afterDate + " 이후)",
+                page -> kopisClient.fetchPage(page, afterDate));
+
+        // 실패한 회차의 날짜를 기준점으로 남기면 그 구간이 영영 수집되지 않는다. 성공했을 때만 갱신한다.
+        if (kopis.success()) {
+            markKopisSynced(startedOn);
+        }
 
         log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건",
                 standard.created(), culture.created(), kopis.created());
-        return new SyncSummary(standard, culture, kopis);
+        return new SyncSummary(standard, culture, kopis, afterDate);
+    }
+
+    /** 이력이 없으면(최초 수집, DB 초기화 직후) null 을 반환해 전체 수집으로 떨어뜨린다. */
+    private LocalDate resolveKopisAfterDate() {
+        return syncStateRepository.findById(SourceType.KOPIS)
+                .map(state -> state.getLastSyncedOn().minusDays(OVERLAP_DAYS))
+                .orElse(null);
+    }
+
+    private void markKopisSynced(LocalDate syncedOn) {
+        SyncState state = syncStateRepository.findById(SourceType.KOPIS).orElse(null);
+        if (state == null) {
+            syncStateRepository.save(SyncState.builder()
+                    .sourceType(SourceType.KOPIS)
+                    .lastSyncedOn(syncedOn)
+                    .build());
+            return;
+        }
+        state.markSyncedOn(syncedOn);
+        syncStateRepository.save(state);
     }
 
     /**
