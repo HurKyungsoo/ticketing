@@ -41,7 +41,7 @@ KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade            
                           └──────── PublicDataParser               Performance
                                     (필드/날짜/요금 정제)                │ 회차 생성 (dtguidance 있으면
                                                                           │  실제 요일별 시간, 없으면
-                                                                          ▼  8일 고정 19시)
+                                                                          ▼  8일 · 실측 시각 분포)
                                                           PerformanceSchedule
                                                                    │ 공연장명 매칭
                                                                    ▼
@@ -257,13 +257,13 @@ SET seat:lock:{seatId} {token} NX PX 3000
 | `serviceKey` 재인코딩으로 401 | `UriComponentsBuilder.build(true)` 로 인코딩 억제 |
 | 개발계정 트래픽 제한(일 1,000건) | 실시간 호출 대신 **일 1회 배치 수집 + 로컬 적재** |
 | 원본에 고유키가 없어 재수집 시 중복 적재 | `공연명 + 장소 + 시작일` 해시로 대체키 생성, `external_id` UK |
-| 원본에 "회차" 개념 없음 | 공연 기간 내 최대 8회차(19:00) 자동 생성 규칙 문서화 |
+| 원본에 "회차" 개념 없음 | 공연 기간 내 최대 8회차 자동 생성. 시각은 KOPIS 시간대별 상연 통계(`boxStatsTime`) 실측 분포를 따름 (`showtime-distribution.yml`) |
 | `performance-url` 을 `http://` 로 두면 api.data.go.kr 이 `https://` 로 301 리다이렉트하는데, `HttpURLConnection` 은 프로토콜이 바뀌는 리다이렉트를 안 따라가서 항상 리다이렉트 HTML만 받고 실패 | `application.yml` 의 `performance-url` 을 `https://` 로, 실제 등록된 End Point(`tn_pubr_public_pblprfr_event_info_api`)로 수정 |
 | 한눈에보는문화정보 API 는 호스트가 이전됐고 정상 응답도 XML 전용인데, 옛 코드는 JSON 을 가정하고 `<` 로 시작하는 응답을 전부 오류로 간주해 조용히 폐기 → CIA- 레코드가 늘 0건 | `culture-url` 을 실제 End Point(`/B553457/cultureinfo/period2`)로 교체, `XmlMapper` 로 파싱 전환. 실제 필드명(`seq`/`title`/`place`/`realmName`/`area`/`sigungu` 등)은 data.go.kr 상세 페이지에 로그인해 Swagger Models 패널을 펼쳐 직접 확인 |
 | 문화정보 응답에 박물관 "상설전시" 류가 섞여 있음 (`startDate` 가 몇 년 전, `endDate` 는 먼 미래) — `createSchedules()` 가 `startDate` 기준 연속 8일치 회차만 만들다 보니 이미 다 지난, 예매 불가능한 회차만 생성됨 | 동기화 단계에서 기간 90일 초과 항목은 상설전시류로 보고 제외. 이미 종료된 공연도 동일하게 제외 |
 | 소스 하나(예: 문화정보)가 호출/파싱에 실패해도 다른 소스 동기화가 막히면 안 됨 | `PerformanceSyncScheduler` 가 소스별로 완전히 격리된 함수에서 try-catch, 실패해도 나머지 소스는 계속 진행. `/api/admin/sync` 응답도 소스별로 분리 |
 | KOPIS 목록(pblprfr) 응답에는 회차시간(dtguidance)/등급별가격(pcseguidance)이 없고 상세(pblprfr/{mt20id})에만 있음 | 목록 페이지 1건당 상세를 1회 더 호출. 상세 호출/파싱이 개별 건에서 실패해도 그 건만 목록 정보로 대체하고 나머지는 계속 진행 |
-| dtguidance/pcseguidance 는 자유 텍스트라 정규식으로 파싱해야 함. 실제 값(`"화요일(19:30), 금요일(19:30)"`, `"토요일(11:00,14:00)"`, `"VIP석 120,000원, R석 90,000원..."`)은 실제 키 발급 후 라이브 호출로 확인 | "요일명(시각)" / "요일명 ~ 요일명(시각)" / "매일(시각)" 패턴, 등급별로는 "등급+석+금액+원" 패턴을 추출. 패턴을 하나도 못 찾으면 `null` 반환 → 기존 8일 고정 19시 규칙 / basePrice 비율 계산으로 자동 대체 |
+| dtguidance/pcseguidance 는 자유 텍스트라 정규식으로 파싱해야 함. 실제 값(`"화요일(19:30), 금요일(19:30)"`, `"토요일(11:00,14:00)"`, `"VIP석 120,000원, R석 90,000원..."`)은 실제 키 발급 후 라이브 호출로 확인 | "요일명(시각)" / "요일명 ~ 요일명(시각)" / "매일(시각)" 패턴, 등급별로는 "등급+석+금액+원" 패턴을 추출. 패턴을 하나도 못 찾으면 `null` 반환 → 8일 대체 규칙(실측 시각 분포) / basePrice 비율 계산으로 자동 대체 |
 | "화요일"의 "일" 한 글자가 요일 매칭용 단일 문자(월화수목금토**일**)와 겹쳐서 일요일로 오매칭됨 → 없는 일요일 회차가 만들어지고, 요일 범위("목요일 ~ 금요일")의 끝 요일이 단일 패턴에도 중복으로 잡혀 같은 회차를 두 번 만들려다 유니크 제약(`uk_schedule`) 위반으로 배치가 죽을 뻔함 | 반드시 "요일" 전체가 붙은 형태만 매칭하도록 정규식 수정(`(월\|화\|수\|목\|금\|토\|일)요일`), 요일별 시각을 `Set` 에 모아 중복 제거 후 리스트로 변환 |
 | KOPIS 응답 `Content-Type` 이 `application/xml` 이고 charset 이 없어서, `.body(String.class)` 로 먼저 String 을 받으면 Spring 이 ISO-8859-1 로 디코딩하고 그걸 다시 `.getBytes()`(플랫폼 기본 인코딩, 한글 Windows 라 MS949)로 바이트를 만드니 두 번 깨져서 한글이 전부 깨짐 (문화정보 클라이언트도 동일 패턴이라 같은 문제) | `.body(String.class)` 대신 `.body(byte[].class)` 로 원본 바이트를 그대로 받아 `XmlMapper` 에 넘김 — XML 선언(`encoding="UTF-8"`)으로 직접 인코딩을 판별하게 해서 중간 디코딩 단계를 아예 없앰 |
 | 목록의 "진행 현황" 필터가 아무 일도 안 함. 쿼리 파라미터는 소문자(`ongoing`)로 들어오는데 MyBatis 조건은 `f.status == 'ONGOING'` 대문자 비교라 `<if>` 가 항상 거짓 → 조건절이 통째로 빠져 `all`/`ongoing`/`ended` 가 전부 같은 505건. 예외가 안 나서 화면상 멀쩡해 보이는 게 함정 | `PerformanceListService.buildFilter()` 에서 `toUpperCase(Locale.ROOT)` 로 정규화. MyBatis 동적 SQL 은 조건이 안 맞아도 조용히 넘어가므로, 필터를 추가할 땐 값별 건수가 실제로 갈리는지 확인하는 습관이 필요 |
@@ -381,5 +381,6 @@ docker compose up --build
 - [x] Redis 분산 락(`DISTRIBUTED`) — `SET NX PX` + Lua CAS 해제, 5번째 전략으로 동일 조건 비교. Redis 없이도 앱 기동, 테스트는 embedded-redis 로 Docker 없이 측정
 - [x] KOPIS 증분 수집(`afterdate`) — 소스별 마지막 성공일을 `sync_state` 에 남기고, 다음 배치는 그 이후 등록/수정된 건만 조회. 라이브 측정 결과 수신 500건 → 214건, 소요 500초 → 131초로 감소. 이력이 없으면(최초 수집·DB 초기화) 자동으로 전체 수집, `POST /api/admin/sync?full=true` 로 강제 전체 재수집
 - [x] KOPIS 공연 위경도·도로명주소 채우기 — 목록/상세에는 좌표가 없고 공연시설상세(`prfplc`)에만 `la`/`lo`/`adres` 가 있다. 이미 좌석수 때문에 호출하던 응답에서 같이 뽑아 **추가 호출 없이** 반영. KOPIS 좌표 0건 → 500건, 주소도 시도명("서울특별시")에서 도로명("서울특별시 중구 을지로 12")으로 승격
+- [x] 회차 시각을 실측 분포 기반으로 전환 — 원본에 공연 시각이 없을 때 쓰던 "19:00 고정"을 KOPIS 시간대별 상연 통계(`boxStatsTime`) 실측 분포로 교체(`showtime-distribution.yml`). 최근 30일 상연 24,186회 기준 09~12시 10.4% / 12~15시 21.8% / 15~18시 29.9% / 18~21시 36.3%. 공연ID+날짜를 seed 로 쓰는 결정적 선택이라 배치를 다시 돌려도 같은 결과가 나온다
 - [ ] 카카오/네이버 소셜 로그인 — `spring-boot-starter-oauth2-client` + `CustomOAuth2UserService` 로 최초 로그인 시 자동 회원가입까지 구현 완료. 카카오/네이버 개발자 콘솔에서 REST API 키 발급 및 리다이렉트 URI 등록 대기 중(`KAKAO_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` 환경변수 미설정 상태)
 - [ ] AWS EC2 + RDS 배포 (CD)

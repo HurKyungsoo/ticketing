@@ -20,8 +20,9 @@ import java.util.Map;
 /**
  * 수집 → 정규화 → upsert → 회차/좌석 생성.
  *
- * API 원본에는 "회차" 개념이 없어서, 공연 기간 안에서 주말 19:00 회차를
- * 최대 8개까지 생성하는 규칙을 두었다. (README 의 데이터 가공 규칙 참고)
+ * API 원본에는 "회차" 개념이 없어서, 공연 기간 안에서 최대 8개까지 회차를
+ * 생성하는 규칙을 두었다. 시각은 KOPIS 시간대별 상연 통계 분포를 따른다.
+ * (README 의 데이터 가공 규칙 참고)
  */
 @Slf4j
 @Service
@@ -41,6 +42,7 @@ public class PerformanceSyncService {
     private final PerformanceRepository performanceRepository;
     private final SeatGenerator seatGenerator;
     private final PerformanceCategoryResolver categoryResolver;
+    private final ShowTimeDistributionProperties showTimes;
 
     /** 한 페이지 분량 동기화 결과. skipped(이미 존재해 갱신만 함)는 received - created 로 구한다. */
     public record SyncBatchResult(int received, int created) {}
@@ -127,18 +129,33 @@ public class PerformanceSyncService {
         }
     }
 
-    /** 원본에 회차 개념이 없을 때 쓰는 기존 규칙: 공연 기간 내 최대 8일, 매일 19시. */
+    /**
+     * 원본에 회차 개념이 없을 때 쓰는 대체 규칙: 공연 기간 내 최대 8일, 하루 한 회차.
+     *
+     * 시각은 KOPIS 시간대별 상연 통계의 실측 분포를 따른다(showtime-distribution.yml).
+     * 설정이 없으면 예전 규칙인 19:00 고정으로 떨어진다.
+     */
     private int createDefaultSchedules(Performance performance, int totalSeats) {
         LocalDate cursor = performance.getStartDate();
         LocalDate end = performance.getEndDate();
         int created = 0;
 
         while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
-            addSchedule(performance, LocalDateTime.of(cursor, SHOW_TIME), totalSeats);
+            addSchedule(performance, LocalDateTime.of(cursor, resolveShowTime(performance, cursor)), totalSeats);
             created++;
             cursor = cursor.plusDays(1);
         }
         return created;
+    }
+
+    /**
+     * 공연과 날짜로 seed 를 만들어 분포에서 시각을 고른다.
+     * 같은 공연의 같은 날짜면 항상 같은 시각이 나오므로, 배치를 다시 돌려도 결과가 흔들리지 않는다.
+     */
+    private LocalTime resolveShowTime(Performance performance, LocalDate date) {
+        long seed = 31L * performance.getExternalId().hashCode() + date.toEpochDay();
+        LocalTime picked = showTimes.pick(seed);
+        return picked != null ? picked : SHOW_TIME;
     }
 
     /** KOPIS dtguidance 파싱 결과(요일별 실제 공연시간)로 회차를 만든다. 하루에 여러 회차(마티네/저녁)도 반영. */

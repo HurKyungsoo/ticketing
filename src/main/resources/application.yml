@@ -4,7 +4,9 @@ spring:
   profiles:
     active: local
   config:
-    import: optional:classpath:venue-layouts.yml
+    import:
+      - optional:classpath:venue-layouts.yml
+      - optional:classpath:showtime-distribution.yml
 
   jpa:
     hibernate:
