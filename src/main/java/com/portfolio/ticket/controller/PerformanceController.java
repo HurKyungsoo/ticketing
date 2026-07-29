@@ -62,7 +62,22 @@ public class PerformanceController {
         model.addAttribute("venue", venue);
         model.addAttribute("area", area);
         model.addAttribute("keyword", keyword);
+        // "필터 초기화" 를 띄울지 판단용. 하나라도 기본값에서 벗어났을 때만 보여준다.
+        model.addAttribute("filtersApplied",
+                filtersApplied(genre, month, timeSlot, status, venue, area, keyword));
         return "performance/list";
+    }
+
+    /** 기본 상태(장르·월·시간대·공연장·지역 전체 + 진행·예정작 + 검색어 없음)에서 벗어났는지. */
+    private boolean filtersApplied(String genre, String month, String timeSlot,
+                                    String status, String venue, String area, String keyword) {
+        return sentinel(genre) != null
+                || parseMonth(month) != null
+                || sentinel(timeSlot) != null
+                || !"ongoing".equalsIgnoreCase(status)
+                || sentinel(venue) != null
+                || sentinel(area) != null
+                || blankToNull(keyword) != null;
     }
 
     /** "all"(대소문자 무관) 또는 빈 값은 "필터 없음" 을 뜻하는 null 로 변환한다. */

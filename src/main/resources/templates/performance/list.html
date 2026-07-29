@@ -108,6 +108,15 @@
     </form>
     <div class="fp-backdrop" id="filterBackdrop"></div>
 
+    <!-- 결과 건수는 모바일 필터 버튼에만 있어서 데스크톱에서는 몇 건이 걸렸는지 알 수 없었다.
+         필터를 걸었을 때 되돌릴 수단(초기화)도 여기에 같이 둔다. -->
+    <div class="resultbar">
+        <p class="resultcount">총 <strong th:text="${#numbers.formatInteger(result.total,0,'COMMA')}">328</strong>건</p>
+        <!-- 결과가 0건일 때는 빈 화면 쪽에 더 눈에 띄는 초기화 버튼이 있으므로 여기서는 뺀다. -->
+        <a class="resultreset" th:if="${filtersApplied and !result.performances.isEmpty()}"
+           th:href="@{/}">필터 초기화</a>
+    </div>
+
     <div class="grid" th:if="${!result.performances.isEmpty()}">
         <a class="card" th:each="p : ${result.performances}" th:href="@{/performances/{id}(id=${p.id})}">
             <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
@@ -125,13 +134,26 @@
         </a>
     </div>
 
+    <!-- libraryEmpty(=수집된 공연이 아예 없음)일 때만 관리자용 안내를 띄운다.
+         예전엔 result.total == 0 으로 판단해서, 단순히 검색어가 안 맞은 사용자에게도
+         "POST /api/admin/sync" 안내가 그대로 노출됐다. -->
     <div class="empty-state" th:if="${result.performances.isEmpty()}">
-        <p>조건에 맞는 공연이 없습니다.</p>
-        <p th:if="${result.total == 0}"><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
+        <th:block th:if="${result.libraryEmpty}">
+            <p>아직 불러온 공연이 없습니다.</p>
+            <p><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
+        </th:block>
+        <th:block th:unless="${result.libraryEmpty}">
+            <p>조건에 맞는 공연이 없습니다.</p>
+            <p>검색어나 필터를 바꿔 다시 찾아보세요.</p>
+            <a class="emptyreset" th:if="${filtersApplied}" th:href="@{/}">필터 초기화</a>
+        </th:block>
     </div>
 
     <nav class="pager" th:if="${result.totalPages > 1}">
-        <a class="pager-nav" th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=0)}">«</a>
+        <!-- 처음/마지막 이동 버튼은 첫/마지막 페이지에서 자기 자신으로 가는 링크가 되므로,
+             이전/다음 버튼과 같은 조건으로 숨긴다. -->
+        <a class="pager-nav" th:if="${result.page > 0}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=0)}">«</a>
         <a class="pager-nav" th:if="${result.page > 0}"
            th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page - 1})}">‹</a>
 
@@ -142,7 +164,8 @@
 
         <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
            th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.page + 1})}">›</a>
-        <a class="pager-nav" th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.totalPages - 1})}">»</a>
+        <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
+           th:href="@{/(genre=${genre},month=${month},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},page=${result.totalPages - 1})}">»</a>
     </nav>
 </div>
 

@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -46,7 +47,9 @@ public class PerformanceListService {
             List<Integer> pageWindow,
             List<Option> categories,
             List<Option> months,
-            List<Option> venues
+            List<Option> venues,
+            /** 결과 0건이 필터 탓이 아니라 DB 자체가 비어서인지. 관리자용 수집 안내를 띄울지 판단하는 데만 쓴다. */
+            boolean libraryEmpty
     ) {}
 
     public Result search(String category, Integer month, String timeSlot, String status,
@@ -63,7 +66,17 @@ public class PerformanceListService {
         List<Option> venues = buildVenueOptions(filter, venue);
         List<Integer> pageWindow = buildPageWindow(safePage, totalPages);
 
-        return new Result(rows, total, safePage, totalPages, pageWindow, categories, months, venues);
+        return new Result(rows, total, safePage, totalPages, pageWindow, categories, months, venues,
+                isLibraryEmpty(total));
+    }
+
+    /**
+     * 0건인 이유가 "필터에 안 걸림" 인지 "수집된 공연이 아예 없음" 인지 가른다.
+     * 구분하지 않으면 단순 검색 실패에도 관리자용 수집 안내가 일반 사용자에게 노출된다.
+     * 0건일 때만 한 번 더 세므로 평상시에는 추가 쿼리가 나가지 않는다.
+     */
+    private boolean isLibraryEmpty(long total) {
+        return total == 0 && performanceMapper.countPerformances(new PerformanceFilter()) == 0;
     }
 
     /** 현재 페이지를 가운데 두고 최대 PAGE_WINDOW 개만 보여준다 (전체 페이지 수가 많아도 번호가 안 늘어나게). */
@@ -83,7 +96,9 @@ public class PerformanceListService {
         filter.setCategory(category);
         filter.setMonth(month);
         applyTimeSlot(filter, timeSlot);
-        filter.setStatus(status);
+        // 매퍼는 "ONGOING"/"ENDED" 대문자로만 비교한다. 쿼리 파라미터는 소문자("ongoing")로
+        // 들어오므로 여기서 맞춰준다 — 안 맞추면 조건문이 통째로 빠져 필터가 무시된다.
+        filter.setStatus(status == null ? null : status.toUpperCase(Locale.ROOT));
         filter.setToday(LocalDate.now());
         filter.setVenue(venue);
         filter.setRegion(region);
