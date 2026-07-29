@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!--/*
+    공통 상단 헤더. tag 는 페이지별 부제(문자열), showAuthNav 는 로그인/로그아웃 내비게이션 표시 여부.
+    로고 심볼은 currentColor 를 써서, .masthead .logo-mark 의 color 값(브라스색)을 그대로 물려받는다.
+*/-->
+<header class="masthead" th:fragment="masthead(tag, showAuthNav)">
+    <h1>
+        <a th:href="@{/}" class="brandlink">
+            <svg class="logo-mark" viewBox="0 0 44 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <rect x="1.5" y="1.5" width="41" height="25" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+                <rect x="8" y="9" width="9" height="10" rx="2" fill="currentColor"/>
+                <line x1="30" y1="6" x2="30" y2="22" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 3" stroke-linecap="round"/>
+            </svg>
+            객석
+        </a>
+    </h1>
+    <span class="tag" th:text="${tag}">태그</span>
+    <nav class="authnav" th:if="${showAuthNav}">
+        <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
+        <a sec:authorize="isAuthenticated()" th:href="@{/mypage/reservations}">마이페이지</a>
+        <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+            <button type="submit" class="linklike">로그아웃</button>
+        </form>
+        <span sec:authorize="isAnonymous()" class="authbtns">
+            <a th:href="@{/login}" class="btn-login">로그인</a>
+            <a th:href="@{/signup}" class="btn-signup">회원가입</a>
+        </span>
+    </nav>
+</header>
+</body>
+</html>

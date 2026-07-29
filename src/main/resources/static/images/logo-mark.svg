@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 28" width="44" height="28" role="img" aria-label="객석 로고">
+  <rect x="1.5" y="1.5" width="41" height="25" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+  <rect x="8" y="9" width="9" height="10" rx="2" fill="currentColor"/>
+  <line x1="30" y1="6" x2="30" y2="22" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 3" stroke-linecap="round"/>
+</svg>

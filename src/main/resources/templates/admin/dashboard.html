@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>관리자 대시보드</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body>
 <div class="wrap">
-    <header class="masthead">
-        <h1><a th:href="@{/}">객석</a></h1>
-        <span class="tag">관리자 대시보드</span>
-    </header>
+    <header th:replace="~{fragment/header :: masthead(tag='관리자 대시보드', showAuthNav=false)}"></header>
 
     <form class="dashfilter" method="get" th:action="@{/admin/dashboard}">
         <label>시작일 <input type="date" name="from" th:value="${from}"></label>

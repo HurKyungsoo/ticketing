@@ -68,6 +68,14 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: -0.02em;
   margin: 0;
 }
+.masthead .brandlink { display: inline-flex; align-items: center; }
+.masthead .logo-mark {
+  width: 28px;
+  height: 18px;
+  margin-right: 10px;
+  color: var(--brass);
+  flex-shrink: 0;
+}
 .masthead .tag {
   font-size: 13px;
   letter-spacing: -0.01em;
@@ -371,19 +379,50 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- 로그인 / 회원가입 ----------
    폼만 왼쪽 위에 덩그러니 떠 있으면 미완성처럼 보인다.
-   화면 중앙에 카드로 띄우고, 입력창 경계를 또렷하게 해서 누를 수 있는 요소로 읽히게 한다. */
+   화면 중앙에 카드 하나로 띄우고(폼 + 소셜 로그인이 한 덩어리로 읽히게),
+   입력창 경계를 또렷하게 해서 누를 수 있는 요소로 읽히게 한다. */
 .authwrap {
   max-width: 400px;
   margin: 0 auto;
-  min-height: calc(100vh - 160px);
+  min-height: calc(100vh - 200px);
   display: flex; flex-direction: column; justify-content: center;
 }
-.authform {
-  display: flex; flex-direction: column; gap: 18px;
+.authcard {
   background: var(--ink-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 32px 28px;
+  /* 카드를 배경에서 확실히 띄운다. 어두운 배경에서는 테두리만으로는 경계가 약하다. */
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .38);
+}
+.authhead { text-align: center; margin-bottom: 24px; }
+.authhead h2 {
+  font-family: var(--display);
+  font-size: 24px; font-weight: 800; letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+.authhead p { margin: 0; font-size: 13px; color: var(--mute); }
+
+/* 좌석 선택 중 넘어왔을 때만 뜨는 안내. 경고가 아니라 안심시키는 톤이라 브라스색을 쓴다. */
+.authnotice {
+  background: rgba(255, 201, 64, .08);
+  border: 1px solid rgba(255, 201, 64, .24);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  font-size: 13px; color: var(--brass);
+}
+.autherror {
+  background: rgba(255, 92, 122, .08);
+  border: 1px solid rgba(255, 92, 122, .28);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  font-size: 13px; color: var(--rose);
+}
+
+.authform {
+  display: flex; flex-direction: column; gap: 16px;
 }
 .authform label {
   display: flex; flex-direction: column; gap: 8px;
@@ -395,21 +434,78 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
-  transition: border-color .12s;
+  width: 100%;
+  transition: border-color .12s, box-shadow .12s;
 }
 .authform input:hover { border-color: var(--mute); }
-.authform input:focus-visible { outline: none; border-color: var(--brass); }
-.authform button {
+.authform input:focus-visible {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(255, 201, 64, .16);
+}
+/* 제출 버튼만 브라스로 채운다 — 비밀번호 표시 토글도 button 이라 타입으로 구분해야 한다. */
+.authform button[type="submit"] {
   font-family: var(--body); font-size: 15px; font-weight: 700;
   background: var(--brass); color: #0B0B0C;
   border: 0; border-radius: var(--radius-sm);
   padding: 14px; cursor: pointer;
+  margin-top: 4px;
   transition: filter .12s;
 }
-.authform button:hover { filter: brightness(1.08); }
-.authform .autherror { color: var(--rose); font-size: 13px; margin: 0; }
-.authform .authlink { font-size: 13px; color: var(--mute); text-align: center; margin: 0; }
-.authform .authlink a { color: var(--brass); }
+.authform button[type="submit"]:hover { filter: brightness(1.08); }
+
+/* 비밀번호 입력창 안에 겹쳐 놓는 표시/숨김 토글. */
+.pwfield { position: relative; display: block; }
+.pwfield input { padding-right: 62px; }
+.pwtoggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; border-radius: 6px;
+  color: var(--mute); font-family: var(--body); font-size: 12px;
+  padding: 6px 8px; cursor: pointer;
+  transition: color .12s;
+}
+.pwtoggle:hover { color: var(--paper); }
+
+.authlink {
+  font-size: 13px; color: var(--mute); text-align: center;
+  margin: 20px 0 0;
+}
+.authlink a { color: var(--brass); font-weight: 700; }
+
+/* 결제 화면의 단일 주요 액션. 예전엔 .authform 의 카드 스타일을 빌려 쓰고 있었는데,
+   .authform 이 폼 레이아웃 전용으로 정리되면서 전용 클래스로 분리했다. */
+.paybtn {
+  display: block; width: 100%;
+  font-family: var(--body); font-size: 15px; font-weight: 700;
+  background: var(--brass); color: #0B0B0C;
+  border: 0; border-radius: var(--radius-sm);
+  padding: 16px; cursor: pointer;
+  transition: filter .12s;
+}
+.paybtn:hover { filter: brightness(1.08); }
+
+.oauthdivider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 24px 0 16px;
+  color: var(--mute); font-size: 12px;
+}
+.oauthdivider::before, .oauthdivider::after {
+  content: ""; flex: 1; height: 1px; background: var(--line);
+}
+.oauthbuttons { display: flex; flex-direction: column; gap: 10px; }
+.oauthbtn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--body); font-size: 15px; font-weight: 700;
+  border: 0; border-radius: var(--radius-sm);
+  padding: 14px; cursor: pointer; text-align: center;
+  transition: filter .12s;
+}
+.oauthbtn:hover { filter: brightness(1.06); }
+/* 카카오 로그인 버튼은 공식 디자인 가이드 스펙(배경 #FEE500, 심볼/텍스트 #000000, 모서리 12px)을 그대로 따른다.
+   https://developers.kakao.com/docs/ko/kakaologin/design-guide */
+.oauthbtn-kakao { background: #FEE500; color: rgba(0, 0, 0, 0.85); border-radius: 12px; }
+.oauthbtn-naver { background: #03C75A; color: #FAFAFA; }
+.oauthicon { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ---------- 관리자 대시보드 ---------- */
 .dashfilter { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 32px; }
@@ -491,6 +587,7 @@ a { color: inherit; text-decoration: none; }
 .btn-cancel:disabled { opacity: .5; cursor: not-allowed; }
 
 @media (max-width: 720px) {
+  .masthead .logo-mark { width: 22px; height: 14px; margin-right: 6px; }
   .detail { grid-template-columns: 1fr; }
   .chartgrid { grid-template-columns: 1fr; }
   .dashfilter { flex-wrap: wrap; }

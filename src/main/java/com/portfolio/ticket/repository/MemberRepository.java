@@ -1,5 +1,6 @@
 package com.portfolio.ticket.repository;
 
+import com.portfolio.ticket.domain.AuthProvider;
 import com.portfolio.ticket.domain.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByLoginId(String loginId);
 
     boolean existsByLoginId(String loginId);
+
+    Optional<Member> findByAuthProviderAndProviderId(AuthProvider authProvider, String providerId);
 }

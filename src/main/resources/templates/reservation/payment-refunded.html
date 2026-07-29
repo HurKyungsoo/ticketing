@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>자동 환불 안내</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body>
 <div class="wrap authwrap">
-    <header class="masthead">
-        <h1><a th:href="@{/}">객석</a></h1>
-        <span class="tag">자동 환불</span>
-    </header>
+    <header th:replace="~{fragment/header :: masthead(tag='자동 환불', showAuthNav=false)}"></header>
 
     <div class="empty-state" style="text-align:left;padding:0">
         <p><strong style="color:var(--rose)">좌석 선점이 만료되어 결제가 자동 환불되었습니다.</strong></p>

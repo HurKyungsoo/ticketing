@@ -7,13 +7,11 @@
     <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title>좌석 선택</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body>
 <div class="wrap">
-    <header class="masthead">
-        <h1><a th:href="@{/}">객석</a></h1>
-        <span class="tag" th:text="${performance.title} + ' · ' + ${#temporals.format(schedule.showAt, 'M/d(E) HH:mm')}">회차</span>
-    </header>
+    <header th:replace="~{fragment/header :: masthead(tag=${performance.title} + ' · ' + ${#temporals.format(schedule.showAt, 'M/d(E) HH:mm')}, showAuthNav=false)}"></header>
 
     <div class="partysize">
         <label for="partySize">인원수</label>
@@ -136,6 +134,37 @@
         });
     });
 
+    const PENDING_HOLD_KEY = 'pendingHold';
+
+    /** 좌석 선점을 시도한다. 비로그인 상태면 authRequired 만 true 로 반환하고 리다이렉트는 호출부가 처리한다. */
+    async function attemptHold(seatIds) {
+        const res = await fetch('/api/reservations/hold', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [CSRF_HEADER]: CSRF_TOKEN
+            },
+            body: JSON.stringify({ seatIds, strategy: 'PESSIMISTIC' })
+        });
+
+        if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
+            return { authRequired: true };
+        }
+        return { authRequired: false, ok: res.ok, data: await res.json() };
+    }
+
+    /** 실패한 좌석만 선택 해제하고 판매 불가로 표시한다. 나머지는 여전히 선택된 채로 둬서
+        사용자가 실패한 좌석만 바꿔 다시 시도할 수 있게 한다 (전체 재선택 강요 X). */
+    function markFailedSeats(failedSeatIds) {
+        const failedIds = new Set(failedSeatIds || []);
+        selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
+            s.dataset.status = 'HELD';
+            s.disabled = true;
+            s.classList.remove('selected');
+        });
+        selectedSeats = selectedSeats.filter(s => !failedIds.has(Number(s.dataset.seatId)));
+    }
+
     bookBtn.addEventListener('click', async () => {
         if (selectedSeats.length === 0) return;
         bookBtn.disabled = true;
@@ -144,35 +173,21 @@
         const seatIds = selectedSeats.map(s => Number(s.dataset.seatId));
 
         try {
-            const res = await fetch('/api/reservations/hold', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [CSRF_HEADER]: CSRF_TOKEN
-                },
-                body: JSON.stringify({ seatIds, strategy: 'PESSIMISTIC' })
-            });
+            const result = await attemptHold(seatIds);
 
-            if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
-                location.href = '/login';
+            if (result.authRequired) {
+                // 로그인하고 돌아왔을 때 방금 고른 좌석 그대로 결제 페이지까지 바로 이어가기 위해 남겨둔다.
+                sessionStorage.setItem(PENDING_HOLD_KEY, JSON.stringify({ pathname: location.pathname, seatIds }));
+                location.href = '/login?returnTo=' + encodeURIComponent(location.pathname + location.search);
                 return;
             }
-            const data = await res.json();
 
-            if (res.ok) {
+            if (result.ok) {
                 // 결제 페이지로. 여기서 토스페이먼츠 결제창을 띄운다.
-                location.href = `/reservations/${data.reservationNo}/payment`;
+                location.href = `/reservations/${result.data.reservationNo}/payment`;
             } else {
-                alert(data.message);
-                // 실패한 좌석만 선택 해제하고 판매 불가로 표시한다. 나머지는 여전히 선택된 채로 둬서
-                // 사용자가 실패한 좌석만 바꿔 다시 시도할 수 있게 한다 (전체 재선택 강요 X).
-                const failedIds = new Set(data.failedSeatIds || []);
-                selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
-                    s.dataset.status = 'HELD';
-                    s.disabled = true;
-                    s.classList.remove('selected');
-                });
-                selectedSeats = selectedSeats.filter(s => !failedIds.has(Number(s.dataset.seatId)));
+                alert(result.data.message);
+                markFailedSeats(result.data.failedSeatIds);
                 renderPicked();
             }
         } catch (e) {
@@ -182,6 +197,44 @@
             bookBtn.disabled = selectedSeats.length === 0;
         }
     });
+
+    /** 로그인하느라 이 화면을 떠났다가 돌아온 직후라면, 아까 고르던 좌석을 화면에 그대로 표시하고
+        선점을 자동으로 재시도해 결제 페이지까지 바로 이어간다. */
+    (async function resumePendingHold() {
+        const raw = sessionStorage.getItem(PENDING_HOLD_KEY);
+        if (!raw) return;
+        sessionStorage.removeItem(PENDING_HOLD_KEY);
+
+        let pending;
+        try { pending = JSON.parse(raw); } catch { return; }
+        if (!pending || pending.pathname !== location.pathname) return;
+
+        pending.seatIds.forEach(seatId => {
+            const seat = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+            if (seat && seat.dataset.status === 'AVAILABLE') {
+                seat.classList.add('selected');
+                selectedSeats.push(seat);
+            }
+        });
+        renderPicked();
+        if (selectedSeats.length === 0) return;
+
+        bookBtn.disabled = true;
+        bookBtn.textContent = '선점 중...';
+        const result = await attemptHold(selectedSeats.map(s => Number(s.dataset.seatId)));
+
+        if (!result.authRequired && result.ok) {
+            location.href = `/reservations/${result.data.reservationNo}/payment`;
+            return;
+        }
+        if (!result.authRequired) {
+            alert(result.data.message);
+            markFailedSeats(result.data.failedSeatIds);
+        }
+        renderPicked();
+        bookBtn.textContent = '예매하기';
+        bookBtn.disabled = selectedSeats.length === 0;
+    })();
 </script>
 </body>
 </html>

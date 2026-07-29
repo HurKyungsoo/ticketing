@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="객석" height="44">
+
 # 객석 — 공공데이터 기반 공연 예매 시스템
 
 [![CI](https://github.com/HurKyungsoo/ticketing/actions/workflows/ci.yml/badge.svg)](https://github.com/HurKyungsoo/ticketing/actions/workflows/ci.yml)
@@ -369,4 +371,5 @@ docker compose up --build
 - [x] KOPIS 공연시설(prfplc) 연동 — 상세의 mt10id/mt13id 로 실제 좌석수(seatscale) 조회, 공연장 단위 캐시로 중복 호출 방지. 라이브 호출로 실제 좌석수(200석 고정이 아닌 20~458석 등 다양한 값) 반영 확인
 - [x] 다중 좌석 예매 — 예매 1건이 좌석 여러 개를 갖도록 도메인 확장(FK 를 `seat.reservation_id` 로 이동). 좌석은 항상 id 오름차순으로 잠가 데드락 방지, 하나라도 실패하면 전체 롤백(`PartialSeatHoldException`)
 - [x] Redis 분산 락(`DISTRIBUTED`) — `SET NX PX` + Lua CAS 해제, 5번째 전략으로 동일 조건 비교. Redis 없이도 앱 기동, 테스트는 embedded-redis 로 Docker 없이 측정
+- [ ] 카카오/네이버 소셜 로그인 — `spring-boot-starter-oauth2-client` + `CustomOAuth2UserService` 로 최초 로그인 시 자동 회원가입까지 구현 완료. 카카오/네이버 개발자 콘솔에서 REST API 키 발급 및 리다이렉트 URI 등록 대기 중(`KAKAO_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` 환경변수 미설정 상태)
 - [ ] AWS EC2 + RDS 배포 (CD)

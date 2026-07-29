@@ -5,23 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${performance.title}">공연 상세</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body class="page-detail">
 <div class="wrap">
-    <header class="masthead">
-        <h1><a th:href="@{/}">객석</a></h1>
-        <span class="tag">회차 선택</span>
-        <nav class="authnav">
-            <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
-            <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
-                <button type="submit" class="linklike">로그아웃</button>
-            </form>
-            <span sec:authorize="isAnonymous()" class="authbtns">
-                <a th:href="@{/login}" class="btn-login">로그인</a>
-                <a th:href="@{/signup}" class="btn-signup">회원가입</a>
-            </span>
-        </nav>
-    </header>
+    <header th:replace="~{fragment/header :: masthead(tag='회차 선택', showAuthNav=true)}"></header>
 
     <div class="detail">
         <div>

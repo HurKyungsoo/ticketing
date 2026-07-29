@@ -5,31 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>로그인</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body>
 <div class="wrap">
-    <header class="masthead">
-        <h1><a th:href="@{/}">객석</a></h1>
-        <span class="tag">로그인</span>
-    </header>
+    <header th:replace="~{fragment/header :: masthead(tag='로그인', showAuthNav=false)}"></header>
 
     <div class="authwrap">
-        <form class="authform" th:action="@{/login}" method="post">
+        <div class="authcard">
+            <div class="authhead">
+                <h2>로그인</h2>
+                <p>공연 예매를 시작하려면 로그인하세요.</p>
+            </div>
+
+            <!-- 좌석 선택 중 로그인으로 넘어온 경우. 로그인만 하면 고르던 좌석 그대로 이어진다는 걸 알려준다. -->
+            <p class="authnotice" th:if="${param.returnTo}">
+                로그인하면 선택하신 좌석으로 바로 이어집니다.
+            </p>
+
             <p class="autherror" th:if="${param.error}">아이디 또는 비밀번호가 올바르지 않습니다.</p>
 
-            <label>
-                아이디
-                <input type="text" name="username" required autofocus>
-            </label>
-            <label>
-                비밀번호
-                <input type="password" name="password" required>
-            </label>
+            <form class="authform" th:action="@{/login}" method="post">
+                <!-- 로그인 성공 후 돌아갈 화면. PostLoginRedirectHandler 가 이 값을 읽는다. -->
+                <input type="hidden" name="returnTo" th:if="${param.returnTo}" th:value="${param.returnTo[0]}">
 
-            <button type="submit">로그인</button>
-            <p class="authlink"><a th:href="@{/signup}">회원가입</a></p>
-        </form>
+                <label>
+                    아이디
+                    <input type="text" name="username" required autofocus autocomplete="username">
+                </label>
+                <label>
+                    비밀번호
+                    <span class="pwfield">
+                        <input type="password" name="password" id="password" required autocomplete="current-password">
+                        <button type="button" class="pwtoggle" aria-label="비밀번호 표시">보기</button>
+                    </span>
+                </label>
+
+                <button type="submit">로그인</button>
+            </form>
+
+            <div class="oauthdivider"><span>또는</span></div>
+
+            <div class="oauthbuttons">
+                <a class="oauthbtn oauthbtn-kakao"
+                   th:href="@{/oauth2/authorization/kakao(returnTo=${param.returnTo != null ? param.returnTo[0] : null})}">
+                    <svg class="oauthicon" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path fill="#000000" d="M9 2C4.582 2 1 4.94 1 8.56c0 2.32 1.53 4.36 3.84 5.53-.17.62-.6 2.19-.69 2.53-.11.42.16.42.33.3.14-.1 2.2-1.49 3.09-2.1.47.07.95.1 1.43.1 4.418 0 8-2.94 8-6.56C17 4.94 13.418 2 9 2z"/>
+                    </svg>
+                    카카오 로그인
+                </a>
+                <a class="oauthbtn oauthbtn-naver"
+                   th:href="@{/oauth2/authorization/naver(returnTo=${param.returnTo != null ? param.returnTo[0] : null})}">
+                    <svg class="oauthicon" viewBox="0 0 13.5 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path fill="#FAFAFA" d="M8.6 0v6.4L4.9 0H0v14h4.9V7.6L8.6 14H13.5V0z"/>
+                    </svg>
+                    네이버 로그인
+                </a>
+            </div>
+
+            <p class="authlink">아직 계정이 없으신가요? <a th:href="@{/signup}">회원가입</a></p>
+        </div>
     </div>
 </div>
+
+<script>
+    // 비밀번호 표시/숨김. 오타로 로그인 실패하는 경우를 줄인다.
+    const pwInput = document.getElementById('password');
+    const pwToggle = document.querySelector('.pwtoggle');
+    pwToggle.addEventListener('click', () => {
+        const shown = pwInput.type === 'text';
+        pwInput.type = shown ? 'password' : 'text';
+        pwToggle.textContent = shown ? '보기' : '숨기기';
+        pwToggle.setAttribute('aria-label', shown ? '비밀번호 표시' : '비밀번호 숨김');
+        pwInput.focus();
+    });
+</script>
 </body>
 </html>
