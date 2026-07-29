@@ -306,11 +306,20 @@ export KOPIS_SERVICE_KEY="발급받은_KOPIS_키"
 export TOSS_CLIENT_KEY="test_ck_..."
 export TOSS_SECRET_KEY="test_sk_..."
 
+# 2-2) 공연 상세의 공연장 위치 지도를 쓰려면 네이버 클라우드 플랫폼 Maps 신청
+#      console.ncloud.com > Maps > Application 등록, Dynamic Map 선택,
+#      Web 서비스 URL 에 http://localhost:8080 등록
+#      (키가 없어도 앱은 정상 동작한다 — 지도 없이 길찾기 링크만 노출)
+export NAVER_MAP_CLIENT_ID="발급받은_키"
+
 # 3) 실행 (H2, 파일 기반 - data/ 에 저장돼 재시작해도 유지된다)
 ./gradlew bootRun
 
-# 4) 공공데이터 수동 수집
-curl -X POST http://localhost:8080/api/admin/sync
+# 4) 공공데이터 수동 수집 (ROLE_ADMIN 필요 — 로컬 시드 계정 admin/admin)
+curl -u admin:admin -X POST http://localhost:8080/api/admin/sync
+
+#    전체 재수집이 필요하면 (기본은 KOPIS 증분 수집)
+curl -u admin:admin -X POST "http://localhost:8080/api/admin/sync?full=true"
 
 # 5) 접속
 open http://localhost:8080
@@ -329,11 +338,26 @@ H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:file:./data/tic
 export DB_USER=ticket
 export DB_PASSWORD=ticket
 export PUBLICDATA_SERVICE_KEY="발급받은_인코딩된_키"
+export KOPIS_SERVICE_KEY="발급받은_KOPIS_키"
 export TOSS_CLIENT_KEY="test_ck_..."
 export TOSS_SECRET_KEY="test_sk_..."
+# 선택 — 없으면 해당 기능만 빠지고 앱은 정상 기동된다
+export NAVER_MAP_CLIENT_ID="발급받은_지도_키"
+export KAKAO_CLIENT_ID="..."      # 소셜 로그인
+export KAKAO_CLIENT_SECRET="..."
+export NAVER_CLIENT_ID="..."
+export NAVER_CLIENT_SECRET="..."
 
 docker compose up --build
 ```
+
+`docker-compose.yml` 은 위 환경변수를 전부 전달하며, 없으면 `REPLACE_ME` 로 대체된다.
+**`KOPIS_SERVICE_KEY` 를 빠뜨리면 공연 대부분을 차지하는 KOPIS 소스가 통째로 수집되지
+않는다** — 이 경우 동기화 로그에 `KOPIS 목록 API 오류 응답` 경고가 남는다.
+
+`prod` 프로파일에는 `LocalDataSeeder` 가 동작하지 않아 **관리자 계정이 생성되지 않는다.**
+`/api/admin/**` 는 `ROLE_ADMIN` 이 필요하므로, 배포 환경에서는 관리자 계정을 따로
+만들어야 수동 동기화를 호출할 수 있다.
 
 앱은 `http://localhost:8080`, MariaDB 는 `localhost:3306` 로 노출된다.
 `docker-compose.yml` 은 `prod` 프로파일로 기동하며, `application.yml` 의

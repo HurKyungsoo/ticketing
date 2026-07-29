@@ -42,9 +42,20 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       DB_USER: ${DB_USER:-ticket}
       DB_PASSWORD: ${DB_PASSWORD:-ticket}
+      # 공공데이터포털(data.go.kr) 키. 표준데이터/문화정보 두 소스가 쓴다.
       PUBLICDATA_SERVICE_KEY: ${PUBLICDATA_SERVICE_KEY:-REPLACE_ME}
+      # KOPIS 키는 data.go.kr 이 아니라 kopis.or.kr 에서 별도 발급한다.
+      # 이게 빠지면 공연 대부분을 차지하는 KOPIS 소스가 통째로 수집되지 않는다.
+      KOPIS_SERVICE_KEY: ${KOPIS_SERVICE_KEY:-REPLACE_ME}
       TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-REPLACE_ME}
       TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-REPLACE_ME}
+      # 소셜 로그인. 없으면 폼 로그인만 동작한다.
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-REPLACE_ME}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-REPLACE_ME}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-REPLACE_ME}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-REPLACE_ME}
+      # 공연 상세의 공연장 위치 지도. 없으면 지도 없이 길찾기 링크만 나온다.
+      NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID:-REPLACE_ME}
       # application.yml 기본값은 localhost 라, 컨테이너 네트워크에서는 서비스명으로 덮어쓴다.
       SPRING_DATA_REDIS_HOST: redis
     ports:
