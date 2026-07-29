@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -176,7 +177,9 @@ public class PerformanceListService {
         int n = Math.min(topN, rows.size());
         for (int i = 0; i < n; i++) {
             FacetCountRow row = rows.get(i);
-            options.add(new Option(row.getLabel(), row.getLabel(), row.getCount(), row.getLabel().equals(selected)));
+            // 쿼리에서 이미 걸렀지만, 다른 소스가 빈 공연장명을 들고 와도 화면 전체가 죽지는 않도록 둔다.
+            options.add(new Option(row.getLabel(), row.getLabel(), row.getCount(),
+                    Objects.equals(row.getLabel(), selected)));
             shown += row.getCount();
         }
         long rest = rows.stream().mapToLong(FacetCountRow::getCount).sum() - shown;

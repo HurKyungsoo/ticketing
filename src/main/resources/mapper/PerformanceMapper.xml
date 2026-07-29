@@ -84,7 +84,9 @@
     <select id="selectVenueCounts" resultType="com.portfolio.ticket.mapper.dto.FacetCountRow">
         SELECT p.venue AS label, COUNT(*) AS count
           FROM performance p
-         WHERE 1 = 1
+         <!-- 공연장명이 없는 공연(문화정보 일부)은 고를 수 있는 필터 값이 아니다.
+              빼지 않으면 label 이 null 인 옵션이 만들어져 목록 화면이 NPE 로 죽는다. -->
+         WHERE p.venue IS NOT NULL AND p.venue &lt;&gt; ''
         <include refid="commonFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
         <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
