@@ -7,6 +7,7 @@ import com.portfolio.ticket.service.HoldStrategy;
 import com.portfolio.ticket.service.PartialSeatHoldException;
 import com.portfolio.ticket.service.ReservationFacade;
 import com.portfolio.ticket.service.ReservationService;
+import com.portfolio.ticket.service.SeatRegenerationService;
 import com.portfolio.ticket.service.SeatAlreadyTakenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class ReservationApiController {
     private final ReservationFacade reservationFacade;
     private final ReservationService reservationService;
     private final PerformanceSyncScheduler syncScheduler;
+    private final SeatRegenerationService seatRegenerationService;
 
     /** 좌석 선점. strategy 파라미터로 동시성 전략을 바꿔가며 측정할 수 있다. */
     @PostMapping("/seats/{seatId}/hold")
@@ -77,6 +79,22 @@ public class ReservationApiController {
         body.put("kopisMode", summary.kopisIncremental() ? "INCREMENTAL" : "FULL");
         body.put("kopisAfterDate", summary.kopisAfterDate());
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 기존 회차의 좌석을 현재 생성 규칙으로 다시 만든다. 규칙을 바꿔도 이미 쌓인 데이터에는
+     * 반영되지 않으므로 필요할 때 수동으로 호출한다. 예매가 있는 회차는 건너뛴다.
+     */
+    @PostMapping("/admin/seats/regenerate")
+    public ResponseEntity<?> regenerateSeats() {
+        SeatRegenerationService.Result result = seatRegenerationService.regenerateAll();
+        return ResponseEntity.ok(Map.of(
+                "scheduleCount", result.scheduleCount(),
+                "rebuilt", result.rebuilt(),
+                "skipped", result.skipped(),
+                "seatsBefore", result.seatsBefore(),
+                "seatsAfter", result.seatsAfter()
+        ));
     }
 
     private Map<String, Object> toResponse(PerformanceSyncScheduler.SourceSyncResult result) {
