@@ -71,6 +71,7 @@ public class PerformanceSyncService {
             } else {
                 performance.updateFromExternal(
                         external.getTitle(), external.getGenre(), external.getVenue(),
+                        external.getVenueFacilityId(), external.getVenueHallId(),
                         external.getAddress(), external.getLatitude(), external.getLongitude(),
                         external.getStartDate(), external.getEndDate(),
                         external.getPosterUrl(), external.getDescription(),
@@ -92,6 +93,8 @@ public class PerformanceSyncService {
                 .genre(e.getGenre())
                 .category(categoryResolver.resolve(e.getGenre()))
                 .venue(e.getVenue())
+                .venueFacilityId(e.getVenueFacilityId())
+                .venueHallId(e.getVenueHallId())
                 .address(e.getAddress())
                 .region(e.getRegion())
                 .latitude(e.getLatitude())

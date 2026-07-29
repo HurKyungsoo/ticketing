@@ -48,6 +48,24 @@ public class Performance {
     @Column(length = 200)
     private String venue;
 
+    /**
+     * KOPIS 공연시설 ID (mt10id, 예: "FC001231"). 시설은 "예술의전당" 같은 건물 단위다.
+     * KOPIS 상세에서만 채워지고 다른 소스는 null.
+     */
+    @Column(name = "venue_facility_id", length = 30)
+    private String venueFacilityId;
+
+    /**
+     * KOPIS 공연장 ID (mt13id, 예: "FC001231-01"). 시설 안의 개별 홀 단위다.
+     *
+     * venue(공연장명)는 시설 이름이라 다관 시설을 구분하지 못한다. "예술의전당" 하나에
+     * 콘서트홀(2,505석)·오페라극장(2,283석)·CJ토월극장(1,004석)이 섞여 있어서,
+     * 이름만으로 좌석 배치를 매칭하면 대부분 틀린 구조를 받게 된다.
+     * 표기가 바뀌어도 안 깨지는 홀 단위 키가 필요해서 남긴다.
+     */
+    @Column(name = "venue_hall_id", length = 30)
+    private String venueHallId;
+
     @Column(length = 300)
     private String address;
 
@@ -99,7 +117,8 @@ public class Performance {
      * 배치 재수집 시 변경분만 반영. category 는 매번 다시 계산해서 넣는다 — 예전에
      * sourceType/category 컬럼이 없던 시절 저장된 행(null)도 재동기화되면서 자연히 채워진다.
      */
-    public void updateFromExternal(String title, String genre, String venue, String address,
+    public void updateFromExternal(String title, String genre, String venue,
+                                   String venueFacilityId, String venueHallId, String address,
                                    Double latitude, Double longitude,
                                    LocalDate startDate, LocalDate endDate,
                                    String posterUrl, String description,
@@ -110,6 +129,9 @@ public class Performance {
         this.genre = genre;
         this.venue = venue;
         this.address = address;
+        // 홀/시설 ID 는 KOPIS 상세에서만 온다. 다른 소스로 갱신될 때 지워지지 않게 한다.
+        if (venueFacilityId != null) this.venueFacilityId = venueFacilityId;
+        if (venueHallId != null) this.venueHallId = venueHallId;
         // 좌표는 소스에 따라 없을 수 있다. null 로 덮어써서 이미 채워둔 값을 날리지 않는다.
         if (latitude != null) this.latitude = latitude;
         if (longitude != null) this.longitude = longitude;

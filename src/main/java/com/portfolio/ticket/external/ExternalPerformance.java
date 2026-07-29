@@ -25,6 +25,10 @@ public class ExternalPerformance {
     private String genre;
     private String venue;
     private String address;
+
+    /** KOPIS 공연시설 ID(mt10id) / 공연장 ID(mt13id). KOPIS 상세에서만 채워진다. */
+    private String venueFacilityId;
+    private String venueHallId;
     /** 시/도 단위 지역 (KOPIS/문화정보의 area). 표준데이터는 없어서 null. */
     private String region;
     private Double latitude;

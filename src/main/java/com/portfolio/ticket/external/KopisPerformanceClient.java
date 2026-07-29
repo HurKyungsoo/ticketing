@@ -224,6 +224,10 @@ public class KopisPerformanceClient {
                     .title(basic.getTitle())
                     .genre(basic.getGenre())
                     .venue(basic.getVenue())
+                    // 홀 ID 는 좌석 배치를 홀 단위로 매칭하기 위해 남긴다.
+                    // 공연장명(venue)은 시설 이름이라 다관 시설을 구분하지 못한다.
+                    .venueFacilityId(parser.text(item, "mt10id"))
+                    .venueHallId(parser.text(item, "mt13id"))
                     .address(address)
                     .region(area != null ? area : basic.getRegion())
                     .latitude(facility != null ? facility.latitude() : basic.getLatitude())
