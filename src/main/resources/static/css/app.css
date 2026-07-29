@@ -842,6 +842,14 @@ body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-b
 body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: var(--mute); margin: 0; }
 body.page-detail .spec dd { margin: 0; color: var(--paper); }
 
+/* white-space: pre-line 으로 원문의 줄바꿈(\n)을 그대로 살린다.
+   th:text 로 이스케이프해 넣으므로 <br> 없이도 안전하게 줄바꿈이 보인다. */
+body.page-detail .description {
+  font-size: 14px; line-height: 1.7; color: var(--paper);
+  white-space: pre-line;
+  margin: 0 0 36px;
+}
+
 body.page-detail .schedules { display: flex; flex-wrap: wrap; gap: 10px; }
 body.page-detail .schedules a {
   border: 1px solid var(--line-strong);

@@ -200,6 +200,10 @@ public class KopisPerformanceClient {
                     .startDate(basic.getStartDate())
                     .endDate(basic.getEndDate())
                     .posterUrl(basic.getPosterUrl())
+                    .description(parser.description(item, "sty"))
+                    .ageLimit(parser.text(item, "prfage"))
+                    .runningTime(parser.text(item, "prfruntime"))
+                    .castMembers(truncate(parser.text(item, "prfcast"), 500))
                     .totalSeatCount(seatCount != null ? seatCount : basic.getTotalSeatCount())
                     .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
                     .showTimesByDay(parseDtGuidance(parser.text(item, "dtguidance")))
@@ -370,6 +374,12 @@ public class KopisPerformanceClient {
             }
         }
         return result.isEmpty() ? null : result;
+    }
+
+    /** 컬럼 길이(500)를 넘는 prfcast(캐스팅 교체가 잦은 공연은 매우 길 수 있음)를 안전하게 자른다. */
+    private String truncate(String raw, int maxLength) {
+        if (raw == null || raw.length() <= maxLength) return raw;
+        return raw.substring(0, maxLength);
     }
 
     private List<JsonNode> toList(JsonNode arrayNode) {

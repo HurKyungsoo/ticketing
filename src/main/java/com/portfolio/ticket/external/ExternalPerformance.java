@@ -32,6 +32,11 @@ public class ExternalPerformance {
     private LocalDate startDate;
     private LocalDate endDate;
     private String posterUrl;
+    private String description;
+    /** 이하 셋은 KOPIS 상세(prfage/prfruntime/prfcast) 전용 — 다른 소스는 null. */
+    private String ageLimit;
+    private String runningTime;
+    private String castMembers;
     private Integer totalSeatCount;
     private Integer basePrice;
 

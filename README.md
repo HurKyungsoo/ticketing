@@ -268,6 +268,7 @@ SET seat:lock:{seatId} {token} NX PX 3000
 | KOPIS 응답 `Content-Type` 이 `application/xml` 이고 charset 이 없어서, `.body(String.class)` 로 먼저 String 을 받으면 Spring 이 ISO-8859-1 로 디코딩하고 그걸 다시 `.getBytes()`(플랫폼 기본 인코딩, 한글 Windows 라 MS949)로 바이트를 만드니 두 번 깨져서 한글이 전부 깨짐 (문화정보 클라이언트도 동일 패턴이라 같은 문제) | `.body(String.class)` 대신 `.body(byte[].class)` 로 원본 바이트를 그대로 받아 `XmlMapper` 에 넘김 — XML 선언(`encoding="UTF-8"`)으로 직접 인코딩을 판별하게 해서 중간 디코딩 단계를 아예 없앰 |
 | 목록의 "진행 현황" 필터가 아무 일도 안 함. 쿼리 파라미터는 소문자(`ongoing`)로 들어오는데 MyBatis 조건은 `f.status == 'ONGOING'` 대문자 비교라 `<if>` 가 항상 거짓 → 조건절이 통째로 빠져 `all`/`ongoing`/`ended` 가 전부 같은 505건. 예외가 안 나서 화면상 멀쩡해 보이는 게 함정 | `PerformanceListService.buildFilter()` 에서 `toUpperCase(Locale.ROOT)` 로 정규화. MyBatis 동적 SQL 은 조건이 안 맞아도 조용히 넘어가므로, 필터를 추가할 땐 값별 건수가 실제로 갈리는지 확인하는 습관이 필요 |
 | 검색 결과 0건일 때 `POST /api/admin/sync` 안내(관리자용)가 일반 사용자에게 노출. `result.total` 이 *필터 적용 후* 건수라 "DB 가 비었다" 와 "검색어가 안 맞다" 를 구분 못 함 | 0건일 때만 필터 없는 `countPerformances` 를 한 번 더 실행해 `libraryEmpty` 를 따로 판정. 평상시엔 추가 쿼리 없음 |
+| KOPIS 상세(prfcast, 출연진)를 담을 엔티티 필드명을 `cast` 로 지었더니 앱 기동 시 `ReservationConcurrencyTest` 전체가 `SQLGrammarException` 으로 실패. `CAST` 가 SQL 예약어(형변환 함수)라 Hibernate 가 만든 DDL/쿼리와 충돌 | 필드명을 `castMembers` 로 변경. JPA 필드/컬럼명을 지을 때 SQL 예약어(CAST, ORDER, GROUP, KEY 등)와 겹치지 않는지 먼저 확인하는 습관 필요 |
 
 ---
 

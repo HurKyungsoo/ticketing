@@ -70,7 +70,9 @@ public class PerformanceSyncService {
                 performance.updateFromExternal(
                         external.getTitle(), external.getGenre(), external.getVenue(),
                         external.getAddress(), external.getStartDate(), external.getEndDate(),
-                        external.getPosterUrl(), external.getTotalSeatCount(), external.getBasePrice(),
+                        external.getPosterUrl(), external.getDescription(),
+                        external.getAgeLimit(), external.getRunningTime(), external.getCastMembers(),
+                        external.getTotalSeatCount(), external.getBasePrice(),
                         external.getSourceType(), categoryResolver.resolve(external.getGenre()),
                         external.getRegion());
             }
@@ -94,6 +96,10 @@ public class PerformanceSyncService {
                 .startDate(e.getStartDate())
                 .endDate(e.getEndDate())
                 .posterUrl(e.getPosterUrl())
+                .description(e.getDescription())
+                .ageLimit(e.getAgeLimit())
+                .runningTime(e.getRunningTime())
+                .castMembers(e.getCastMembers())
                 .totalSeatCount(e.getTotalSeatCount())
                 .basePrice(e.getBasePrice())
                 .build();

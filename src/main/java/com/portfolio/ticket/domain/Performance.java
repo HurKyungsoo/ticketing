@@ -70,6 +70,21 @@ public class Performance {
     @Column(length = 1000)
     private String description;
 
+    /** KOPIS 상세(prfage). 표준데이터/문화정보에는 없어서 KOPIS 수집분만 채워진다. */
+    @Column(length = 50)
+    private String ageLimit;
+
+    /** KOPIS 상세(prfruntime). 예: "1시간 30분". */
+    @Column(length = 30)
+    private String runningTime;
+
+    /**
+     * KOPIS 상세(prfcast). 배우 이름을 쉼표로 나열한 원본 그대로.
+     * 필드명을 cast 로 두면 SQL 예약어(CAST 함수)와 충돌해 DDL/쿼리가 깨진다 — castMembers 로 회피.
+     */
+    @Column(length = 500)
+    private String castMembers;
+
     /** API 가 준 객석수. 좌석 자동 생성의 기준값. */
     private Integer totalSeatCount;
 
@@ -86,7 +101,9 @@ public class Performance {
      */
     public void updateFromExternal(String title, String genre, String venue, String address,
                                    LocalDate startDate, LocalDate endDate,
-                                   String posterUrl, Integer totalSeatCount, Integer basePrice,
+                                   String posterUrl, String description,
+                                   String ageLimit, String runningTime, String castMembers,
+                                   Integer totalSeatCount, Integer basePrice,
                                    SourceType sourceType, PerformanceCategory category, String region) {
         this.title = title;
         this.genre = genre;
@@ -95,6 +112,10 @@ public class Performance {
         this.startDate = startDate;
         this.endDate = endDate;
         if (posterUrl != null) this.posterUrl = posterUrl;
+        if (description != null) this.description = description;
+        if (ageLimit != null) this.ageLimit = ageLimit;
+        if (runningTime != null) this.runningTime = runningTime;
+        if (castMembers != null) this.castMembers = castMembers;
         if (totalSeatCount != null) this.totalSeatCount = totalSeatCount;
         if (basePrice != null) this.basePrice = basePrice;
         this.sourceType = sourceType;

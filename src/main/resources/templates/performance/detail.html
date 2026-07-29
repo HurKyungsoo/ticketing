@@ -30,7 +30,41 @@
                     <dd th:text="|${#temporals.format(performance.startDate,'yyyy.MM.dd')} – ${#temporals.format(performance.endDate,'yyyy.MM.dd')}|">-</dd>
                 </div>
                 <div><dt>객석수</dt><dd th:text="${performance.totalSeatCount} ?: '미상'">-</dd></div>
+                <!-- 실제 좌석에 매겨진 등급별 가격(gradePrices)을 우선 쓴다 — 예매 시 실제로
+                     결제되는 값이라 공공데이터 관람요금 문자열에서 뽑은 basePrice 보다 정확하다.
+                     회차가 아직 없어 좌석이 없는 경우에만 basePrice 로 대체한다. -->
+                <div th:if="${!gradePrices.isEmpty()}">
+                    <dt>관람료</dt>
+                    <dd>
+                        <span th:each="g, iter : ${gradePrices}">
+                            <span th:text="${g.grade}">VIP</span>
+                            <span th:text="${g.price == 0} ? '무료' : ${#numbers.formatInteger(g.price,0,'COMMA')} + '원'"></span><span th:unless="${iter.last}"> · </span>
+                        </span>
+                    </dd>
+                </div>
+                <div th:if="${gradePrices.isEmpty() and performance.basePrice != null}">
+                    <dt>관람료</dt>
+                    <dd th:text="${performance.basePrice == 0} ? '무료' : ${#numbers.formatInteger(performance.basePrice,0,'COMMA')} + '원부터'">-</dd>
+                </div>
+                <!-- 관람연령/러닝타임/출연진은 KOPIS 수집분에만 있다(표준데이터·문화정보는 없음). -->
+                <div th:if="${!#strings.isEmpty(performance.ageLimit)}">
+                    <dt>관람연령</dt><dd th:text="${performance.ageLimit}">-</dd>
+                </div>
+                <div th:if="${!#strings.isEmpty(performance.runningTime)}">
+                    <dt>러닝타임</dt><dd th:text="${performance.runningTime}">-</dd>
+                </div>
+                <div th:if="${!#strings.isEmpty(performance.castMembers)}">
+                    <dt>출연진</dt><dd th:text="${performance.castMembers}">-</dd>
+                </div>
             </dl>
+
+            <!-- 공공데이터에 줄거리(KOPIS sty)가 없는 공연도 많아 없으면 섹션째 숨긴다.
+                 원문의 줄바꿈은 th:text 로 그대로 이스케이프해 넣고 CSS white-space: pre-line 으로
+                 표시한다 (th:utext 로 <br> 를 직접 심으면 XSS 위험이 생긴다). -->
+            <th:block th:if="${!#strings.isEmpty(performance.description)}">
+                <h3 class="detail-heading">공연 소개</h3>
+                <p class="description" th:text="${performance.description}">설명</p>
+            </th:block>
 
             <h3 class="detail-heading">회차 선택</h3>
             <div class="schedules">

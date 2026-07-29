@@ -30,6 +30,11 @@ public class PublicDataParser {
     /** "전석 30,000원" / "R석 50000원, S석 30000원" 에서 첫 숫자를 뽑는다. */
     private static final Pattern PRICE_PATTERN = Pattern.compile("(\\d{1,3}(?:,\\d{3})+|\\d{4,})");
 
+    private static final Pattern BR_TAG_PATTERN = Pattern.compile("(?i)<br\\s*/?>");
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]*>");
+    /** Performance.description 컬럼 길이(1000)에 맞춘 상한. DB 저장 전에 여기서 자른다. */
+    private static final int DESCRIPTION_MAX_LENGTH = 1000;
+
     public String text(JsonNode node, String... candidateKeys) {
         for (String key : candidateKeys) {
             JsonNode value = node.get(key);
@@ -75,6 +80,28 @@ public class PublicDataParser {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 자유 텍스트 설명(KOPIS sty 등 <br> 태그·HTML 엔티티가 섞인 원본)을 평문으로 정제한다.
+     * 컬럼 길이를 넘으면 잘라서 반환 — 여기서 안 자르면 저장 시 배치 전체가 죽을 수 있다.
+     */
+    public String description(JsonNode node, String... candidateKeys) {
+        String raw = text(node, candidateKeys);
+        if (raw == null) return null;
+
+        String plain = HTML_TAG_PATTERN.matcher(BR_TAG_PATTERN.matcher(raw).replaceAll("\n")).replaceAll("")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replaceAll("[ \\t]+", " ")
+                .replaceAll("\\n{3,}", "\n\n")
+                .trim();
+
+        if (plain.isEmpty()) return null;
+        return plain.length() > DESCRIPTION_MAX_LENGTH ? plain.substring(0, DESCRIPTION_MAX_LENGTH) : plain;
     }
 
     /** 관람요금 문자열에서 기준가를 추출. 무료 공연은 0. */

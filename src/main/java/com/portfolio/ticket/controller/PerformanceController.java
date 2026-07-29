@@ -3,6 +3,7 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.mapper.SeatMapper;
+import com.portfolio.ticket.mapper.dto.GradePriceRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
@@ -107,8 +108,15 @@ public class PerformanceController {
                 .orElseThrow(() -> new IllegalArgumentException("공연을 찾을 수 없습니다."));
         List<PerformanceSchedule> schedules = scheduleRepository.findByPerformanceIdOrderByShowAtAsc(id);
 
+        // 등급별 가격은 회차 아무거나 하나로 대표한다 — 같은 공연의 모든 회차는 SeatGenerator 가
+        // 동일한 등급별 가격으로 좌석을 만든다. 회차가 하나도 없으면(수집 직후 등) 빈 목록.
+        List<GradePriceRow> gradePrices = schedules.isEmpty()
+                ? List.of()
+                : seatMapper.selectGradePrices(schedules.get(0).getId());
+
         model.addAttribute("performance", performance);
         model.addAttribute("schedules", schedules);
+        model.addAttribute("gradePrices", gradePrices);
         return "performance/detail";
     }
 

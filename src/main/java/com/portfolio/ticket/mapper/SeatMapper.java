@@ -1,6 +1,7 @@
 package com.portfolio.ticket.mapper;
 
 import com.portfolio.ticket.mapper.dto.CancelStatsRow;
+import com.portfolio.ticket.mapper.dto.GradePriceRow;
 import com.portfolio.ticket.mapper.dto.GradeSalesRow;
 import com.portfolio.ticket.mapper.dto.PerformanceSalesRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
@@ -17,6 +18,13 @@ import java.util.List;
 public interface SeatMapper {
 
     List<SeatMapRow> selectSeatMap(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 한 회차의 등급별 가격(중복 제거). 공연 상세 화면에서 "관람료" 대신 등급별 실제 가격을
+     * 보여줄 때 쓴다 — 같은 공연의 모든 회차는 SeatGenerator 가 동일한 등급별 가격으로
+     * 좌석을 생성하므로, 아무 회차 하나만 조회해도 공연 전체를 대표한다.
+     */
+    List<GradePriceRow> selectGradePrices(@Param("scheduleId") Long scheduleId);
 
     /** 일자별 매출 집계. 관리자 대시보드의 라인 차트이자, 요약 카드(총 매출/총 건수/객단가)의 원천이기도 하다. */
     List<SalesStatRow> selectDailySales(@Param("from") LocalDate from,
