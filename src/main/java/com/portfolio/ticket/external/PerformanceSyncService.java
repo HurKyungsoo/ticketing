@@ -69,7 +69,8 @@ public class PerformanceSyncService {
             } else {
                 performance.updateFromExternal(
                         external.getTitle(), external.getGenre(), external.getVenue(),
-                        external.getAddress(), external.getStartDate(), external.getEndDate(),
+                        external.getAddress(), external.getLatitude(), external.getLongitude(),
+                        external.getStartDate(), external.getEndDate(),
                         external.getPosterUrl(), external.getDescription(),
                         external.getAgeLimit(), external.getRunningTime(), external.getCastMembers(),
                         external.getTotalSeatCount(), external.getBasePrice(),

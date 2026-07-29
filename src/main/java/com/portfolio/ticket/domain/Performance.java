@@ -100,6 +100,7 @@ public class Performance {
      * sourceType/category 컬럼이 없던 시절 저장된 행(null)도 재동기화되면서 자연히 채워진다.
      */
     public void updateFromExternal(String title, String genre, String venue, String address,
+                                   Double latitude, Double longitude,
                                    LocalDate startDate, LocalDate endDate,
                                    String posterUrl, String description,
                                    String ageLimit, String runningTime, String castMembers,
@@ -109,6 +110,9 @@ public class Performance {
         this.genre = genre;
         this.venue = venue;
         this.address = address;
+        // 좌표는 소스에 따라 없을 수 있다. null 로 덮어써서 이미 채워둔 값을 날리지 않는다.
+        if (latitude != null) this.latitude = latitude;
+        if (longitude != null) this.longitude = longitude;
         this.startDate = startDate;
         this.endDate = endDate;
         if (posterUrl != null) this.posterUrl = posterUrl;

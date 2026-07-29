@@ -82,8 +82,8 @@ public class KopisPerformanceClient {
     private final PublicDataParser parser;
     private final XmlMapper xmlMapper = new XmlMapper();
 
-    /** 시설/홀 ID -> 좌석수. 앱 기동 내내 유지 — 같은 공연장이 배치마다 계속 재등장하므로 유효하다. */
-    private final Map<String, Integer> facilitySeatCountCache = new ConcurrentHashMap<>();
+    /** 시설/홀 ID -> 시설 정보. 앱 기동 내내 유지 — 같은 공연장이 배치마다 계속 재등장하므로 유효하다. */
+    private final Map<String, FacilityInfo> facilityCache = new ConcurrentHashMap<>();
 
     /**
      * @param afterDate 이 날짜 이후 등록/수정된 항목만 받는다(증분 수집). null 이면 전체.
@@ -211,7 +211,12 @@ public class KopisPerformanceClient {
 
             String area = parser.text(item, "area");
             String pcsGuidance = parser.text(item, "pcseguidance");
-            Integer seatCount = resolveSeatCount(item);
+            FacilityInfo facility = resolveFacility(item);
+
+            // region 은 지역 필터용이라 시도명(area)을 그대로 두고, address 만 시설의 도로명 주소로 승격한다.
+            String address = facility != null && facility.address() != null
+                    ? facility.address()
+                    : (area != null ? area : basic.getAddress());
 
             return ExternalPerformance.builder()
                     .externalId(basic.getExternalId())
@@ -219,10 +224,10 @@ public class KopisPerformanceClient {
                     .title(basic.getTitle())
                     .genre(basic.getGenre())
                     .venue(basic.getVenue())
-                    .address(area != null ? area : basic.getAddress())
+                    .address(address)
                     .region(area != null ? area : basic.getRegion())
-                    .latitude(basic.getLatitude())
-                    .longitude(basic.getLongitude())
+                    .latitude(facility != null ? facility.latitude() : basic.getLatitude())
+                    .longitude(facility != null ? facility.longitude() : basic.getLongitude())
                     .startDate(basic.getStartDate())
                     .endDate(basic.getEndDate())
                     .posterUrl(basic.getPosterUrl())
@@ -230,7 +235,8 @@ public class KopisPerformanceClient {
                     .ageLimit(parser.text(item, "prfage"))
                     .runningTime(parser.text(item, "prfruntime"))
                     .castMembers(truncate(parser.text(item, "prfcast"), 500))
-                    .totalSeatCount(seatCount != null ? seatCount : basic.getTotalSeatCount())
+                    .totalSeatCount(facility != null && facility.seatCount() != null
+                            ? facility.seatCount() : basic.getTotalSeatCount())
                     .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
                     .showTimesByDay(parseDtGuidance(parser.text(item, "dtguidance")))
                     .pricesByGrade(parsePcseGuidance(pcsGuidance))
@@ -242,28 +248,40 @@ public class KopisPerformanceClient {
     }
 
     /**
-     * 상세 응답의 mt10id(시설)/mt13id(홀)로 공연시설상세정보를 조회해 실제 좌석수를 얻는다.
-     * 캐시에 없을 때만 새로 호출하고, 그때만 호출 간 지연을 적용한다 (캐시 히트는 지연 없이 즉시 반환).
-     * 실패하면 null — 호출부가 기존 로직(venue-layouts.yml 또는 기본값 200석)으로 대체한다.
+     * 공연시설상세정보에서 뽑아 쓰는 값들. 좌석수만 홀(mt13id) 단위이고,
+     * 위경도/주소는 시설(mt10id) 단위라 같은 시설의 어느 홀이든 같은 값이다.
      */
-    private Integer resolveSeatCount(JsonNode item) {
+    private record FacilityInfo(Integer seatCount, Double latitude, Double longitude, String address) {
+
+        boolean isEmpty() {
+            return seatCount == null && latitude == null && longitude == null && address == null;
+        }
+    }
+
+    /**
+     * 상세 응답의 mt10id(시설)/mt13id(홀)로 공연시설상세정보를 조회한다.
+     * KOPIS 목록/상세에는 좌표가 없고 이 응답에만 la/lo/adres 가 있어서, 좌석수와 함께 여기서 같이 가져온다.
+     * 캐시에 없을 때만 새로 호출하고, 그때만 호출 간 지연을 적용한다 (캐시 히트는 지연 없이 즉시 반환).
+     * 실패하면 null — 호출부가 기존 로직(venue-layouts.yml 또는 기본값 200석, area 주소)으로 대체한다.
+     */
+    private FacilityInfo resolveFacility(JsonNode item) {
         String mt10id = parser.text(item, "mt10id");
         if (mt10id == null) return null;
         String mt13id = parser.text(item, "mt13id");
         String cacheKey = mt13id != null ? mt13id : mt10id;
 
-        Integer cached = facilitySeatCountCache.get(cacheKey);
+        FacilityInfo cached = facilityCache.get(cacheKey);
         if (cached != null) return cached;
 
-        Integer seatCount = fetchFacilitySeatCount(mt10id, mt13id);
-        if (seatCount != null) {
-            facilitySeatCountCache.put(cacheKey, seatCount);
+        FacilityInfo facility = fetchFacility(mt10id, mt13id);
+        if (facility != null) {
+            facilityCache.put(cacheKey, facility);
             sleepBetweenDetailCalls();
         }
-        return seatCount;
+        return facility;
     }
 
-    private Integer fetchFacilitySeatCount(String mt10id, String mt13id) {
+    private FacilityInfo fetchFacility(String mt10id, String mt13id) {
         URI uri = UriComponentsBuilder.fromUriString(properties.getKopisFacilityUrl() + "/" + mt10id)
                 .queryParam("service", properties.getKopisServiceKey())
                 .build(true)
@@ -271,7 +289,7 @@ public class KopisPerformanceClient {
 
         try {
             byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
-            return parseFacilitySeatCount(body, mt13id);
+            return parseFacility(body, mt13id);
         } catch (Exception e) {
             log.debug("KOPIS 공연시설 조회 실패. mt10id={}, msg={}", mt10id, e.getMessage());
             return null;
@@ -279,7 +297,7 @@ public class KopisPerformanceClient {
     }
 
     /** 다관 시설이면 mt13id 에 해당하는 홀의 좌석수를 우선 쓰고, 못 찾으면 시설 전체 좌석수로 대체한다. */
-    private Integer parseFacilitySeatCount(byte[] body, String mt13id) {
+    private FacilityInfo parseFacility(byte[] body, String mt13id) {
         if (body == null || body.length == 0) return null;
 
         try {
@@ -288,21 +306,32 @@ public class KopisPerformanceClient {
             if (item.isArray()) item = item.get(0);
             if (item == null || item.isMissingNode()) return null;
 
-            if (mt13id != null) {
-                JsonNode halls = item.path("mt13s").path("mt13");
-                List<JsonNode> hallList = halls.isMissingNode() ? List.of() : (halls.isArray() ? toList(halls) : List.of(halls));
-                for (JsonNode hall : hallList) {
-                    if (mt13id.equals(parser.text(hall, "mt13id"))) {
-                        Integer hallSeats = parser.number(hall, "seatscale");
-                        if (hallSeats != null) return hallSeats;
-                    }
-                }
-            }
-            return parser.number(item, "seatscale");
+            FacilityInfo facility = new FacilityInfo(
+                    resolveSeatScale(item, mt13id),
+                    parser.decimal(item, "la"),
+                    parser.decimal(item, "lo"),
+                    parser.text(item, "adres"));
+
+            // 전부 비어 있으면 캐시에 담아둘 이유가 없다. null 을 돌려 다음 기회에 다시 시도하게 둔다.
+            return facility.isEmpty() ? null : facility;
         } catch (Exception e) {
             log.debug("KOPIS 공연시설 응답 파싱 실패. msg={}", e.getMessage());
             return null;
         }
+    }
+
+    private Integer resolveSeatScale(JsonNode item, String mt13id) {
+        if (mt13id != null) {
+            JsonNode halls = item.path("mt13s").path("mt13");
+            List<JsonNode> hallList = halls.isMissingNode() ? List.of() : (halls.isArray() ? toList(halls) : List.of(halls));
+            for (JsonNode hall : hallList) {
+                if (mt13id.equals(parser.text(hall, "mt13id"))) {
+                    Integer hallSeats = parser.number(hall, "seatscale");
+                    if (hallSeats != null) return hallSeats;
+                }
+            }
+        }
+        return parser.number(item, "seatscale");
     }
 
     /**
