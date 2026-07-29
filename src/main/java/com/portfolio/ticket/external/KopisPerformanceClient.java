@@ -136,6 +136,8 @@ public class KopisPerformanceClient {
         }
 
         List<JsonNode> itemNodes = items.isArray() ? toList(items) : List.of(items);
+        if (isErrorResponse(itemNodes)) return List.of();
+
         List<ExternalPerformance> result = new ArrayList<>();
         for (JsonNode item : itemNodes) {
             ExternalPerformance parsed = ExternalPerformance.builder()
@@ -155,6 +157,23 @@ public class KopisPerformanceClient {
             }
         }
         return result;
+    }
+
+    /**
+     * KOPIS 는 인증키 오류도 정상 응답과 똑같은 {@code <dbs><db>} 구조로 내려준다.
+     * (예: {@code <db><returncode>02</returncode><errmsg>SERVICE KEY IS NOT REGISTERED ERROR</errmsg></db>})
+     * 그래서 db 노드 유무만 보면 인증 실패가 "0건 수집" 으로 조용히 묻힌다. errmsg 로 구분한다.
+     */
+    private boolean isErrorResponse(List<JsonNode> itemNodes) {
+        if (itemNodes.isEmpty()) return false;
+
+        JsonNode first = itemNodes.get(0);
+        String errmsg = parser.text(first, "errmsg");
+        if (errmsg == null) return false;
+
+        log.warn("KOPIS 목록 API 오류 응답. returncode={}, errmsg={}",
+                parser.text(first, "returncode"), errmsg);
+        return true;
     }
 
     /** 상세 호출/파싱 실패는 이 건만 목록 정보로 대체한다. 배치 전체를 막지 않는다. */
