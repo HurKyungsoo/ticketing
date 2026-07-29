@@ -60,7 +60,7 @@ public class ScheduleSeatRebuilder {
         seatRepository.flush();
 
         Performance performance = schedule.getPerformance();
-        int created = seatGenerator.generate(scheduleId, performance.getVenue(),
+        int created = seatGenerator.generate(scheduleId, performance.getVenueHallId(), performance.getVenue(),
                 performance.getTotalSeatCount(), performance.getBasePrice(), pricesByGrade);
 
         return new Result(true, before, created);

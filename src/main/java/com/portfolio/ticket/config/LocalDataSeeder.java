@@ -88,7 +88,8 @@ public class LocalDataSeeder implements CommandLineRunner {
         performanceRepository.saveAndFlush(performance);
 
         for (PerformanceSchedule schedule : performance.getSchedules()) {
-            seatGenerator.generate(schedule.getId(), venue, totalSeatCount, basePrice);
+            // 로컬 시드 공연은 KOPIS 에서 온 게 아니라 홀 ID 가 없다. 이름으로만 매칭된다.
+            seatGenerator.generate(schedule.getId(), null, venue, totalSeatCount, basePrice);
         }
     }
 

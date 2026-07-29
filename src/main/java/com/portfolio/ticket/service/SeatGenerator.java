@@ -50,19 +50,23 @@ public class SeatGenerator {
     private final PerformanceScheduleRepository scheduleRepository;
     private final VenueLayoutProperties venueLayoutProperties;
 
-    /** venueName 이 venue-layouts.yml 의 실제 구역 구조와 일치하면 그 구조로, 아니면 기본 로직으로 생성한다. */
+    /** 홀 ID/공연장명이 venue-layouts.yml 의 실제 구역 구조와 일치하면 그 구조로, 아니면 기본 로직으로 생성한다. */
     @Transactional
-    public int generate(Long scheduleId, String venueName, Integer totalSeatCount, Integer basePrice) {
-        return generate(scheduleId, venueName, totalSeatCount, basePrice, null);
+    public int generate(Long scheduleId, String venueHallId, String venueName,
+                        Integer totalSeatCount, Integer basePrice) {
+        return generate(scheduleId, venueHallId, venueName, totalSeatCount, basePrice, null);
     }
 
     /**
      * pricesByGrade 가 있으면(KOPIS pcseguidance 파싱 결과) 등급별 실제 가격을 그대로 쓰고,
      * 없는 등급이거나 맵 자체가 null 이면 기존처럼 basePrice 에 비율을 곱한다.
+     *
+     * @param venueHallId KOPIS 공연장 ID(mt13id). 좌석도 매칭에 공연장명보다 우선한다.
      */
     @Transactional
-    public int generate(Long scheduleId, String venueName, Integer totalSeatCount, Integer basePrice,
-                         Map<SeatGrade, Integer> pricesByGrade) {
+    public int generate(Long scheduleId, String venueHallId, String venueName,
+                        Integer totalSeatCount, Integer basePrice,
+                        Map<SeatGrade, Integer> pricesByGrade) {
         PerformanceSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다. id=" + scheduleId));
 
@@ -72,7 +76,7 @@ public class SeatGenerator {
         }
 
         int price = (basePrice == null || basePrice <= 0) ? DEFAULT_BASE_PRICE : basePrice;
-        List<VenueLayoutProperties.SectionLayout> layout = findLayout(venueName);
+        List<VenueLayoutProperties.SectionLayout> layout = findLayout(venueHallId, venueName);
 
         List<Seat> seats = (layout != null)
                 ? generateFromLayout(schedule, layout, price, pricesByGrade)
@@ -88,8 +92,8 @@ public class SeatGenerator {
         return seats.size();
     }
 
-    private List<VenueLayoutProperties.SectionLayout> findLayout(String venueName) {
-        return venueLayoutProperties.findSections(venueName);
+    private List<VenueLayoutProperties.SectionLayout> findLayout(String venueHallId, String venueName) {
+        return venueLayoutProperties.findSections(venueHallId, venueName);
     }
 
     private List<Seat> generateDefault(PerformanceSchedule schedule, Integer totalSeatCount, int price,

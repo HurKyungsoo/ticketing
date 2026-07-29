@@ -127,7 +127,7 @@ public class PerformanceSyncService {
         performanceRepository.flush();
 
         for (PerformanceSchedule schedule : performance.getSchedules()) {
-            seatGenerator.generate(schedule.getId(), performance.getVenue(),
+            seatGenerator.generate(schedule.getId(), performance.getVenueHallId(), performance.getVenue(),
                     performance.getTotalSeatCount(), performance.getBasePrice(), external.getPricesByGrade());
         }
     }
