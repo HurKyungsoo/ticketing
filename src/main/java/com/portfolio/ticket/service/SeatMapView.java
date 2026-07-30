@@ -14,6 +14,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 좌석 배치도를 화면 구조(무대 기준 배치 → 구역 → 줄 → 좌석)로 접는다.
@@ -35,6 +37,17 @@ public class SeatMapView {
     private final VenueLayoutProperties venueLayoutProperties;
 
     /**
+     * "1층 A" 처럼 끝에 구역 알파벳이 붙은 이름에서 tier/column 을 뽑아낸다.
+     *
+     * <p>좌석도(venue-layouts.yml)가 없는 홀(SeatGenerator.generateDefault 가 만든 기본 구조)은
+     * tier/column 을 좌석도로 넘길 방법이 없다 — 좌석 테이블에도 안 넣는다는 원칙이 여기도
+     * 그대로 적용된다. 대신 구역 이름 자체에 이미 순서 정보가 있으므로("1층 A" 다음이
+     * "1층 B") 조회 시점에 이름을 갈라서 같은 결론을 낸다. 두 자리 모두 없는 구역(예시극장의
+     * "1층뒤" 등 순수 한글 구역명)은 매치되지 않아 종전과 같이 tier="" 로 남는다.
+     */
+    private static final Pattern ZONE_SUFFIX = Pattern.compile("^(.*?)\\s?([A-Z])$");
+
+    /**
      * 좌석 한 줄. 통로 위치는 좌석마다 {@code aisleAfter} 로 들어 있어서 여기서 계산할 게 없다.
      *
      * @param rowNo 열 번호(1부터).
@@ -44,7 +57,9 @@ public class SeatMapView {
     /**
      * 한 구역(층) 블록.
      *
-     * @param name     구역 이름("1층", "합창석"). 층 구분이 없는 소극장은 빈 문자열이다.
+     * @param name     구역 이름("1층 A", "합창석"). 좌석도가 없는 기본 생성 홀도 A/B/C 로
+     *                 갈리므로 실질적으로 항상 값이 있다 — 이미 생성된 옛 데이터에만 빈
+     *                 문자열이 남아 있을 수 있다.
      * @param anchorId 구역 바로가기 링크용 id. 구역 이름에 한글·숫자가 섞여 그대로는 못 쓴다.
      */
     public record Floor(String name, String anchorId, List<Row> rows,
@@ -142,9 +157,24 @@ public class SeatMapView {
         int index = 0;
         for (String name : sectionNames) {
             SectionLayout section = layoutBySection.get(name);
-            SectionPosition position = (section != null) ? section.getPosition() : SectionPosition.FRONT;
-            String tier = (section != null) ? section.getTier() : "";
-            int column = (section != null) ? section.getColumn() : 0;
+            SectionPosition position;
+            String tier;
+            int column;
+            if (section != null) {
+                position = section.getPosition();
+                tier = section.getTier();
+                column = section.getColumn();
+            } else {
+                position = SectionPosition.FRONT;
+                Matcher m = ZONE_SUFFIX.matcher(name);
+                if (m.matches()) {
+                    tier = m.group(1);
+                    column = m.group(2).charAt(0) - 'A' + 1;
+                } else {
+                    tier = "";
+                    column = 0;
+                }
+            }
 
             bands.get(position)
                     .computeIfAbsent(tier, k -> new TreeMap<>())
