@@ -345,7 +345,7 @@ a { color: inherit; text-decoration: none; }
   width: fit-content;
   margin: 0 0 14px;
   font-family: var(--display);
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: .12em;
   color: var(--brass-dim);
@@ -406,8 +406,38 @@ a { color: inherit; text-decoration: none; }
    sticky 는 스크롤 컨테이너 왼쪽을 기준으로 잡히므로 열이 여러 개면 오른쪽 구역의 라벨까지
    전부 왼쪽 끝으로 몰려 다른 구역 좌석 위에 겹쳐 뜬다. 열이 하나인 홀에서는 종전대로 붙어 있다.
 */
-.housescroll.has-sides .rowlabel,
-.housescroll.has-sides .floorname { position: static; }
+.housescroll.has-sides .rowlabel { position: static; }
+/*
+   구역 이름도 같은 이유로 고정을 풀고, 그 구역의 좌석 폭 가운데로 옮긴다.
+
+   position: absolute 로 완전히 빼는 게 핵심이다. static 인 채로 width: 100% 나
+   overflow-wrap: anywhere 를 줘도 안 됐다 — 시도해봤지만 .zone 자체가 폭이 정해지지 않은
+   (shrink-to-fit) 컨테이너라서, 그 안에서는 % 도, "줄바꿈 가능하니 최소 폭을 줄여도 된다"는
+   힌트도 전부 콘텐츠 기준으로 되돌아갔다(리사이틀홀 왼쪽사이드처럼 좌석이 2칸뿐인 구역에서
+   "1층 왼쪽사이드" 라는 긴 이름이 좌석 폭 83px 보다 넓어(134px) 구역 전체를 그 이름 폭만큼
+   넓혀버리는 걸 실측으로 세 번 확인했다). 정상 흐름(normal flow) 안에 있는 한, 이 이름이
+   조상의 자동 크기 계산에 계속 끼어드는 구조 자체가 문제였다.
+
+   position: absolute 는 요소를 정상 흐름에서 완전히 빼므로, 사양상 조상의 shrink-to-fit
+   계산에 전혀 기여하지 않는다 — 그래서 .zone 의 폭이 순수하게 좌석(.house) 쪽으로만
+   결정되고, 이름은 그 확정된 폭 가운데에 얹힌 뒤 넘치면 알아서 줄바꿈된다.
+
+   흐름에서 빠지며 비는 자리는 .floor 의 padding-top 으로 미리 확보해야 한다. 좁은 구역에서
+   두 줄로 감쌀 수 있어(예: "1층" / "왼쪽사이드") 두 줄 분량으로 넉넉히 잡는다 — line-height
+   를 여기서 같이 고정해 두는 이유도 이 계산을 예측 가능하게 하려는 것이다. 구역 이름
+   font-size 를 바꾸면 이 값도 같이 맞춰야 한다.
+*/
+.housescroll.has-sides .floor { position: relative; padding-top: 57px; }
+.housescroll.has-sides .floorname {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  margin: 0;
+  line-height: 1.25;
+  text-align: center;
+}
 
 /*
    부채꼴 호(arc). 실제 극장 줄은 무대를 중심으로 휘어 있어서 양끝이 무대에 더 가깝다.
