@@ -1,12 +1,14 @@
 package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.SeatGrade;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -32,6 +34,45 @@ import java.util.function.Function;
 public class VenueLayoutProperties {
 
     private List<VenueLayout> layouts = new ArrayList<>();
+
+    /**
+     * 설정 오류는 기동할 때 바로 터뜨린다.
+     *
+     * <p>좌석도는 외부 API 응답이 아니라 우리가 직접 쓰는 파일이다(그쪽은 CLAUDE.md 대로 건별
+     * 스킵한다). 오타를 조용히 넘기면 엉뚱한 좌석이 수만 개 만들어진 뒤에야 알게 되고,
+     * 되돌리려면 회차 전체를 재생성해야 한다.
+     */
+    @PostConstruct
+    void validate() {
+        for (VenueLayout layout : layouts) {
+            String where = layout.getHallId() != null ? layout.getHallId() : layout.getVenueName();
+            if (layout.getSections() == null || layout.getSections().isEmpty()) {
+                throw new IllegalStateException("좌석도에 sections 가 없습니다. venue-layouts.yml: " + where);
+            }
+            for (SectionLayout section : layout.getSections()) {
+                validateSection(where, section);
+            }
+        }
+    }
+
+    private void validateSection(String where, SectionLayout section) {
+        String at = where + " / " + section.getName();
+        if (section.getName() == null || section.getName().isBlank()) {
+            throw new IllegalStateException("구역 이름이 비어 있습니다. venue-layouts.yml: " + where);
+        }
+        if (section.getGrade() == null) {
+            throw new IllegalStateException("구역 등급(grade)이 없습니다. venue-layouts.yml: " + at);
+        }
+
+        boolean rectangle = section.getRows() > 0 && section.getSeatsPerRow() > 0;
+        if (section.hasSeatCounts() == rectangle) {
+            throw new IllegalStateException(
+                    "seatCounts 와 rows/seatsPerRow 중 정확히 하나만 적어야 합니다. venue-layouts.yml: " + at);
+        }
+        if (section.hasSeatCounts() && section.getSeatCounts().stream().anyMatch(n -> n == null || n <= 0)) {
+            throw new IllegalStateException("seatCounts 에 0 이하 값이 있습니다. venue-layouts.yml: " + at);
+        }
+    }
 
     /**
      * 홀 ID 로 먼저 찾고, 못 찾으면 공연장명으로 찾는다.
@@ -69,8 +110,28 @@ public class VenueLayoutProperties {
     @Setter
     public static class SectionLayout {
         private String name;
+
+        /** 직사각형 구역용. seatCounts 를 쓰면 무시된다. */
         private int rows;
         private int seatsPerRow;
+
+        /**
+         * 줄별 좌석 수. 실제 극장은 뒤로 갈수록 넓어지는 부채꼴이라 줄마다 좌석 수가 다르다.
+         * {@code [30, 31, 32, ...]} 처럼 앞줄부터 차례로 적는다.
+         *
+         * <p>이걸 쓰면 rows/seatsPerRow 는 필요없다. 둘 중 하나만 적어야 한다.
+         */
+        private List<Integer> seatCounts;
+
         private SeatGrade grade;
+
+        /** 줄별 좌석 수. seatCounts 가 있으면 그대로, 없으면 rows x seatsPerRow 직사각형. */
+        public List<Integer> rowSizes() {
+            return hasSeatCounts() ? seatCounts : Collections.nCopies(rows, seatsPerRow);
+        }
+
+        public boolean hasSeatCounts() {
+            return seatCounts != null && !seatCounts.isEmpty();
+        }
     }
 }

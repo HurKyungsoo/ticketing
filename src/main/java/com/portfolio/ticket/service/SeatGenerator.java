@@ -169,21 +169,24 @@ public class SeatGenerator {
     /**
      * 구역마다 줄(1열, 2열...) x 좌석 구조로 만든다. 등급은 구역 단위로 고정.
      *
-     * <p>줄 수에 상한이 없다. yml 은 사람이 직접 쓰는 파일이라 실제 극장 그대로
-     * 30줄짜리 구역도 들어올 수 있는데(예술의전당 콘서트홀 1층이 실제로 31줄이다),
-     * 전에는 26줄을 넘기면 구역명이 깨졌다.
+     * <p>줄 수에 상한이 없고, {@code seatCounts} 로 줄마다 좌석 수를 다르게 줄 수 있다.
+     * 실제 극장은 뒤로 갈수록 넓어지는 부채꼴이라 직사각형으로는 형태가 안 나온다.
+     * 화면은 줄을 가운데 정렬하므로(app.css 의 {@code .row { margin-inline: auto }})
+     * 줄 길이만 달라지면 부채꼴이 그대로 그려진다.
      */
     private List<Seat> generateFromLayout(PerformanceSchedule schedule,
                                           List<VenueLayoutProperties.SectionLayout> layout, int price,
                                           Map<SeatGrade, Integer> pricesByGrade) {
         List<Seat> seats = new ArrayList<>();
         for (VenueLayoutProperties.SectionLayout section : layout) {
-            for (int row = 1; row <= section.getRows(); row++) {
-                for (int seatNo = 1; seatNo <= section.getSeatsPerRow(); seatNo++) {
+            // 줄마다 좌석 수가 다를 수 있다 (seatCounts). 직사각형 구역은 같은 값이 반복된다.
+            List<Integer> rowSizes = section.rowSizes();
+            for (int row = 0; row < rowSizes.size(); row++) {
+                for (int seatNo = 1; seatNo <= rowSizes.get(row); seatNo++) {
                     seats.add(Seat.builder()
                             .schedule(schedule)
                             .section(section.getName())
-                            .rowNo(row)
+                            .rowNo(row + 1)
                             .seatNo(seatNo)
                             .grade(section.getGrade())
                             .status(SeatStatus.AVAILABLE)
