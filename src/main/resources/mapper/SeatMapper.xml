@@ -9,6 +9,7 @@
                s.section   AS section,
                s.row_no    AS row_no,
                s.seat_no   AS seat_no,
+               s.aisle_after AS aisle_after,
                s.grade     AS grade,
                s.status    AS status,
                s.price     AS price

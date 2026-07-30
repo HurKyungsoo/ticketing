@@ -52,6 +52,16 @@ public class Seat {
     @Column(nullable = false)
     private int seatNo;
 
+    /**
+     * 이 좌석 오른쪽에 통로가 있는지. 블록 경계에 해당하는 좌석에만 true 다.
+     *
+     * <p>전에는 화면이 "N석마다 통로"로 추정했다. 줄 길이가 같을 때만 성립하는 규칙이라
+     * 부채꼴 구역에서는 통로가 세로로 어긋나 아예 뺄 수밖에 없었다. 통로 위치는 추정할 게
+     * 아니라 좌석도가 아는 사실이므로 생성 시점에 좌석에 기록한다.
+     */
+    @Column(nullable = false)
+    private boolean aisleAfter;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private SeatGrade grade;

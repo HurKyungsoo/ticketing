@@ -43,7 +43,7 @@
                     <span class="rowlabel" th:text="${row.rowNo}">1</span>
                     <button type="button" class="seat"
                             th:each="seat : ${row.seats}"
-                            th:classappend="|grade-${seat.grade}${row.aisleEvery > 0 and seat.seatNo % row.aisleEvery == 0 ? ' aisle' : ''}|"
+                            th:classappend="|grade-${seat.grade}${seat.aisleAfter ? ' aisle' : ''}|"
                             th:attr="data-status=${seat.status},
                                      data-seat-id=${seat.seatId},
                                      data-label=${seat.label},

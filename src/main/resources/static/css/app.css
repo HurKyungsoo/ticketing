@@ -321,7 +321,8 @@ a { color: inherit; text-decoration: none; }
 .seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
 .seat.selected { background: var(--brass); border-color: var(--brass); }
 /*
-   통로. 실제 극장처럼 좌석 사이에 여백을 준다 (몇 석마다 둘지는 SeatMapView.aisleEveryFor).
+   통로. 실제 극장처럼 블록 사이에 여백을 준다. 어느 좌석 뒤에 통로가 오는지는
+   좌석 생성 시점에 seat.aisle_after 로 기록되므로 화면은 그 값만 따른다.
 
    여기에 점선 구분선을 ::after 로 그리고 있었는데, ::after 는 위에서 등급·가격 툴팁으로
    이미 쓰는 자리다. .seat.aisle::after 가 .seat::after 보다 구체적이어서 통로 좌석마다

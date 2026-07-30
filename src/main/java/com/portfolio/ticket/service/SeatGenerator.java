@@ -31,6 +31,8 @@ import java.util.Map;
 public class SeatGenerator {
 
     private static final int SEATS_PER_ROW = 20;
+    /** 규모별 기본 구조의 통로 간격. 실제 통로 위치는 venue-layouts.yml 의 블록으로만 알 수 있다. */
+    private static final int AISLE_EVERY = 5;
     private static final int DEFAULT_SEAT_COUNT = 200;
     private static final int DEFAULT_BASE_PRICE = 50_000;
 
@@ -114,11 +116,20 @@ public class SeatGenerator {
             for (int i = 0; i < floor.seats(); i++) {
                 SeatGrade grade = gradeOf(index, total);
 
+                int seatNo = (i % SEATS_PER_ROW) + 1;
+                // 규모별 기본 구조에는 실제 통로 정보가 없어서 5석마다 균등하게 넣는다.
+                // 줄 끝에는 두지 않는다 — 여백만 생기고 구분 효과가 없다. 층 좌석 수가 20 으로
+                // 나누어떨어지지 않으면 마지막 줄이 짧으므로, 20번째인지가 아니라
+                // "이 줄의 마지막 좌석인지"로 판단해야 한다.
+                boolean lastInRow = seatNo == SEATS_PER_ROW || i == floor.seats() - 1;
+                boolean aisle = seatNo % AISLE_EVERY == 0 && !lastInRow;
+
                 seats.add(Seat.builder()
                         .schedule(schedule)
                         .section(floor.name())
                         .rowNo((i / SEATS_PER_ROW) + 1)
-                        .seatNo((i % SEATS_PER_ROW) + 1)
+                        .seatNo(seatNo)
+                        .aisleAfter(aisle)
                         .grade(grade)
                         .status(SeatStatus.AVAILABLE)
                         .price(resolvePrice(grade, price, pricesByGrade))
@@ -182,15 +193,29 @@ public class SeatGenerator {
             // 줄마다 좌석 수가 다를 수 있다 (seatCounts). 직사각형 구역은 같은 값이 반복된다.
             List<Integer> rowSizes = section.rowSizes();
             for (int row = 0; row < rowSizes.size(); row++) {
-                for (int seatNo = 1; seatNo <= rowSizes.get(row); seatNo++) {
+                int rowSize = rowSizes.get(row);
+                // 중앙 블록은 폭이 고정이고 좌우가 부채꼴 변화를 흡수한다. 나누어떨어지지
+                // 않으면 왼쪽에 한 석을 더 준다(어느 쪽이든 한 석 차이라 임의로 정한다).
+                int sides = section.hasBlocks() ? rowSize - section.getCenterSeats() : 0;
+                int leftEnd = (sides + 1) / 2;
+                int centerEnd = rowSize - sides / 2;
+
+                for (int seatNo = 1; seatNo <= rowSize; seatNo++) {
+                    boolean inCenter = !section.hasBlocks() || (seatNo > leftEnd && seatNo <= centerEnd);
+                    SeatGrade grade = inCenter ? section.getGrade() : section.getSideGrade();
+                    // 블록 경계 좌석 뒤에만 통로. 줄 끝에는 두지 않는다(빈 여백만 생긴다).
+                    boolean aisle = section.hasBlocks() && (seatNo == leftEnd || seatNo == centerEnd)
+                            && seatNo < rowSize;
+
                     seats.add(Seat.builder()
                             .schedule(schedule)
                             .section(section.getName())
                             .rowNo(row + 1)
                             .seatNo(seatNo)
-                            .grade(section.getGrade())
+                            .aisleAfter(aisle)
+                            .grade(grade)
                             .status(SeatStatus.AVAILABLE)
-                            .price(resolvePrice(section.getGrade(), price, pricesByGrade))
+                            .price(resolvePrice(grade, price, pricesByGrade))
                             .build());
                 }
             }

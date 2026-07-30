@@ -11,6 +11,8 @@ public class SeatMapRow {
     private String section;
     private int rowNo;
     private int seatNo;
+    /** 이 좌석 오른쪽에 통로가 있는지. 좌석도가 아는 사실이라 화면에서 추정하지 않는다. */
+    private boolean aisleAfter;
     private String grade;
     private String status;
     private int price;
