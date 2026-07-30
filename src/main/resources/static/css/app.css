@@ -216,12 +216,15 @@ a { color: inherit; text-decoration: none; }
 }
 
 /*
-   무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽 줄에, 정면 좌·중앙·우 구역은 무대
-   아래 한 줄에 나란히 놓는다. 좌석도에 위치를 적지 않은 홀은 정면 줄에 열이 하나만 생겨서
-   종전과 똑같이 구역이 위에서 아래로 쌓인다.
+   무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽에, 정면 구역은 무대 아래에 놓는다.
+   zoneline 하나가 한 층(밴드)이고, 그 안의 열(zone)들이 가로로 나란히 놓인다 — 실제 좌석도가
+   한 층을 A~E 같은 좌우 구역으로 나누기 때문이다. 열 하나에 구역이 여럿이면 위에서 아래로 쌓인다.
+   좌석도에 층을 적지 않은 홀은 열이 하나뿐인 밴드가 되어 종전과 똑같이 쌓인다.
 */
 .zoneline { display: flex; gap: var(--zone-gap); padding: 0 var(--tooltip-bleed); }
-.zoneline-rear { margin-bottom: 14px; }
+.zoneline + .zoneline { margin-top: 44px; }
+/* 무대 뒤 밴드와 무대 사이는 좁게 — 무대 뒤 좌석은 무대에 붙어 있다. */
+.zoneline + .stage { margin-top: 14px; }
 .zone { display: flex; flex-direction: column; }
 /*
    열 묶음을 가운데로. justify-content: center 는 쓰면 안 된다 — 내용이 컨테이너보다 넓어지는

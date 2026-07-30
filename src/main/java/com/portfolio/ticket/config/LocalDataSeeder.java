@@ -57,8 +57,12 @@ public class LocalDataSeeder implements CommandLineRunner {
         seedPerformance("SEED-MUSICAL-1", "라이트 인 더 스카이", "뮤지컬", "블루스퀘어", 400, 120_000);
         seedPerformance("SEED-PLAY-1", "안녕, 그 여름", "연극", "대학로 예술극장", 150, 45_000);
         seedPerformance("SEED-CLASSIC-1", "필하모닉 정기연주회", "클래식", "예술의전당 콘서트홀", 300, 80_000);
+        // 좌석도가 지정된 나머지 두 홀. 무대를 감싸는 구조(롯데)와 한 층이 A~H 로 갈리는
+        // 구조(세종)를 로컬에서 눈으로 확인하려면 회차가 있어야 한다.
+        seedPerformance("SEED-CLASSIC-2", "오르간 리사이틀", "클래식", "롯데콘서트홀", 2_036, 70_000);
+        seedPerformance("SEED-MUSICAL-2", "그날의 노래", "뮤지컬", "세종문화회관 대극장", 3_022, 110_000);
 
-        log.info("로컬 시드 공연 3개 생성 완료 (공연당 회차 {}개)", SCHEDULE_COUNT);
+        log.info("로컬 시드 공연 5개 생성 완료 (공연당 회차 {}개)", SCHEDULE_COUNT);
     }
 
     private void seedPerformance(String externalId, String title, String genre, String venue,

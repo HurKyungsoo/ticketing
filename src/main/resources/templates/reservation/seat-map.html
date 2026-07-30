@@ -38,23 +38,19 @@
         같이 스크롤돼야 어느 좌석이 무대 정면인지가 유지된다.
     -->
     <div class="housescroll" id="housescroll" th:classappend="${arena.hasSides()} ? 'has-sides'">
-        <div class="zoneline zoneline-rear" th:if="${!arena.rear.isEmpty()}">
-            <div class="zone">
-                <th:block th:replace="~{fragment/seatzone :: floors(${arena.rear})}"></th:block>
+        <!-- 무대 뒤 밴드. 무대보다 위에 와야 무대 뒤 좌석으로 읽힌다. -->
+        <div class="zoneline" th:each="band : ${arena.rear}">
+            <div class="zone" th:each="column : ${band.columns}">
+                <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
             </div>
         </div>
 
         <div class="stage">STAGE</div>
 
-        <div class="zoneline zoneline-front">
-            <div class="zone" th:if="${!arena.left.isEmpty()}">
-                <th:block th:replace="~{fragment/seatzone :: floors(${arena.left})}"></th:block>
-            </div>
-            <div class="zone" th:if="${!arena.center.isEmpty()}">
-                <th:block th:replace="~{fragment/seatzone :: floors(${arena.center})}"></th:block>
-            </div>
-            <div class="zone" th:if="${!arena.right.isEmpty()}">
-                <th:block th:replace="~{fragment/seatzone :: floors(${arena.right})}"></th:block>
+        <!-- 정면 밴드. 층마다 한 줄이고, 한 층이 A~E 로 갈리면 그 줄에 열이 다섯 개 생긴다. -->
+        <div class="zoneline" th:each="band : ${arena.front}">
+            <div class="zone" th:each="column : ${band.columns}">
+                <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
             </div>
         </div>
     </div>

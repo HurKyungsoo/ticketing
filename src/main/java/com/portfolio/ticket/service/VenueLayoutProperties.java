@@ -36,19 +36,18 @@ public class VenueLayoutProperties {
     private List<VenueLayout> layouts = new ArrayList<>();
 
     /**
-     * 구역이 무대를 기준으로 어디에 놓이는지. <b>화면 배치에만 쓴다</b> — 좌석 테이블에는 없다.
+     * 구역이 무대 앞인지 뒤인지. <b>화면 배치에만 쓴다</b> — 좌석 테이블에는 없다.
      *
      * <p>좌석의 정체성은 "구역 N열 M번" 이고 위치는 그 구역이 홀에서 어디냐는 별개의 사실이다.
      * 좌석마다 들고 있어도 구역 단위로 항상 같은 값이라 중복이고, 위치를 고치려면 좌석 수만
      * 개를 다시 만들어야 한다. 좌석도(venue-layouts.yml)가 아는 사실이므로 조회 시점에 붙인다.
+     *
+     * <p>좌우는 여기가 아니라 {@link SectionLayout#getColumn()} 이 정한다 — 실제 좌석도의 가로
+     * 구역 수가 홀마다 다르다(세종문화회관 대극장은 1층 A~E 5개, 3층 A~H 8개다).
      */
     public enum SectionPosition {
         /** 무대 정면. 기본값이고, 좌석도가 없는 홀의 모든 구역이 여기 들어간다. */
-        CENTER,
-        /** 무대 정면에서 왼쪽. 빈야드형처럼 객석이 무대를 감싸는 홀에서 쓴다. */
-        LEFT,
-        /** 무대 정면에서 오른쪽. */
-        RIGHT,
+        FRONT,
         /** 무대 뒤(합창석 등). 화면에서는 무대 위쪽에 그린다. */
         REAR
     }
@@ -81,10 +80,14 @@ public class VenueLayoutProperties {
         if (section.getGrade() == null) {
             throw new IllegalStateException("구역 등급(grade)이 없습니다. venue-layouts.yml: " + at);
         }
-        // 값 없이 "position:" 만 적으면 null 이 된다. 기본값(CENTER)은 생략했을 때만 남는다.
+        // 값 없이 "position:"/"tier:" 만 적으면 null 이 된다. 기본값은 생략했을 때만 남는다.
         if (section.getPosition() == null) {
             throw new IllegalStateException(
                     "구역 위치(position)가 비어 있습니다. 무대 정면이면 줄 자체를 생략하세요. venue-layouts.yml: " + at);
+        }
+        if (section.getTier() == null) {
+            throw new IllegalStateException(
+                    "구역 층(tier)이 비어 있습니다. 나란히 놓지 않으면 줄 자체를 생략하세요. venue-layouts.yml: " + at);
         }
 
         boolean rectangle = section.getRows() > 0 && section.getSeatsPerRow() > 0;
@@ -183,14 +186,36 @@ public class VenueLayoutProperties {
         private SeatGrade grade;
 
         /**
-         * 무대 기준 위치. 생략하면 CENTER 다 — 무대 정면 한 덩어리인 홀은 아무것도 적을 필요가 없다.
+         * 무대 앞/뒤. 생략하면 FRONT 다 — 무대 뒤 구역이 없는 홀은 적을 필요가 없다.
          *
          * <p>여기 적은 순서가 곧 화면 표시 순서다. 전에는 좌석 조회의 {@code ORDER BY section} 에
          * 기대서 구역명 사전순으로 그렸고, 그 탓에 무대에서 먼 구역이 위에 오지 않게 하려고
          * 이름에 접두어 트릭("1층" -> "1층뒤")을 써야 했다. 순서는 이름이 아니라 좌석도가
          * 정하는 게 맞다.
          */
-        private SectionPosition position = SectionPosition.CENTER;
+        private SectionPosition position = SectionPosition.FRONT;
+
+        /**
+         * 같은 층(밴드)으로 묶을 이름. 같은 tier 를 가진 구역들이 화면에서 <b>가로로 나란히</b> 놓인다.
+         *
+         * <p>실제 좌석도는 한 층을 좌우 구역으로 나눈다 — 세종문화회관 대극장은 1층이 A~E,
+         * 3층이 A~H 다. 층이 다르면 서로 다른 밴드여야 하므로, 가로 위치({@link #column})만으로는
+         * 부족하고 "어느 층의 가로 몇 번째"인지 둘 다 필요하다.
+         *
+         * <p>생략하면 빈 문자열이라 tier 를 안 적은 구역들이 모두 한 밴드에 들어간다. 즉 좌석도가
+         * 없는 홀이나 층을 나란히 놓지 않는 홀은 종전처럼 위에서 아래로 쌓인다.
+         */
+        private String tier = "";
+
+        /**
+         * 밴드 안에서 왼쪽부터 몇 번째 열인지. 값이 같은 구역들은 그 열에 위에서 아래로 쌓인다.
+         *
+         * <p>예: 롯데콘서트홀 1층은 좌(LP·L) | 중앙(A~E) | 우(R·RP) 세 열이고, 중앙 열에는
+         * A~E 가 앞에서 뒤로 쌓인다. 세종문화회관 대극장 1층은 A~E 가 각자 다른 열이라 다섯 열이다.
+         *
+         * <p>연속된 값일 필요는 없다(정렬만 한다). 생략하면 0 이라 한 열에 쌓인다.
+         */
+        private int column;
 
         /**
          * 중앙 블록 좌석 수(고정). 지정하면 각 줄이 좌 | 중앙 | 우 세 블록으로 나뉘고

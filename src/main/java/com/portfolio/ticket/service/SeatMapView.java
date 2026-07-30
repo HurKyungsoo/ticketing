@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * 좌석 배치도를 화면 구조(무대 기준 배치 → 구역 → 줄 → 좌석)로 접는다.
@@ -50,34 +51,46 @@ public class SeatMapView {
                         int seatCount, int availableCount) {}
 
     /**
-     * 무대를 기준으로 놓인 좌석도. 화면은 이걸 두 줄로 그린다.
+     * 한 층(밴드). 가로로 나란히 놓이는 열들의 묶음이고, 열마다 구역이 위에서 아래로 쌓인다.
+     *
+     * <p>세종문화회관 대극장 1층처럼 한 층이 A~E 다섯 구역으로 갈리는 홀을 표현한다.
+     * 좌석도에 {@code tier} 를 적지 않은 구역들은 열이 하나뿐인 밴드로 묶여서 종전과 같다.
+     */
+    public record Band(List<List<Floor>> columns) {}
+
+    /**
+     * 무대를 기준으로 놓인 좌석도. 화면은 무대 뒤 밴드 → 무대 → 정면 밴드 순으로 그린다.
      *
      * <pre>
-     *          [ rear ]        무대 뒤 (합창석 등)
-     *          [ STAGE ]
-     *   [ left ] [ center ] [ right ]
+     *        [ rear 밴드 ]                무대 뒤 (합창석 등)
+     *        [ STAGE ]
+     *   [ 1층 A | B | C | D | E ]         정면 밴드 (층마다 하나)
+     *   [ 2층 A | B | ...        ]
      * </pre>
-     *
-     * <p>좌석도가 지정되지 않은 홀은 모든 구역이 {@code center} 로 들어와서 종전과 똑같이
-     * 위에서 아래로 쌓인다.
      */
-    public record Arena(List<Floor> rear, List<Floor> left, List<Floor> center, List<Floor> right) {
+    public record Arena(List<Band> rear, List<Band> front) {
 
-        /** 층 바로가기(floornav)용 전체 목록. 무대에 가까운 쪽부터 나열한다. */
+        /** 층 바로가기(floornav)용 전체 목록. 화면에 그리는 순서와 같다. */
         public List<Floor> all() {
-            List<Floor> all = new ArrayList<>(rear);
-            all.addAll(left);
-            all.addAll(center);
-            all.addAll(right);
+            List<Floor> all = new ArrayList<>();
+            for (Band band : bands()) {
+                band.columns().forEach(all::addAll);
+            }
             return all;
         }
 
+        public List<Band> bands() {
+            List<Band> bands = new ArrayList<>(rear);
+            bands.addAll(front);
+            return bands;
+        }
+
         /**
-         * 무대 정면에 좌우 구역이 있는지. 있으면 화면이 세 열로 나뉘어서, 열마다 하나씩
-         * 있는 행 라벨을 스크롤에 고정할 수 없다(왼쪽 끝에 겹쳐 붙는다).
+         * 한 밴드라도 열이 여러 개인지. 그러면 열마다 하나씩 있는 행 라벨을 스크롤에
+         * 고정할 수 없다 — sticky 는 스크롤 컨테이너 왼쪽 기준이라 전부 왼쪽 끝에 겹쳐 붙는다.
          */
         public boolean hasSides() {
-            return !left.isEmpty() || !right.isEmpty();
+            return bands().stream().anyMatch(band -> band.columns().size() > 1);
         }
     }
 
@@ -116,22 +129,36 @@ public class SeatMapView {
         sectionNames.sort(Comparator.comparingInt(
                 name -> orderBySection.getOrDefault(name, Integer.MAX_VALUE)));
 
-        Map<SectionPosition, List<Floor>> byPosition = new EnumMap<>(SectionPosition.class);
+        /*
+           밴드(무대앞뒤 + 층) → 열 → 구역.
+           밴드는 LinkedHashMap 이라 처음 나온 순서(= 좌석도 선언 순서)가 유지되고,
+           열은 TreeMap 이라 column 값 오름차순 = 왼쪽부터다. 값이 연속일 필요는 없다.
+        */
+        Map<SectionPosition, Map<String, Map<Integer, List<Floor>>>> bands = new EnumMap<>(SectionPosition.class);
         for (SectionPosition position : SectionPosition.values()) {
-            byPosition.put(position, new ArrayList<>());
+            bands.put(position, new LinkedHashMap<>());
         }
 
         int index = 0;
         for (String name : sectionNames) {
             SectionLayout section = layoutBySection.get(name);
-            SectionPosition position = (section != null) ? section.getPosition() : SectionPosition.CENTER;
-            byPosition.get(position).add(floorOf(name, "floor-" + index++, bySection.get(name), position));
+            SectionPosition position = (section != null) ? section.getPosition() : SectionPosition.FRONT;
+            String tier = (section != null) ? section.getTier() : "";
+            int column = (section != null) ? section.getColumn() : 0;
+
+            bands.get(position)
+                    .computeIfAbsent(tier, k -> new TreeMap<>())
+                    .computeIfAbsent(column, k -> new ArrayList<>())
+                    .add(floorOf(name, "floor-" + index++, bySection.get(name), position));
         }
 
-        return new Arena(byPosition.get(SectionPosition.REAR),
-                byPosition.get(SectionPosition.LEFT),
-                byPosition.get(SectionPosition.CENTER),
-                byPosition.get(SectionPosition.RIGHT));
+        return new Arena(bandsOf(bands.get(SectionPosition.REAR)), bandsOf(bands.get(SectionPosition.FRONT)));
+    }
+
+    private List<Band> bandsOf(Map<String, Map<Integer, List<Floor>>> byTier) {
+        return byTier.values().stream()
+                .map(byColumn -> new Band(List.copyOf(byColumn.values())))
+                .toList();
     }
 
     private Floor floorOf(String name, String anchorId,
