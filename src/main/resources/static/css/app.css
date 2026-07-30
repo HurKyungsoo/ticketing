@@ -227,12 +227,22 @@ a { color: inherit; text-decoration: none; }
   padding-bottom: 4px;
 
   /*
+     스크롤 막대는 숨긴다(기능은 그대로). 좌석도는 지도처럼 끌거나 밀어서 보는 화면이고,
+     막대가 격자 옆에 붙으면 좌석 격자의 경계처럼 읽혀서 방해가 된다.
+     모바일은 원래 겹침(overlay) 막대라 잠깐 보였다 사라지지만, 여기서 같이 눌러둔다.
+  */
+  scrollbar-width: none;              /* Firefox */
+  -ms-overflow-style: none;           /* 구형 Edge */
+
+  /*
      한 손가락 스크롤은 브라우저 기본 동작에 맡기고(관성이 살아 있다), 두 손가락은 우리가
      받아 좌석 크기를 바꾼다. pan-x pan-y 는 pinch-zoom 을 빼서, 격자 안에서의 두 손가락
      제스처가 페이지 확대로 가로채이지 않게 한다. 격자 밖에서는 페이지 확대가 그대로 된다.
   */
   touch-action: pan-x pan-y;
 }
+/* Chrome·Safari 는 위 두 속성으로 안 되고 이 의사요소를 없애야 한다. */
+.housescroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 /*
    확대 모드에서는 격자가 지도처럼 동작한다 — 높이를 고정해 컨테이너 안에서 상하좌우로
@@ -247,9 +257,15 @@ a { color: inherit; text-decoration: none; }
   height: min(72vh, 860px);
   overscroll-behavior: contain;
   cursor: grab;
+  /*
+     지도 모드에서는 텍스트 선택을 아예 끈다. 끌기 시작(.dragging) 뒤에만 끄면 늦다 —
+     문턱(4px)을 넘기 전에 이미 선택이 시작되고, 브라우저가 선택을 따라가려고 컨테이너를
+     자동 스크롤해서 세로가 엉뚱한 곳으로 튄다(실측: 9 로 가야 할 scrollTop 이 866).
+     좌석도에서 글자를 선택할 일도 없다.
+  */
+  user-select: none;
 }
-/* 끌기 중에는 텍스트 선택이 잡히지 않게. 안 그러면 구역 이름과 열 번호가 파랗게 물든다. */
-.housescroll.zoomed.dragging { cursor: grabbing; user-select: none; }
+.housescroll.zoomed.dragging { cursor: grabbing; }
 
 /*
    핀치 중 미리보기용 래퍼. 손가락을 움직이는 동안은 좌석 크기를 건드리지 않고 이 요소만
