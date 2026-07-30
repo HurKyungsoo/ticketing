@@ -10,12 +10,25 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # 스키마는 Flyway 가 만들고 Hibernate 는 검사만 한다.
+      # update 로 두면 컬럼 추가만 하고 제약 변경은 안 하며, DDL 이 실패해도 경고만 남기고
+      # 앱이 떠서 깨진 스키마를 못 알아챈다. validate 는 어긋나면 기동을 중단한다.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
     open-in-view: false
+
+  flyway:
+    enabled: true
+    # DB 별로 타입 표기가 달라서 스크립트를 나눠 뒀다. {vendor} 플레이스홀더 대신 프로파일마다
+    # 명시한다 — 벤더 문자열을 잘못 짚으면 마이그레이션을 하나도 못 찾고, 그게 조용히 넘어간다.
+    locations: classpath:db/migration/h2
+    # 이미 Hibernate 가 만들어 둔 로컬 개발 DB 를 v1 로 인정하고 시작한다.
+    # 빈 DB 에는 영향이 없다(Flyway 는 스키마가 비어 있으면 그냥 전부 실행한다).
+    baseline-on-migrate: true
+    baseline-version: 1
 
   thymeleaf:
     cache: false
@@ -102,8 +115,9 @@ spring:
     activate:
       on-profile: local
   datasource:
-    # 파일 기반이라 bootRun 재시작 후에도 데이터가 유지된다. 스키마를 갈아엎어야 하면
-    # data/ 디렉토리를 지우고 다시 띄우면 된다.
+    # 파일 기반이라 bootRun 재시작 후에도 데이터가 유지된다.
+    # 스키마를 처음부터 다시 만들려면 data/ 를 지우고 띄운다 — Flyway 가 V1 부터 적용한다
+    # (지금 있는 DB 는 Hibernate 가 만든 것이라 baseline 처리로 v1 로 인정받은 상태다).
     url: jdbc:h2:file:./data/ticket;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
@@ -125,6 +139,12 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+  flyway:
+    # 매번 빈 인메모리 DB 라 baseline 이 필요없다. 오히려 baseline-on-migrate 를 켜두면
+    # 마이그레이션을 건너뛰는 사고가 조용히 날 수 있어서 여기서 끈다.
+    # 테스트가 곧 "V1 이 맞는지"를 검증하는 자리다 — 빈 DB 에 V1 을 올리고 validate 를 통과해야
+    # ReservationConcurrencyTest 가 돌아간다.
+    baseline-on-migrate: false
 
 ---
 spring:
@@ -139,3 +159,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration/mariadb
+    # 빈 DB 에 처음부터 올리는 게 정상 경로다. baseline 을 켜면 이미 뭔가 들어 있는 DB 에서
+    # V1 을 건너뛰고 시작해버려, 스키마가 반쪽인 채로 돌 수 있다.
+    baseline-on-migrate: false

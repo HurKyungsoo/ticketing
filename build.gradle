@@ -30,6 +30,12 @@ dependencies {
     // 공공데이터 API 응답이 XML 이라 Jackson XML 모듈 필요
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
+    // 스키마 마이그레이션. ddl-auto: update 는 컬럼 추가만 하고 제약 변경은 안 하며,
+    // 실패해도 경고만 남기고 앱을 띄워서 깨진 스키마를 못 알아챈다(실제로 세 번 겪었다).
+    // Flyway 10 은 DB 별로 모듈이 갈려서 MariaDB/MySQL 지원을 따로 받아야 한다.
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 

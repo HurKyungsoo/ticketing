@@ -81,6 +81,19 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 5. **동시성 관련 코드를 수정하면 반드시 `ReservationConcurrencyTest` 를 돌릴 것.**
    `PESSIMISTIC` / `OPTIMISTIC` / `UNIQUE` 는 성공 1건이어야 한다.
 
+## 스키마 변경 규칙
+
+스키마는 **Flyway 마이그레이션으로만** 바꾼다. `ddl-auto` 는 전 프로파일 `validate` 다.
+
+- 새 컬럼/테이블/제약은 `src/main/resources/db/migration/{h2,mariadb}/V{n}__설명.sql` **양쪽에** 추가한다.
+  타입 표기가 달라서 파일이 나뉘어 있다 (`timestamp(6)`/`datetime(6)`, `identity`/`auto_increment`, `boolean`/`bit`).
+- **`ddl-auto: update` 로 되돌리지 말 것.** 컬럼 추가만 하고 제약 변경은 안 하며,
+  DDL 이 실패해도 경고만 남기고 앱이 그대로 떠서 깨진 스키마를 못 알아챈다. 실제로 세 번 겪었다.
+- 이미 적용된 마이그레이션 파일은 수정하지 않는다. 체크섬이 달라져 기동이 막힌다. 새 버전을 추가할 것.
+- 엔티티에 필드를 추가하면 `validate` 가 마이그레이션 누락을 기동 시점에 잡아준다.
+  즉 테스트를 돌리면(빈 H2 에 V1~Vn 적용 후 validate) 마이그레이션이 맞는지 자동 검증된다.
+- 좌석 구조 관련 변경은 마이그레이션 후 `POST /api/admin/seats/regenerate` 로 기존 회차를 다시 만든다.
+
 ## 외부 API 규칙
 
 - `serviceKey` 는 이미 URL 인코딩된 문자열이다.
@@ -105,6 +118,8 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 - `application.yml` 에 실제 키/비밀번호 커밋
 - 동시성 테스트를 `@Disabled` 처리
 - 기존 엔티티에 `EAGER` 페치 추가
+- `ddl-auto` 를 `validate` 외의 값으로 변경
+- 이미 적용된 Flyway 마이그레이션 파일 수정
 
 ## 다음 작업 순서
 
