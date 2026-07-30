@@ -7,13 +7,14 @@
     <select id="selectSeatMap" resultType="com.portfolio.ticket.mapper.dto.SeatMapRow">
         SELECT s.id        AS seat_id,
                s.section   AS section,
+               s.row_no    AS row_no,
                s.seat_no   AS seat_no,
                s.grade     AS grade,
                s.status    AS status,
                s.price     AS price
           FROM seat s
          WHERE s.schedule_id = #{scheduleId}
-         ORDER BY s.section ASC, s.seat_no ASC
+         ORDER BY s.section ASC, s.row_no ASC, s.seat_no ASC
     </select>
 
     <!-- 등급별 가격 (중복 제거). 등급마다 가격이 하나뿐이라 DISTINCT 로 충분하다. -->

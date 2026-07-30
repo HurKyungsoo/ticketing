@@ -40,18 +40,18 @@
             <h2 class="floorname" th:if="${!floor.name.isEmpty()}" th:text="${floor.name}">1층</h2>
             <div class="house">
                 <div class="row" th:each="row : ${floor.rows}">
-                    <span class="rowlabel" th:text="${row.label}">A</span>
+                    <span class="rowlabel" th:text="${row.rowNo}">1</span>
                     <button type="button" class="seat"
                             th:each="seat : ${row.seats}"
                             th:classappend="|grade-${seat.grade}${seat.seatNo % row.aisleEvery == 0 ? ' aisle' : ''}|"
                             th:attr="data-status=${seat.status},
                                      data-seat-id=${seat.seatId},
-                                     data-label=${seat.section} + '-' + ${seat.seatNo},
+                                     data-label=${seat.label},
                                      data-price=${seat.price},
                                      data-grade=${seat.grade},
                                      data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'"
                             th:disabled="${seat.status != 'AVAILABLE'}"
-                            th:title="|${seat.section}-${seat.seatNo} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
+                            th:title="|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
                     </button>
                 </div>
             </div>

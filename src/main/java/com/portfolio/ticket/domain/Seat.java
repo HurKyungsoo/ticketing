@@ -13,7 +13,7 @@ import lombok.*;
 @Table(
     name = "seat",
     uniqueConstraints = @UniqueConstraint(
-        name = "uk_seat", columnNames = {"schedule_id", "section", "seatNo"}),
+        name = "uk_seat", columnNames = {"schedule_id", "section", "rowNo", "seatNo"}),
     indexes = @Index(name = "idx_seat_schedule_status", columnList = "schedule_id, status")
 )
 @Getter
@@ -29,8 +29,25 @@ public class Seat {
     @JoinColumn(name = "schedule_id")
     private PerformanceSchedule schedule;
 
-    @Column(nullable = false, length = 5)
+    /**
+     * 구역(층). "1층", "합창석" 처럼 구역 이름만 담는다. 층 구분이 없는 소극장은 빈 문자열이다.
+     *
+     * <p>전에는 여기에 행까지 이어붙였다("1층A"). 행이 26줄을 넘으면
+     * {@code (char)('A' + row)} 가 Z 를 지나 `[`, `\`, 소문자로 흘러가 구역명이 깨졌고,
+     * 실제로 수집 데이터에서 228 회차 32,792 좌석이 그 상태였다. 행은 {@link #rowNo} 로 분리했다.
+     */
+    @Column(nullable = false, length = 20)
     private String section;
+
+    /**
+     * 줄 번호(열). 1부터 시작한다.
+     *
+     * <p>문자가 아니라 숫자인 이유: 문자열로 두면 정렬이 코드포인트 순이라 "10"이 "2"보다
+     * 앞에 오고, 알파벳으로 두면 "AA"가 "B"보다 앞에 온다. 어느 쪽이든 고정폭 패딩이 필요하다.
+     * 정수로 두면 {@code ORDER BY section, row_no, seat_no} 가 그대로 맞고 상한도 없다.
+     */
+    @Column(nullable = false)
+    private int rowNo;
 
     @Column(nullable = false)
     private int seatNo;
@@ -84,6 +101,18 @@ public class Seat {
     }
 
     public String seatLabel() {
-        return section + "-" + seatNo;
+        return labelOf(section, rowNo, seatNo);
+    }
+
+    /**
+     * 좌석 표기. 한국 공연장 관례대로 "구역 N열 M번" 으로 쓴다.
+     * 구역이 없는 소극장은 구역을 빼고 "N열 M번".
+     *
+     * <p>좌석 배치도는 엔티티가 아니라 MyBatis DTO(SeatMapRow)로 조회하므로, 같은 표기를
+     * 두 곳에서 만들지 않도록 여기 static 으로 둔다.
+     */
+    public static String labelOf(String section, int rowNo, int seatNo) {
+        String row = rowNo + "열 " + seatNo + "번";
+        return (section == null || section.isBlank()) ? row : section + " " + row;
     }
 }

@@ -44,7 +44,7 @@ public class ScheduleSeatRebuilder {
         PerformanceSchedule schedule = scheduleRepository.findById(scheduleId).orElse(null);
         if (schedule == null) return Result.skipped(0);
 
-        List<Seat> existing = seatRepository.findByScheduleIdOrderBySectionAscSeatNoAsc(scheduleId);
+        List<Seat> existing = seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(scheduleId);
         long before = existing.size();
 
         // 선점·판매된 좌석이 하나라도 있으면 건드리지 않는다.

@@ -116,7 +116,8 @@ public class SeatGenerator {
 
                 seats.add(Seat.builder()
                         .schedule(schedule)
-                        .section(floor.name() + (char) ('A' + i / SEATS_PER_ROW))
+                        .section(floor.name())
+                        .rowNo((i / SEATS_PER_ROW) + 1)
                         .seatNo((i % SEATS_PER_ROW) + 1)
                         .grade(grade)
                         .status(SeatStatus.AVAILABLE)
@@ -165,18 +166,24 @@ public class SeatGenerator {
         return floors;
     }
 
-    /** 구역마다 행(A, B, C...) x 열 구조로 좌석을 만든다. 등급은 구역 단위로 고정. */
+    /**
+     * 구역마다 줄(1열, 2열...) x 좌석 구조로 만든다. 등급은 구역 단위로 고정.
+     *
+     * <p>줄 수에 상한이 없다. yml 은 사람이 직접 쓰는 파일이라 실제 극장 그대로
+     * 30줄짜리 구역도 들어올 수 있는데(예술의전당 콘서트홀 1층이 실제로 31줄이다),
+     * 전에는 26줄을 넘기면 구역명이 깨졌다.
+     */
     private List<Seat> generateFromLayout(PerformanceSchedule schedule,
                                           List<VenueLayoutProperties.SectionLayout> layout, int price,
                                           Map<SeatGrade, Integer> pricesByGrade) {
         List<Seat> seats = new ArrayList<>();
         for (VenueLayoutProperties.SectionLayout section : layout) {
-            for (int row = 0; row < section.getRows(); row++) {
-                String sectionLabel = section.getName() + (char) ('A' + row);
+            for (int row = 1; row <= section.getRows(); row++) {
                 for (int seatNo = 1; seatNo <= section.getSeatsPerRow(); seatNo++) {
                     seats.add(Seat.builder()
                             .schedule(schedule)
-                            .section(sectionLabel)
+                            .section(section.getName())
+                            .rowNo(row)
                             .seatNo(seatNo)
                             .grade(section.getGrade())
                             .status(SeatStatus.AVAILABLE)

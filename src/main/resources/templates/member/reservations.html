@@ -19,7 +19,7 @@
                 <p class="restitle" th:text="${r.seats[0].schedule.performance.title}">공연명</p>
                 <p class="resmeta">
                     <span th:text="${#temporals.format(r.seats[0].schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
-                    <span th:text="${#strings.listJoin(r.seats.![section + '-' + seatNo + ' ' + grade], ', ')}">좌석</span> ·
+                    <span th:text="${#strings.listJoin(r.seats.![seatLabel() + ' ' + grade], ', ')}">좌석</span> ·
                     <span th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
                 </p>
                 <p class="resno">

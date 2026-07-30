@@ -15,7 +15,7 @@ import java.util.Optional;
 
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
-    List<Seat> findByScheduleIdOrderBySectionAscSeatNoAsc(Long scheduleId);
+    List<Seat> findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(Long scheduleId);
 
     long countByScheduleIdAndStatus(Long scheduleId, SeatStatus status);
 

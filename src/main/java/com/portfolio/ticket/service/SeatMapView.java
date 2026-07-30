@@ -8,16 +8,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 좌석 배치도를 화면 구조(층 → 행 → 좌석)로 접는다.
+ * 좌석 배치도를 화면 구조(구역 → 줄 → 좌석)로 접는다.
  * 컨트롤러는 조회/전달만 하고 조립은 여기서 한다 (CLAUDE.md: 컨트롤러에 로직 금지).
  *
- * <p>DB 의 {@code section} 은 "층 이름 + 행 문자 한 글자"를 이어붙인 값이다("1층A", "합창석C").
- * {@link SeatGenerator} 의 두 경로(규모별 기본 생성 / venue-layouts.yml)가 모두 그렇게 만든다.
- * 화면에서는 이 둘을 다시 떼서 층은 블록 제목으로 한 번만 쓰고, 줄 라벨에는 행 문자만 쓴다.
- *
- * <p>안 떼면 대형 홀에서 두 가지가 깨진다. 2,501석짜리 예술의전당 콘서트홀은 구역이 65개
- * 생기는데, (1) "1층뒤P" 같은 5글자 라벨이 한 글자 폭인 라벨 칸을 넘겨 두 줄로 깨지고,
- * (2) 65줄이 층 구분 없이 한 덩어리로 이어져 지금 몇 층을 보고 있는지 알 수 없다.
+ * <p>대형 홀에서는 구역을 나눠 보여주지 않으면 화면을 읽을 수 없다. 2,501석짜리 예술의전당
+ * 콘서트홀은 줄이 65개인데, 구역 구분 없이 한 덩어리로 이어지면 지금 몇 층을 보고 있는지
+ * 알 수 없다. 구역 이름은 블록 제목으로 한 번만 쓰고, 줄 라벨에는 열 번호만 쓴다.
  */
 public final class SeatMapView {
 
@@ -27,39 +23,39 @@ public final class SeatMapView {
     /**
      * 좌석 한 줄.
      *
-     * @param label      행 문자("A") 하나.
+     * @param rowNo      열 번호(1부터).
      * @param aisleEvery 몇 석마다 통로를 둘지. {@link #aisleEveryFor} 참고.
      */
-    public record Row(String label, List<SeatMapRow> seats, int aisleEvery) {}
+    public record Row(int rowNo, List<SeatMapRow> seats, int aisleEvery) {}
 
     /**
-     * 한 층(구역) 블록.
+     * 한 구역(층) 블록.
      *
-     * @param name     층 이름("1층", "합창석"). 소극장은 층 구분이 없어 빈 문자열이다.
-     * @param anchorId 층 바로가기 링크용 id. 층 이름에 한글·숫자가 섞여 그대로는 못 쓴다.
+     * @param name     구역 이름("1층", "합창석"). 층 구분이 없는 소극장은 빈 문자열이다.
+     * @param anchorId 구역 바로가기 링크용 id. 구역 이름에 한글·숫자가 섞여 그대로는 못 쓴다.
      */
     public record Floor(String name, String anchorId, List<Row> rows,
                         int seatCount, int availableCount) {}
 
     /**
-     * 좌석 목록을 층 블록으로 묶는다. 정렬은 쿼리(ORDER BY section, seat_no)를 그대로 따르므로
-     * 층 블록 순서와 줄 순서가 곧 화면 표시 순서다.
+     * 좌석 목록을 구역 블록으로 묶는다. 정렬은 쿼리(ORDER BY section, row_no, seat_no)를
+     * 그대로 따르므로 구역 블록 순서와 줄 순서가 곧 화면 표시 순서다.
      */
     public static List<Floor> floorsOf(List<SeatMapRow> seats) {
-        Map<String, List<Row>> rowsByFloor = new LinkedHashMap<>();
-
-        Map<String, List<SeatMapRow>> seatsBySection = new LinkedHashMap<>();
+        // 구역 → 열 번호 → 좌석. 둘 다 LinkedHashMap 이라 쿼리 정렬이 그대로 유지된다.
+        Map<String, Map<Integer, List<SeatMapRow>>> bySection = new LinkedHashMap<>();
         for (SeatMapRow seat : seats) {
-            seatsBySection.computeIfAbsent(seat.getSection(), k -> new ArrayList<>()).add(seat);
+            bySection.computeIfAbsent(seat.getSection(), k -> new LinkedHashMap<>())
+                    .computeIfAbsent(seat.getRowNo(), k -> new ArrayList<>())
+                    .add(seat);
         }
-        seatsBySection.forEach((section, rowSeats) ->
-                rowsByFloor.computeIfAbsent(floorNameOf(section), k -> new ArrayList<>())
-                        .add(new Row(rowLabelOf(section), rowSeats, aisleEveryFor(rowSeats.size()))));
 
-        List<Floor> floors = new ArrayList<>(rowsByFloor.size());
+        List<Floor> floors = new ArrayList<>(bySection.size());
         int index = 0;
-        for (Map.Entry<String, List<Row>> entry : rowsByFloor.entrySet()) {
-            List<Row> rows = entry.getValue();
+        for (Map.Entry<String, Map<Integer, List<SeatMapRow>>> entry : bySection.entrySet()) {
+            List<Row> rows = entry.getValue().entrySet().stream()
+                    .map(e -> new Row(e.getKey(), e.getValue(), aisleEveryFor(e.getValue().size())))
+                    .toList();
             floors.add(new Floor(entry.getKey(), "floor-" + index++, rows,
                     seatCountOf(rows), availableCountOf(rows)));
         }
@@ -76,15 +72,6 @@ public final class SeatMapView {
      */
     private static int aisleEveryFor(int seatsInRow) {
         return seatsInRow <= 20 ? 5 : (int) Math.ceil(seatsInRow / 4.0);
-    }
-
-    /** 마지막 한 글자가 행 문자다. 층 이름이 없는 소극장은 section 이 "A" 한 글자라 층 이름이 빈 값이 된다. */
-    private static String floorNameOf(String section) {
-        return section == null || section.isEmpty() ? "" : section.substring(0, section.length() - 1);
-    }
-
-    private static String rowLabelOf(String section) {
-        return section == null || section.isEmpty() ? "" : section.substring(section.length() - 1);
     }
 
     private static int seatCountOf(List<Row> rows) {

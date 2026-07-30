@@ -127,7 +127,8 @@ class ReservationConcurrencyTest {
 
         Seat seat = seatRepository.save(Seat.builder()
                 .schedule(schedule)
-                .section("A")
+                .section("1층")
+                .rowNo(1)
                 .seatNo(1)
                 .grade(SeatGrade.VIP)
                 .status(SeatStatus.AVAILABLE)
