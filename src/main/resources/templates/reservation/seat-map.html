@@ -60,22 +60,26 @@
       </div>
     </div>
 
-</div>
-
-<!--
-    좌석 표시·가격표는 예매 바와 함께 화면 아래에 고정한다. 좌석을 고르는 내내 "이 색이 뭐였지",
-    "이 등급이 얼마였지"를 확인하게 되는데, 본문 흐름에 두면 63줄짜리 홀에서는 한참 스크롤해야
-    보인다. 바 높이는 내용에 따라 달라지므로(좁은 화면에서 범례가 여러 줄로 접히고, 고른 좌석
-    칩도 늘어난다) 본문 아래 여백은 JS 가 실측해서 --footer-h 로 넘긴다.
--->
-<div class="bookbar" id="bookbar">
-    <div class="legend">
+    <!-- 좌석 상태 표시는 한 번 익히면 계속 볼 필요가 없어서 본문 맨 아래에 둔다.
+         고르는 내내 확인하게 되는 등급별 가격만 예매 바에 고정한다. -->
+    <div class="seatstatus">
         <div class="legend-row">
             <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
             <span><i style="background:var(--brass)"></i> 선택함</span>
             <span><i style="background:var(--brass-dim)"></i> 결제 대기</span>
             <span><i style="background:var(--rose);opacity:.55"></i> 판매 완료</span>
         </div>
+    </div>
+</div>
+
+<!--
+    가격표는 예매 바와 함께 화면 아래에 고정한다. 본문 흐름에 두면 63줄짜리 홀에서는
+    "이 등급이 얼마였지"를 확인할 때마다 한참 스크롤해야 한다. 바 높이는 내용에 따라
+    달라지므로(좁은 화면에서 가격표가 여러 줄로 접히고, 고른 좌석 칩도 늘어난다)
+    본문 아래 여백은 JS 가 실측해서 --footer-h 로 넘긴다.
+-->
+<div class="bookbar" id="bookbar">
+    <div class="legend">
         <div class="legend-row legend-grades">
             <span><i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b></span>
             <span><i class="legend-grade grade-R"></i> R석 <b class="legend-price" data-grade="R"></b></span>

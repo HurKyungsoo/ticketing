@@ -466,13 +466,15 @@ a { color: inherit; text-decoration: none; }
 */
 .seat.aisle { margin-right: var(--aisle-gap); }
 
-/* 예매 바 안에 들어간다. 바깥 여백은 바가 갖고 있으므로 여기서는 두 줄 사이만 띄운다. */
+/* 가격표. 예매 바 안에 고정으로 들어간다. 바깥 여백은 바가 갖고 있다. */
 .legend {
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  max-width: 1080px; margin: 0 auto 11px;
-  padding-bottom: 11px;
+  display: flex; flex-direction: column; align-items: center;
+  max-width: 1080px; margin: 0 auto 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
 }
+/* 좌석 상태 표시. 한 번 익히면 되는 정보라 고정하지 않고 본문 맨 아래에 둔다. */
+.seatstatus { margin-top: 36px; }
 .legend-row {
   display: flex; gap: 22px; justify-content: center; flex-wrap: wrap;
   font-size: 12px; color: var(--mute);
