@@ -9,7 +9,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
+<body class="page-seatmap">
 <div class="wrap wrap-wide">
     <header th:replace="~{fragment/header :: masthead(tag=${performance.title} + ' · ' + ${#temporals.format(schedule.showAt, 'M/d(E) HH:mm')}, showAuthNav=false)}"></header>
 
@@ -60,6 +60,15 @@
       </div>
     </div>
 
+</div>
+
+<!--
+    좌석 표시·가격표는 예매 바와 함께 화면 아래에 고정한다. 좌석을 고르는 내내 "이 색이 뭐였지",
+    "이 등급이 얼마였지"를 확인하게 되는데, 본문 흐름에 두면 63줄짜리 홀에서는 한참 스크롤해야
+    보인다. 바 높이는 내용에 따라 달라지므로(좁은 화면에서 범례가 여러 줄로 접히고, 고른 좌석
+    칩도 늘어난다) 본문 아래 여백은 JS 가 실측해서 --footer-h 로 넘긴다.
+-->
+<div class="bookbar" id="bookbar">
     <div class="legend">
         <div class="legend-row">
             <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
@@ -74,9 +83,6 @@
             <span><i class="legend-grade grade-A"></i> A석 <b class="legend-price" data-grade="A"></b></span>
         </div>
     </div>
-</div>
-
-<div class="bookbar">
     <div class="inner">
         <div class="picked" id="picked">
             <p class="pickedlist">좌석을 선택하세요</p>
@@ -123,6 +129,7 @@
             : '끌어서 움직이고, 좌석을 눌러 고르세요.';
 
     const scroller = document.getElementById('housescroll');
+    const bookbar = document.getElementById('bookbar');
 
     /**
      * 지금 렌더된 좌석 한 변(px). border-box 라 렌더 폭이 곧 --seat-size 다(테두리 두께와 무관).
@@ -202,10 +209,26 @@
         zoomBtn.setAttribute('aria-pressed', String(on));
         zoomBtn.textContent = on ? '전체 보기' : '확대';
         zoomHint.textContent = on ? ZOOM_HINT : FIT_HINT;
-        // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(CSS 에서 높이를 고정한다).
+        // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(높이를 고정한다).
         scroller.classList.toggle('zoomed', on);
         applySeatSize();
+        sizeMapViewport();
         syncZoomBtn();
+    }
+
+    /**
+     * 지도 모드의 격자 높이를 화면에 남은 만큼으로 맞춘다.
+     *
+     * 고정 바(좌석 표시·가격표·예매 버튼)가 화면 아래를 차지하므로, 높이를 CSS 로만 주면
+     * (72vh 등) 지도 아래쪽이 바에 가린다 — 실측으로 631px 지도의 아래 194px 이 가렸다.
+     * 격자가 화면에서 시작하는 위치는 층 바로가기 줄 수에 따라 달라져서(콘서트홀은 칩이 20개라
+     * 좁은 화면에서 여러 줄로 접힌다) CSS 로는 계산할 수 없다. 그래서 실측해서 넣는다.
+     */
+    function sizeMapViewport() {
+        if (!zoomed) { scroller.style.height = ''; return; }
+        const available = window.innerHeight - scroller.getBoundingClientRect().top
+                - bookbar.offsetHeight - 12;
+        scroller.style.height = Math.round(Math.max(280, Math.min(860, available))) + 'px';
     }
 
     /** 맞춤 크기가 이미 넉넉하면 확대 버튼은 할 일이 없다(20석짜리 기본 홀 등). 지도 모드면 항상 보인다. */
@@ -226,8 +249,14 @@
 
     zoomBtn.addEventListener('click', () => {
         setZoomed(!zoomed);
-        // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
         if (zoomed) {
+            /* 버튼으로 들어왔을 때는 지도를 화면 위쪽으로 끌어와 꽉 채운다(스크롤 후 다시 계산).
+               스크롤 목표는 격자가 아니라 인원수·확대 줄이다 — 격자에 맞추면 「전체 보기」 버튼이
+               화면 위로 밀려나서 되돌아갈 방법이 안 보인다. */
+            const controls = document.querySelector('.partysize');
+            window.scrollTo({ top: controls.getBoundingClientRect().top + window.scrollY - 8 });
+            sizeMapViewport();
+            // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
             scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
             scroller.scrollTop = 0;
         }
@@ -399,15 +428,29 @@
                 setZoomed(true);
                 scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
             }
+            sizeMapViewport();
             syncZoomBtn();
         });
     });
 
-    // 각 등급의 대표 가격을 범럈에 표시한다 (이번 회차에 실매한 증 개수로 직적 읽어온다).
+    // 각 등급의 대표 가격을 범례에 표시한다 (이번 회차에 실제로 만든 좌석에서 직접 읽어온다).
     document.querySelectorAll('.legend-price').forEach(el => {
         const sample = document.querySelector(`.seat[data-grade="${el.dataset.grade}"]`);
         if (sample) el.textContent = Number(sample.dataset.price).toLocaleString() + '원';
     });
+
+    /* ---------- 고정 바에 가려지는 높이 ----------
+       좌석 표시·가격표가 예매 바 안에 있고 바는 화면 아래에 고정이다. 그만큼 본문 끝이 가려지므로
+       실측한 높이를 --footer-h 로 넘겨 body 의 아래 여백으로 쓴다. 좁은 화면에서 범례가 여러 줄로
+       접히거나 고른 좌석 칩이 늘어나면 높이가 변하니 ResizeObserver 로 따라간다.
+       (바는 position: fixed 라 body 여백을 바꿔도 높이가 안 변한다 — 되먹임 없음) */
+    function syncFooterHeight() {
+        document.documentElement.style.setProperty('--footer-h', bookbar.offsetHeight + 'px');
+        // 지도 모드의 격자 높이도 바 높이에서 빼고 있으므로 같이 맞춘다.
+        sizeMapViewport();
+    }
+    syncFooterHeight();
+    new ResizeObserver(syncFooterHeight).observe(bookbar);
 
     const partySizeSelect = document.getElementById('partySize');
     const pickedBox = document.getElementById('picked');
