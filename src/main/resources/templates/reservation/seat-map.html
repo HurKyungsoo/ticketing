@@ -210,6 +210,24 @@
     const zoomHint = document.querySelector('.partysize .hint');
     const FIT_HINT = zoomHint.textContent;
 
+    /* ---------- 맞춤 모드에서 마지막으로 가리킨 지점 ----------
+       확대 버튼을 누르면 이 지점이 확대 화면 가운데로 온다. 좌석을 훑어보다 버튼을 누르러
+       마우스를 옮겨도 최신 값은 그대로 남는다 — 리스너가 scroller 위에 있을 때만 갱신되므로
+       버튼(scroller 밖)으로 이동하는 동안은 마지막으로 가리켰던 좌석이 유지된다. 한 번도
+       안 가리켰으면(터치 전용 기기, 키보드로 버튼에 바로 포커스 등) null 이라 기존처럼
+       무대 정면을 기준으로 연다. */
+    let lastFocusPoint = null;
+    scroller.addEventListener('pointermove', (e) => {
+        if (zoomed || e.pointerType !== 'mouse') return;
+        lastFocusPoint = { x: e.clientX, y: e.clientY };
+    }, { passive: true });
+
+    /** 그 지점에서 scroller 안에 있는 요소. 격자 밖(페이지 여백 등)이면 null. */
+    function elementAt(clientX, clientY) {
+        const el = document.elementFromPoint(clientX, clientY);
+        return (el && scroller.contains(el) && el !== scroller) ? el : null;
+    }
+
     /** 맞춤 모드에서 필요한 좌석 크기(하한을 적용하지 않은 값). 이게 하한보다 작으면 맞춤이 불가능하다. */
     function requiredFitSize() {
         // 여유는 zoneline 양끝에만 있으므로(--tooltip-bleed 는 .zoneline 의 padding) 한 번만 뺀다.
@@ -272,6 +290,11 @@
     syncZoomBtn();
 
     zoomBtn.addEventListener('click', () => {
+        /* setZoomed 가 좌석 크기·격자 높이를 바꾸기 전에 앵커부터 잡는다. 나중에
+           elementFromPoint 로 다시 찾으려 하면 그 사이 좌석 크기가 바뀌고 페이지도 스크롤돼서
+           같은 좌표가 전혀 다른 곳을 가리키게 된다 — 요소 자체를 들고 있어야 한다. */
+        const focusAnchor = (!zoomed && lastFocusPoint) ? elementAt(lastFocusPoint.x, lastFocusPoint.y) : null;
+
         setZoomed(!zoomed);
         if (zoomed) {
             /* 버튼으로 들어왔을 때는 지도를 화면 위쪽으로 끌어와 꽉 채운다(스크롤 후 다시 계산).
@@ -280,9 +303,17 @@
             const controls = document.querySelector('.partysize');
             window.scrollTo({ top: controls.getBoundingClientRect().top + window.scrollY - 8 });
             sizeMapViewport();
-            // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
-            scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
-            scroller.scrollTop = 0;
+
+            if (focusAnchor) {
+                // 맞춤 모드에서 가리키고 있던 자리를 확대 화면 가운데로 옮긴다.
+                const sr = scroller.getBoundingClientRect(), ar = focusAnchor.getBoundingClientRect();
+                scroller.scrollLeft += (ar.left + ar.width / 2) - (sr.left + sr.width / 2);
+                scroller.scrollTop += (ar.top + ar.height / 2) - (sr.top + sr.height / 2);
+            } else {
+                // 가리킨 곳이 없으면 종전대로 무대 정면(가로 가운데, 맨 위)을 보여준다.
+                scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+                scroller.scrollTop = 0;
+            }
         }
     });
 
@@ -408,10 +439,7 @@
                 Math.max(SEAT_FIT_MIN, pinch.size * pinch.scale)));
         const rect = scroller.getBoundingClientRect();
         // 확정 전(변형된 화면)에서 손가락 중간점에 있던 요소를 앵커로 잡는다.
-        const clientX = rect.left + pinch.px;
-        const clientY = rect.top + pinch.py;
-        const under = document.elementFromPoint(clientX, clientY);
-        const anchor = (under && scroller.contains(under) && under !== scroller) ? under : null;
+        const anchor = elementAt(rect.left + pinch.px, rect.top + pinch.py);
         const before = anchor && anchor.getBoundingClientRect();
 
         houseContent.style.transform = '';
