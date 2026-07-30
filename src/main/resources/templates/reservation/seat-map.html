@@ -22,6 +22,7 @@
             <option value="4">4명</option>
         </select>
         <span class="hint">선택한 인원수만큼 좌석을 고를 수 있습니다.</span>
+        <button type="button" class="zoomtoggle" id="zoomBtn" aria-pressed="false">확대</button>
     </div>
 
     <!-- 층이 여러 개인 홀에서만. 63줄짜리 콘서트홀은 스크롤만으로는 층을 못 찾는다. -->
@@ -101,8 +102,14 @@
        기준은 렌더된 줄의 실제 너비를 그대로 재서 얻는다. 좌석 수·통로 개수·간격 비율을
        여기서 다시 계산하면 통로 규칙(SeatMapView)과 간격 비율(CSS)을 JS 가 중복으로
        알아야 하고, 한쪽만 바뀌면 조용히 어긋난다. */
-    const SEAT_MIN = 14;   // 이보다 작으면 누르기 어렵다. 여기서 멈추고 가로 스크롤로 넘긴다.
+    /* 맞춤 모드의 하한. 여기까지 줄여서라도 가로 스크롤 없이 다 보여준다.
+       한 층이 75석 폭인 홀(콘서트홀 3층 A~G, 세종 3층 A~H)은 누르기 좋은 크기(14px 이상)로는
+       1,400px 화면에 물리적으로 안 들어간다 — 좌석만 1,050px 이고 열마다 행 라벨이 붙는다.
+       그래서 기본은 "전체가 보이는 지도", 좌석을 고를 때는 확대 버튼으로 키우게 나눴다. */
+    const SEAT_FIT_MIN = 9;
+    const SEAT_MIN = 14;   // 확대 모드의 하한이자, 누르기 편한 최소 크기.
     const SEAT_MAX = 26;   // 기본 크기. 여유가 있어도 이보다 크게는 안 키운다.
+    const SEAT_ZOOM = 24;  // 확대 모드 고정 크기. 이때는 격자 안에서 가로 스크롤이 생긴다.
 
     const scroller = document.getElementById('housescroll');
 
@@ -153,8 +160,16 @@
 
     const zonelines = measureZonelines();
 
-    function fitSeatSize() {
+    /** 확대 모드 여부. 기본은 맞춤 모드 — 가로 스크롤 없이 좌석 전체가 보인다. */
+    let zoomed = false;
+    const zoomBtn = document.getElementById('zoomBtn');
+
+    function applySeatSize() {
         if (!zonelines.length) return;
+        if (zoomed) {
+            scroller.style.setProperty('--seat-size', SEAT_ZOOM + 'px');
+            return;
+        }
         // 여유는 zoneline 양끝에만 있으므로(--tooltip-bleed 는 .zoneline 의 padding) 한 번만 뺀다.
         const bleed = parseFloat(getComputedStyle(scroller).getPropertyValue('--tooltip-bleed')) || 0;
         const usable = scroller.clientWidth - bleed * 2 - 4;   // 4px: 반올림 여유
@@ -162,16 +177,37 @@
         // 한 줄이라도 넘치면 격자 전체가 가로 스크롤되므로 가장 빡빡한 줄에 맞춘다.
         const size = Math.floor(Math.min(
                 ...zonelines.map(line => (usable - line.fixed) / line.coefficient)));
-        scroller.style.setProperty('--seat-size', Math.min(SEAT_MAX, Math.max(SEAT_MIN, size)) + 'px');
+        scroller.style.setProperty('--seat-size', Math.min(SEAT_MAX, Math.max(SEAT_FIT_MIN, size)) + 'px');
     }
 
-    fitSeatSize();
+    applySeatSize();
+
+    /* 맞춤 모드에서 좌석이 작아진 홀에서만 확대 버튼이 의미가 있다. 20석짜리 기본 홀은
+       이미 상한(26px)이라 키울 게 없으므로 버튼을 숨긴다. */
+    function currentFitSize() {
+        return parseFloat(getComputedStyle(scroller).getPropertyValue('--seat-size')) || SEAT_MAX;
+    }
+    if (currentFitSize() >= SEAT_MIN) {
+        zoomBtn.hidden = true;
+    }
+
+    zoomBtn.addEventListener('click', () => {
+        zoomed = !zoomed;
+        zoomBtn.setAttribute('aria-pressed', String(zoomed));
+        zoomBtn.textContent = zoomed ? '전체 보기' : '확대';
+        applySeatSize();
+        // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
+        if (zoomed) {
+            scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+        }
+    });
+
     // 창 크기가 바뀌면 다시 맞춘다. 리사이즈는 연속으로 들어오므로 한 프레임에 한 번만 계산한다.
     let fitPending = false;
     window.addEventListener('resize', () => {
         if (fitPending) return;
         fitPending = true;
-        requestAnimationFrame(() => { fitPending = false; fitSeatSize(); });
+        requestAnimationFrame(() => { fitPending = false; applySeatSize(); });
     });
 
     // 각 등급의 대표 가격을 범럈에 표시한다 (이번 회차에 실매한 증 개수로 직적 읽어온다).

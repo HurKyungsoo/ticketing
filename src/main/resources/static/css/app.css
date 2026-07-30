@@ -156,6 +156,15 @@ a { color: inherit; text-decoration: none; }
   padding: 5px 10px; font: inherit;
 }
 .partysize .hint { color: var(--mute); font-size: 12px; }
+/* 좌석 크기 전환. 기본은 폭 맞춤(가로 스크롤 없음)이고, 누르면 눌러서 고르기 좋은 크기로 키운다. */
+.zoomtoggle {
+  background: var(--ink-soft); color: var(--paper);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 13px; font: inherit; font-size: 12px;
+  cursor: pointer;
+}
+.zoomtoggle:hover { border-color: var(--brass-dim); }
+.zoomtoggle[aria-pressed="true"] { border-color: var(--brass); color: var(--brass); }
 
 .stage {
   position: relative;
@@ -194,9 +203,12 @@ a { color: inherit; text-decoration: none; }
   --seat-size: clamp(20px, 4vw, 26px);
   --seat-gap: calc(var(--seat-size) * 0.28);
   --aisle-gap: calc(var(--seat-size) * 1.25);
-  /* 무대 정면 좌/중앙/우 구역 사이. 통로보다 넓어야 "다른 구역"으로 읽힌다. */
-  --zone-gap: calc(var(--seat-size) * 2.2);
-  --rowlabel-w: 22px;
+  /* 구역(열) 사이. 통로보다 넓어야 "다른 구역"으로 읽힌다. 열이 여덟 개인 홀(콘서트홀 3층,
+     세종 3층)에서는 이 값이 곧 좌석에 쓸 폭을 깎으므로 통로(1.25)보다 조금만 넓게 잡는다. */
+  --zone-gap: calc(var(--seat-size) * 1.4);
+  /* 열마다 하나씩 붙는 고정 폭이라 열이 많은 홀에서 그대로 누적된다. 두 자리 열 번호가
+     들어가는 최소 폭으로 줄였다. */
+  --rowlabel-w: 16px;
 
   /* 툴팁 여유. 등급·가격 툴팁은 좌석 중앙 기준으로 펼쳐지므로 줄 양끝 좌석에서는
      격자 폭을 넘어간다. 안 보이는 상태(opacity:0)에서도 레이아웃에는 잡혀서, 여유를
@@ -373,10 +385,16 @@ a { color: inherit; text-decoration: none; }
 }
 .seat:hover::after, .seat:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .seat:hover::before, .seat:focus-visible::before { opacity: 1; }
-/* 등급: 색이 아닌 테두리 강도로 구분 */
-.seat.grade-VIP { border-width: 3px;   border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
-.seat.grade-R   { border-width: 2px;   border-color: rgba(255,201,64,.68); }
-.seat.grade-S   { border-width: 1.5px; border-color: rgba(255,201,64,.32); }
+/*
+   등급: 색이 아닌 테두리 강도로 구분.
+
+   두께를 좌석 크기에 비례시킨다. 고정 3px 로 두면 맞춤 모드에서 좌석이 10px 까지 작아지는
+   대형 홀에서 VIP 좌석이 테두리로 거의 다 채워져, 브래스로 칠하는 「선택함」 상태와 구별되지
+   않는다. max() 로 하한을 둬서 커도 작아도 등급 순서(VIP > R > S > A)는 유지된다.
+*/
+.seat.grade-VIP { border-width: max(1.5px, calc(var(--seat-size) * 0.115)); border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
+.seat.grade-R   { border-width: max(1.2px, calc(var(--seat-size) * 0.077)); border-color: rgba(255,201,64,.68); }
+.seat.grade-S   { border-width: max(1px,   calc(var(--seat-size) * 0.058)); border-color: rgba(255,201,64,.32); }
 .seat.grade-A   { border-width: 1px;   border-color: var(--line); }
 .seat[data-status="HELD"] { background: var(--brass-dim); border-color: transparent; cursor: not-allowed; }
 .seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
