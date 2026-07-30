@@ -24,38 +24,39 @@
         <span class="hint">선택한 인원수만큼 좌석을 고를 수 있습니다.</span>
     </div>
 
-    <div class="stage">STAGE</div>
-
-    <!-- 층이 여러 개인 홀에서만. 65줄짜리 콘서트홀은 스크롤만으로는 층을 못 찾는다. -->
-    <nav class="floornav" th:if="${floors.size() > 1}">
-        <a class="floorchip" th:each="floor : ${floors}" th:href="'#' + ${floor.anchorId}">
+    <!-- 층이 여러 개인 홀에서만. 63줄짜리 콘서트홀은 스크롤만으로는 층을 못 찾는다. -->
+    <nav class="floornav" th:if="${arena.all().size() > 1}">
+        <a class="floorchip" th:each="floor : ${arena.all()}" th:href="'#' + ${floor.anchorId}">
             <span th:text="${floor.name}">1층</span>
             <b th:text="${floor.availableCount}">615</b><i th:text="'/' + ${floor.seatCount}">/615</i>
         </a>
     </nav>
 
-    <!-- 좌석 격자는 이 안에서만 가로 스크롤된다. 페이지 본문이 옆으로 밀리면 안 된다. -->
-    <div class="housescroll" id="housescroll">
-        <section class="floor" th:each="floor : ${floors}" th:id="${floor.anchorId}">
-            <h2 class="floorname" th:if="${!floor.name.isEmpty()}" th:text="${floor.name}">1층</h2>
-            <div class="house">
-                <div class="row" th:each="row : ${floor.rows}">
-                    <span class="rowlabel" th:text="${row.rowNo}">1</span>
-                    <button type="button" class="seat"
-                            th:each="seat : ${row.seats}"
-                            th:classappend="|grade-${seat.grade}${seat.aisleAfter ? ' aisle' : ''}|"
-                            th:attr="data-status=${seat.status},
-                                     data-seat-id=${seat.seatId},
-                                     data-label=${seat.label},
-                                     data-price=${seat.price},
-                                     data-grade=${seat.grade},
-                                     data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'"
-                            th:disabled="${seat.status != 'AVAILABLE'}"
-                            th:title="|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
-                    </button>
-                </div>
+    <!--
+        좌석 격자는 이 안에서만 가로 스크롤된다. 페이지 본문이 옆으로 밀리면 안 된다.
+        무대도 이 안에 둔다 — 무대 뒤 구역(합창석)이 무대 위쪽에 와야 하고, 무대와 좌석이
+        같이 스크롤돼야 어느 좌석이 무대 정면인지가 유지된다.
+    -->
+    <div class="housescroll" id="housescroll" th:classappend="${arena.hasSides()} ? 'has-sides'">
+        <div class="zoneline zoneline-rear" th:if="${!arena.rear.isEmpty()}">
+            <div class="zone">
+                <th:block th:replace="~{fragment/seatzone :: floors(${arena.rear})}"></th:block>
             </div>
-        </section>
+        </div>
+
+        <div class="stage">STAGE</div>
+
+        <div class="zoneline zoneline-front">
+            <div class="zone" th:if="${!arena.left.isEmpty()}">
+                <th:block th:replace="~{fragment/seatzone :: floors(${arena.left})}"></th:block>
+            </div>
+            <div class="zone" th:if="${!arena.center.isEmpty()}">
+                <th:block th:replace="~{fragment/seatzone :: floors(${arena.center})}"></th:block>
+            </div>
+            <div class="zone" th:if="${!arena.right.isEmpty()}">
+                <th:block th:replace="~{fragment/seatzone :: floors(${arena.right})}"></th:block>
+            </div>
+        </div>
     </div>
 
     <div class="legend">
@@ -88,13 +89,18 @@
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
 
     /* ---------- 좌석 크기 자동 맞춤 ----------
-       가장 긴 줄이 컨테이너 폭에 들어가는 최대 좌석 크기를 계산해 --seat-size 에 넣는다.
-       콘서트홀(한 줄 41석)을 기본 크기 26px 로 그리면 줄 하나가 1,700px 이 되어 본문 폭을
+       좌석 격자가 컨테이너 폭에 들어가는 최대 좌석 크기를 계산해 --seat-size 에 넣는다.
+       콘서트홀(한 줄 43석)을 기본 크기 26px 로 그리면 줄 하나가 1,700px 이 되어 본문 폭을
        벗어난다. 20석짜리 기본 홀은 상한(26px)에 걸려 종전과 같은 크기가 그대로 나온다.
 
-       줄 너비 = 라벨 + N*좌석 + N*간격 + A*통로 이고 간격·통로가 좌석 크기의 배수라,
-       좌석 크기로 묶으면 나눗셈 한 번에 떨어진다. 크기를 줄여가며 DOM 을 다시 재는 방식은
-       좌석 2,500개짜리 격자에서 레이아웃을 수십 번 다시 계산하게 된다.
+       제약은 "가장 넓은 줄 하나"가 아니라 zoneline(가로로 나란히 놓이는 열 묶음) 단위다.
+       무대를 감싸는 홀은 정면이 좌·중앙·우 세 열이라 세 열의 폭 합계 + 열 간격이 들어가야
+       하고, 무대 뒤 줄은 그와 별개로 자기 폭만 맞으면 된다. 그래서 zoneline 마다 필요한
+       크기를 구하고 가장 빡빡한 쪽을 택한다.
+
+       줄 너비 = 라벨 + N*좌석 + N*간격 + A*통로 이고 라벨만 고정 폭, 나머지는 모두 좌석
+       크기의 배수라, 좌석 크기로 묶으면 나눗셈 한 번에 떨어진다. 크기를 줄여가며 DOM 을
+       다시 재는 방식은 좌석 2,500개짜리 격자에서 레이아웃을 수십 번 다시 계산하게 된다.
 
        기준은 렌더된 줄의 실제 너비를 그대로 재서 얻는다. 좌석 수·통로 개수·간격 비율을
        여기서 다시 계산하면 통로 규칙(SeatMapView)과 간격 비율(CSS)을 JS 가 중복으로
@@ -104,44 +110,56 @@
 
     const scroller = document.getElementById('housescroll');
 
+    /** 지금 렌더된 좌석 한 변(px). border-box 라 렌더 폭이 곧 --seat-size 다(테두리 두께와 무관). */
+    function currentSeatSize() {
+        const seat = scroller.querySelector('.seat');
+        return seat ? seat.getBoundingClientRect().width : 0;
+    }
+
     /**
-     * 가장 넓은 줄의 "좌석 크기 1px 당 줄 너비" 계수.
+     * zoneline 마다 { 고정 폭, 좌석 크기 1px 당 늘어나는 폭 } 을 잰다.
      *
-     * 줄 너비 = 라벨(고정 폭) + 좌석·간격·통로(모두 --seat-size 의 배수)이므로,
-     * 라벨을 빼고 현재 좌석 크기로 나누면 크기와 무관한 계수가 남는다. 목표 폭에 맞는
-     * 좌석 크기는 이 계수로 나눗셈 한 번이면 나온다.
+     * 열이 여러 개면 열마다 가장 넓은 줄이 그 열의 폭을 정하고, 열 사이 간격(--zone-gap)도
+     * 좌석 크기의 배수라 계수에 함께 넣는다. 간격 비율을 JS 에 다시 쓰지 않으려고 계산된
+     * px 을 현재 좌석 크기로 나눠 비율로 되돌린다.
      *
      * 좌석 수가 가장 많은 줄이 아니라 실제로 가장 넓은 줄을 기준으로 삼는다 — 통로가 있는
      * 구역과 없는 구역(부채꼴)이 섞이면 좌석 수만으로는 어느 줄이 넓은지 알 수 없다.
+     *
+     * 계수는 좌석 크기와 무관하므로 한 번만 재면 된다.
      */
-    function measureWidestRow() {
-        let widest = null, width = 0;
-        scroller.querySelectorAll('.row').forEach(row => {
-            const w = row.getBoundingClientRect().width;
-            if (w > width) { width = w; widest = row; }
-        });
-        if (!widest || !width) return 0;
-
-        const seat = widest.querySelector('.seat');
-        // border-box 라 좌석의 렌더 폭이 곧 --seat-size 다 (등급별 테두리 두께와 무관).
-        const size = seat ? seat.getBoundingClientRect().width : 0;
-        if (!size) return 0;
-
+    function measureZonelines() {
+        const size = currentSeatSize();
+        if (!size) return [];   // 좌석이 아직 생성되지 않은 회차
         const label = parseFloat(getComputedStyle(scroller).getPropertyValue('--rowlabel-w')) || 0;
-        return (width - label) / size;
+
+        return [...scroller.querySelectorAll('.zoneline')].map(line => {
+            const zones = [...line.querySelectorAll('.zone')];
+            const gap = parseFloat(getComputedStyle(line).columnGap) || 0;
+
+            let coefficient = (zones.length - 1) * (gap / size);
+            zones.forEach(zone => {
+                let widest = 0;
+                zone.querySelectorAll('.row').forEach(row => {
+                    widest = Math.max(widest, row.getBoundingClientRect().width);
+                });
+                coefficient += (widest - label) / size;
+            });
+            return { fixed: zones.length * label, coefficient };
+        }).filter(line => line.coefficient > 0);
     }
 
-    // 계수는 좌석 크기와 무관하므로 한 번만 재면 된다.
-    const widthPerSeatSize = measureWidestRow();
+    const zonelines = measureZonelines();
 
     function fitSeatSize() {
-        if (widthPerSeatSize <= 0) return;   // 좌석이 아직 생성되지 않은 회차
-        const style = getComputedStyle(scroller);
-        const labelWidth = parseFloat(style.getPropertyValue('--rowlabel-w')) || 0;
-        const bleed = parseFloat(style.getPropertyValue('--tooltip-bleed')) || 0;
+        if (!zonelines.length) return;
+        // 여유는 zoneline 양끝에만 있으므로(--tooltip-bleed 는 .zoneline 의 padding) 한 번만 뺀다.
+        const bleed = parseFloat(getComputedStyle(scroller).getPropertyValue('--tooltip-bleed')) || 0;
+        const usable = scroller.clientWidth - bleed * 2 - 4;   // 4px: 반올림 여유
 
-        const usable = scroller.clientWidth - labelWidth - bleed * 2 - 4;   // 4px: 반올림 여유
-        const size = Math.floor(usable / widthPerSeatSize);
+        // 한 줄이라도 넘치면 격자 전체가 가로 스크롤되므로 가장 빡빡한 줄에 맞춘다.
+        const size = Math.floor(Math.min(
+                ...zonelines.map(line => (usable - line.fixed) / line.coefficient)));
         scroller.style.setProperty('--seat-size', Math.min(SEAT_MAX, Math.max(SEAT_MIN, size)) + 'px');
     }
 

@@ -159,7 +159,7 @@ a { color: inherit; text-decoration: none; }
 
 .stage {
   position: relative;
-  margin: 8px auto 48px;
+  margin: 8px auto 44px;
   max-width: 640px;
   height: 70px;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
@@ -194,12 +194,18 @@ a { color: inherit; text-decoration: none; }
   --seat-size: clamp(20px, 4vw, 26px);
   --seat-gap: calc(var(--seat-size) * 0.28);
   --aisle-gap: calc(var(--seat-size) * 1.25);
+  /* 무대 정면 좌/중앙/우 구역 사이. 통로보다 넓어야 "다른 구역"으로 읽힌다. */
+  --zone-gap: calc(var(--seat-size) * 2.2);
   --rowlabel-w: 22px;
 
   /* 툴팁 여유. 등급·가격 툴팁은 좌석 중앙 기준으로 펼쳐지므로 줄 양끝 좌석에서는
      격자 폭을 넘어간다. 안 보이는 상태(opacity:0)에서도 레이아웃에는 잡혀서, 여유를
      두지 않으면 좌석이 전부 보이는데도 가로 스크롤바가 생긴다.
-     좌석 크기 계산도 이 값을 뺀 폭으로 하므로 여기만 고치면 양쪽이 같이 따라온다. */
+     좌석 크기 계산도 이 값을 뺀 폭으로 하므로 여기만 고치면 양쪽이 같이 따라온다.
+
+     여유는 구역이 아니라 zoneline(가로로 나란히 놓이는 열들의 묶음) 양끝에만 준다.
+     구역마다 주면 세 열짜리 홀에서 좌석에 쓸 폭이 여유로만 380px 넘게 빠진다. 열 사이
+     툴팁은 --zone-gap 이 받아내고, 넘치는 만큼은 이웃 구역 위로 겹쳐 뜬다(z-index:5). */
   --tooltip-bleed: 64px;
 
   /* 2,500석짜리 홀은 좌석을 최소 크기로 줄여도 좁은 화면에 안 들어간다.
@@ -208,6 +214,23 @@ a { color: inherit; text-decoration: none; }
   overscroll-behavior-x: contain;
   padding-bottom: 4px;
 }
+
+/*
+   무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽 줄에, 정면 좌·중앙·우 구역은 무대
+   아래 한 줄에 나란히 놓는다. 좌석도에 위치를 적지 않은 홀은 정면 줄에 열이 하나만 생겨서
+   종전과 똑같이 구역이 위에서 아래로 쌓인다.
+*/
+.zoneline { display: flex; gap: var(--zone-gap); padding: 0 var(--tooltip-bleed); }
+.zoneline-rear { margin-bottom: 14px; }
+.zone { display: flex; flex-direction: column; }
+/*
+   열 묶음을 가운데로. justify-content: center 는 쓰면 안 된다 — 내용이 컨테이너보다 넓어지는
+   순간 양쪽으로 똑같이 넘쳐서 앞쪽 좌석이 음수 좌표로 나가고, 가로 스크롤은 0 아래로 못 가서
+   그 좌석들을 누를 수가 없다. auto 마진은 남는 공간이 없으면 0 으로 떨어지므로 왼쪽이 잘리지
+   않는다 (.house 의 align-items 와 같은 이유다).
+*/
+.zoneline > .zone:first-child { margin-left: auto; }
+.zoneline > .zone:last-child { margin-right: auto; }
 
 /* 층 블록. 층 이름은 가로 스크롤을 해도 왼쪽에 붙어 있어야 지금 몇 층인지 안 놓친다. */
 .floor + .floor { margin-top: 44px; }
@@ -245,7 +268,6 @@ a { color: inherit; text-decoration: none; }
 
 .house {
   display: flex; flex-direction: column; gap: var(--seat-gap);
-  padding: 0 var(--tooltip-bleed);
   /*
      align-items: center 를 쓰면 안 된다. 줄이 컨테이너보다 넓어지는 순간(좌석을 최소
      크기까지 줄여도 안 들어가는 대형 홀 + 좁은 화면) 양쪽으로 똑같이 넘쳐서 줄의 앞부분이
@@ -269,6 +291,14 @@ a { color: inherit; text-decoration: none; }
   z-index: 2;
   background: var(--ink);
 }
+
+/*
+   무대를 감싸는 홀(정면에 좌·우 구역이 있는 홀)에서는 행 라벨과 구역 이름을 고정하지 않는다.
+   sticky 는 스크롤 컨테이너 왼쪽을 기준으로 잡히므로 열이 여러 개면 오른쪽 구역의 라벨까지
+   전부 왼쪽 끝으로 몰려 다른 구역 좌석 위에 겹쳐 뜬다. 열이 하나인 홀에서는 종전대로 붙어 있다.
+*/
+.housescroll.has-sides .rowlabel,
+.housescroll.has-sides .floorname { position: static; }
 
 .seat {
   width: var(--seat-size);

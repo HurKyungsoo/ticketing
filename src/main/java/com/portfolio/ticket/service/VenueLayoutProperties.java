@@ -36,6 +36,24 @@ public class VenueLayoutProperties {
     private List<VenueLayout> layouts = new ArrayList<>();
 
     /**
+     * 구역이 무대를 기준으로 어디에 놓이는지. <b>화면 배치에만 쓴다</b> — 좌석 테이블에는 없다.
+     *
+     * <p>좌석의 정체성은 "구역 N열 M번" 이고 위치는 그 구역이 홀에서 어디냐는 별개의 사실이다.
+     * 좌석마다 들고 있어도 구역 단위로 항상 같은 값이라 중복이고, 위치를 고치려면 좌석 수만
+     * 개를 다시 만들어야 한다. 좌석도(venue-layouts.yml)가 아는 사실이므로 조회 시점에 붙인다.
+     */
+    public enum SectionPosition {
+        /** 무대 정면. 기본값이고, 좌석도가 없는 홀의 모든 구역이 여기 들어간다. */
+        CENTER,
+        /** 무대 정면에서 왼쪽. 빈야드형처럼 객석이 무대를 감싸는 홀에서 쓴다. */
+        LEFT,
+        /** 무대 정면에서 오른쪽. */
+        RIGHT,
+        /** 무대 뒤(합창석 등). 화면에서는 무대 위쪽에 그린다. */
+        REAR
+    }
+
+    /**
      * 설정 오류는 기동할 때 바로 터뜨린다.
      *
      * <p>좌석도는 외부 API 응답이 아니라 우리가 직접 쓰는 파일이다(그쪽은 CLAUDE.md 대로 건별
@@ -62,6 +80,11 @@ public class VenueLayoutProperties {
         }
         if (section.getGrade() == null) {
             throw new IllegalStateException("구역 등급(grade)이 없습니다. venue-layouts.yml: " + at);
+        }
+        // 값 없이 "position:" 만 적으면 null 이 된다. 기본값(CENTER)은 생략했을 때만 남는다.
+        if (section.getPosition() == null) {
+            throw new IllegalStateException(
+                    "구역 위치(position)가 비어 있습니다. 무대 정면이면 줄 자체를 생략하세요. venue-layouts.yml: " + at);
         }
 
         boolean rectangle = section.getRows() > 0 && section.getSeatsPerRow() > 0;
@@ -158,6 +181,16 @@ public class VenueLayoutProperties {
 
         /** 구역 등급. 블록을 나눈 구역에서는 중앙 블록 등급이 된다. */
         private SeatGrade grade;
+
+        /**
+         * 무대 기준 위치. 생략하면 CENTER 다 — 무대 정면 한 덩어리인 홀은 아무것도 적을 필요가 없다.
+         *
+         * <p>여기 적은 순서가 곧 화면 표시 순서다. 전에는 좌석 조회의 {@code ORDER BY section} 에
+         * 기대서 구역명 사전순으로 그렸고, 그 탓에 무대에서 먼 구역이 위에 오지 않게 하려고
+         * 이름에 접두어 트릭("1층" -> "1층뒤")을 써야 했다. 순서는 이름이 아니라 좌석도가
+         * 정하는 게 맞다.
+         */
+        private SectionPosition position = SectionPosition.CENTER;
 
         /**
          * 중앙 블록 좌석 수(고정). 지정하면 각 줄이 좌 | 중앙 | 우 세 블록으로 나뉘고

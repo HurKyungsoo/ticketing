@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<!--
+    좌석도의 한 열(무대 뒤 / 정면 좌 · 중앙 · 우)에 들어가는 구역 블록들.
+    무대 기준 위치마다 같은 마크업을 써야 해서 조각으로 뺐다.
+-->
+<th:block th:fragment="floors(floors)">
+    <section class="floor" th:each="floor : ${floors}" th:id="${floor.anchorId}">
+        <h2 class="floorname" th:if="${!floor.name.isEmpty()}" th:text="${floor.name}">1층</h2>
+        <div class="house">
+            <div class="row" th:each="row : ${floor.rows}">
+                <span class="rowlabel" th:text="${row.rowNo}">1</span>
+                <button type="button" class="seat"
+                        th:each="seat : ${row.seats}"
+                        th:classappend="|grade-${seat.grade}${seat.aisleAfter ? ' aisle' : ''}|"
+                        th:attr="data-status=${seat.status},
+                                 data-seat-id=${seat.seatId},
+                                 data-label=${seat.label},
+                                 data-price=${seat.price},
+                                 data-grade=${seat.grade},
+                                 data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'"
+                        th:disabled="${seat.status != 'AVAILABLE'}"
+                        th:title="|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
+                </button>
+            </div>
+        </div>
+    </section>
+</th:block>
+</body>
+</html>

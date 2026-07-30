@@ -34,6 +34,7 @@ public class PerformanceController {
     private final SeatMapper seatMapper;
     private final PerformanceListService performanceListService;
     private final NaverMapProperties naverMapProperties;
+    private final SeatMapView seatMapView;
 
     /**
      * 필터는 전부 쿼리 파라미터로 관리하고 "all" 을 기본 센티넬로 쓴다 — 파라미터가 항상
@@ -127,11 +128,13 @@ public class PerformanceController {
         PerformanceSchedule schedule = scheduleRepository.findWithPerformanceById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다."));
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);
+        Performance performance = schedule.getPerformance();
 
         model.addAttribute("schedule", schedule);
-        model.addAttribute("performance", schedule.getPerformance());
-        // 층 → 행 → 좌석으로 접어서 넘긴다. 템플릿에서 그룹핑하면 정렬이 깨진다.
-        model.addAttribute("floors", SeatMapView.floorsOf(seats));
+        model.addAttribute("performance", performance);
+        // 무대 기준 배치 → 층 → 행 → 좌석으로 접어서 넘긴다. 템플릿에서 그룹핑하면 정렬이 깨진다.
+        model.addAttribute("arena", seatMapView.arenaOf(
+                seats, performance.getVenueHallId(), performance.getVenue()));
         return "reservation/seat-map";
     }
 }
