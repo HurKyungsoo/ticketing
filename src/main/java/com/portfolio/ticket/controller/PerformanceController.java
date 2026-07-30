@@ -9,6 +9,7 @@ import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.service.PerformanceListService;
+import com.portfolio.ticket.service.SeatMapView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,10 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -130,14 +128,10 @@ public class PerformanceController {
                 .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다."));
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);
 
-        // 구역(A, B, C...) 단위로 묶어서 넘긴다. 템플릿에서 그룹핑하면 정렬이 깨진다.
-        Map<String, List<SeatMapRow>> rows = seats.stream()
-                .collect(Collectors.groupingBy(SeatMapRow::getSection,
-                        LinkedHashMap::new, Collectors.toList()));
-
         model.addAttribute("schedule", schedule);
         model.addAttribute("performance", schedule.getPerformance());
-        model.addAttribute("rows", rows);
+        // 층 → 행 → 좌석으로 접어서 넘긴다. 템플릿에서 그룹핑하면 정렬이 깨진다.
+        model.addAttribute("floors", SeatMapView.floorsOf(seats));
         return "reservation/seat-map";
     }
 }

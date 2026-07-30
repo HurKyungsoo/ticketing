@@ -44,6 +44,9 @@ body {
 a { color: inherit; text-decoration: none; }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
+/* 좌석 배치도 전용. 1,080px 은 목록·상세의 읽기 폭 기준인데, 한 줄 41석짜리 홀에는
+   좁아서 좌석이 필요 이상으로 작아진다. 격자에는 폭을 더 준다. */
+.wrap-wide { max-width: 1440px; }
 
 /* 스크롤해도 따라오는 반투명 헤더. 배경을 반투명 + blur 로 깔아
    아래 콘텐츠가 비쳐 지나가게 한다. */
@@ -182,20 +185,94 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 
-.house { display: flex; flex-direction: column; gap: clamp(4px, 1vw, 9px); align-items: center; }
-.row { display: flex; align-items: center; gap: clamp(4px, 1vw, 9px); }
+/*
+   좌석 격자 크기는 --seat-size 하나로 결정된다. 간격/통로 폭이 여기서 파생되므로
+   좌석 맵 스크립트는 이 변수 하나만 바꿔서 가장 긴 줄을 컨테이너 폭에 맞춘다.
+   JS 가 없거나 실패해도 clamp() 기본값으로 종전과 같은 크기가 나온다.
+*/
+.housescroll {
+  --seat-size: clamp(20px, 4vw, 26px);
+  --seat-gap: calc(var(--seat-size) * 0.28);
+  --aisle-gap: calc(var(--seat-size) * 1.25);
+  --rowlabel-w: 22px;
+
+  /* 툴팁 여유. 등급·가격 툴팁은 좌석 중앙 기준으로 펼쳐지므로 줄 양끝 좌석에서는
+     격자 폭을 넘어간다. 안 보이는 상태(opacity:0)에서도 레이아웃에는 잡혀서, 여유를
+     두지 않으면 좌석이 전부 보이는데도 가로 스크롤바가 생긴다.
+     좌석 크기 계산도 이 값을 뺀 폭으로 하므로 여기만 고치면 양쪽이 같이 따라온다. */
+  --tooltip-bleed: 64px;
+
+  /* 2,500석짜리 홀은 좌석을 최소 크기로 줄여도 좁은 화면에 안 들어간다.
+     그때 페이지 본문이 통째로 옆으로 밀리지 않도록 여기서만 스크롤을 받는다. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 4px;
+}
+
+/* 층 블록. 층 이름은 가로 스크롤을 해도 왼쪽에 붙어 있어야 지금 몇 층인지 안 놓친다. */
+.floor + .floor { margin-top: 44px; }
+.floor { scroll-margin-top: 80px; }
+.floorname {
+  position: sticky;
+  left: 0;
+  width: fit-content;
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--brass-dim);
+}
+
+/* 층 바로가기. 층별 잔여석을 같이 보여줘서 어느 층을 볼지 먼저 정할 수 있게 한다. */
+.floornav {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center;
+  margin: 0 0 28px;
+}
+.floorchip {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 6px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ink-soft);
+  font-size: 12px;
+  color: var(--paper);
+}
+.floorchip:hover { border-color: var(--brass-dim); }
+.floorchip b { color: var(--brass); font-weight: 700; }
+.floorchip i { color: var(--mute); font-style: normal; }
+
+.house {
+  display: flex; flex-direction: column; gap: var(--seat-gap);
+  padding: 0 var(--tooltip-bleed);
+  /*
+     align-items: center 를 쓰면 안 된다. 줄이 컨테이너보다 넓어지는 순간(좌석을 최소
+     크기까지 줄여도 안 들어가는 대형 홀 + 좁은 화면) 양쪽으로 똑같이 넘쳐서 줄의 앞부분이
+     음수 좌표로 나간다. 가로 스크롤은 0 아래로는 못 가므로 그 좌석들은 눌러볼 수가 없다.
+     auto 마진은 남는 공간이 없으면 0 으로 떨어지기 때문에 왼쪽이 잘리지 않는다.
+  */
+  align-items: flex-start;
+}
+.row { display: flex; align-items: center; gap: var(--seat-gap); margin-inline: auto; }
 .row .rowlabel {
   font-family: var(--display);
-  width: 30px;
+  width: var(--rowlabel-w);
   text-align: right;
-  font-size: clamp(13px, 2.6vw, 17px);
+  font-size: clamp(11px, 2.6vw, 15px);
   color: var(--brass-dim);
   flex: none;
+  /* 가로로 스크롤해도 행 문자는 왼쪽에 붙어 있어야 몇 번째 줄을 고르는지 알 수 있다.
+     좌석이 뒤로 지나가므로 배경을 깔아 가린다. 툴팁(z-index:5)보다는 아래에 둔다. */
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--ink);
 }
 
 .seat {
-  width: clamp(20px, 4vw, 26px);
-  height: clamp(20px, 4vw, 26px);
+  width: var(--seat-size);
+  height: var(--seat-size);
   aspect-ratio: 1 / 1;
   border: 1px solid var(--line);
   background: var(--ink-soft);
@@ -243,15 +320,15 @@ a { color: inherit; text-decoration: none; }
 .seat[data-status="HELD"] { background: var(--brass-dim); border-color: transparent; cursor: not-allowed; }
 .seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
 .seat.selected { background: var(--brass); border-color: var(--brass); }
-/* 5석마다 통로. 실제 극장처럼 구역 사이 여백 + 점선으로 구분선을 준다 */
-.seat.aisle { margin-right: clamp(22px, 4vw, 32px); }
-.seat.aisle::after {
-  content: '';
-  position: absolute;
-  top: 8%; bottom: 8%;
-  right: calc(clamp(22px, 4vw, 32px) / -2 - 1px);
-  border-right: 1px dashed var(--line);
-}
+/*
+   통로. 실제 극장처럼 좌석 사이에 여백을 준다 (몇 석마다 둘지는 SeatMapView.aisleEveryFor).
+
+   여기에 점선 구분선을 ::after 로 그리고 있었는데, ::after 는 위에서 등급·가격 툴팁으로
+   이미 쓰는 자리다. .seat.aisle::after 가 .seat::after 보다 구체적이어서 통로 좌석마다
+   툴팁이 점선으로 덮여 사라지고 있었다(5석마다 한 석씩 가격이 안 보였다).
+   여백만으로도 통로는 충분히 읽히므로 점선을 뺐다.
+*/
+.seat.aisle { margin-right: var(--aisle-gap); }
 
 .legend { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 40px; }
 .legend-row {
