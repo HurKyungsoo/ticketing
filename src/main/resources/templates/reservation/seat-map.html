@@ -39,6 +39,9 @@
         같이 스크롤돼야 어느 좌석이 무대 정면인지가 유지된다.
     -->
     <div class="housescroll" id="housescroll" th:classappend="${arena.hasSides()} ? 'has-sides'">
+      <!-- 핀치 중에는 이 래퍼만 transform 으로 확대해 보여준다(레이아웃 없이 합성만 하므로 부드럽다).
+           손을 떼는 순간 실제 좌석 크기로 확정하고 transform 을 지운다. -->
+      <div id="housecontent">
         <!-- 무대 뒤 밴드. 무대보다 위에 와야 무대 뒤 좌석으로 읽힌다. -->
         <div class="zoneline zoneline-rear" th:each="band : ${arena.rear}">
             <div class="zone" th:each="column : ${band.columns}">
@@ -54,6 +57,7 @@
                 <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
             </div>
         </div>
+      </div>
     </div>
 
     <div class="legend">
@@ -109,7 +113,14 @@
     const SEAT_FIT_MIN = 9;
     const SEAT_MIN = 14;   // 확대 모드의 하한이자, 누르기 편한 최소 크기.
     const SEAT_MAX = 26;   // 기본 크기. 여유가 있어도 이보다 크게는 안 키운다.
-    const SEAT_ZOOM = 24;  // 확대 모드 고정 크기. 이때는 격자 안에서 가로 스크롤이 생긴다.
+    const SEAT_ZOOM = 24;  // 확대 모드 기본 크기. 이때는 격자 안에서 가로 스크롤이 생긴다.
+    const SEAT_PINCH_MAX = 44;   // 핀치로 키울 수 있는 상한.
+
+    /** 확대 모드 안내문. 손가락으로 만지는 기기면 핀치도 알려준다. */
+    const CAN_TOUCH = matchMedia('(any-pointer: coarse)').matches;
+    const ZOOM_HINT = CAN_TOUCH
+            ? '끌어서 움직이고, 두 손가락으로 확대·축소하세요.'
+            : '끌어서 움직이고, 좌석을 눌러 고르세요.';
 
     const scroller = document.getElementById('housescroll');
 
@@ -162,46 +173,59 @@
 
     /** 확대 모드 여부. 기본은 맞춤 모드 — 가로 스크롤 없이 좌석 전체가 보인다. */
     let zoomed = false;
+    /** 확대 모드의 좌석 크기. 핀치로 바뀐다. */
+    let zoomSize = SEAT_ZOOM;
     const zoomBtn = document.getElementById('zoomBtn');
+    const zoomHint = document.querySelector('.partysize .hint');
+    const FIT_HINT = zoomHint.textContent;
 
-    function applySeatSize() {
-        if (!zonelines.length) return;
-        if (zoomed) {
-            scroller.style.setProperty('--seat-size', SEAT_ZOOM + 'px');
-            return;
-        }
+    /** 맞춤 모드에서 필요한 좌석 크기(하한을 적용하지 않은 값). 이게 하한보다 작으면 맞춤이 불가능하다. */
+    function requiredFitSize() {
         // 여유는 zoneline 양끝에만 있으므로(--tooltip-bleed 는 .zoneline 의 padding) 한 번만 뺀다.
         const bleed = parseFloat(getComputedStyle(scroller).getPropertyValue('--tooltip-bleed')) || 0;
         const usable = scroller.clientWidth - bleed * 2 - 4;   // 4px: 반올림 여유
-
         // 한 줄이라도 넘치면 격자 전체가 가로 스크롤되므로 가장 빡빡한 줄에 맞춘다.
-        const size = Math.floor(Math.min(
-                ...zonelines.map(line => (usable - line.fixed) / line.coefficient)));
-        scroller.style.setProperty('--seat-size', Math.min(SEAT_MAX, Math.max(SEAT_FIT_MIN, size)) + 'px');
+        return Math.floor(Math.min(...zonelines.map(line => (usable - line.fixed) / line.coefficient)));
+    }
+
+    function applySeatSize() {
+        if (!zonelines.length) return;
+        const size = zoomed
+                ? zoomSize
+                : Math.min(SEAT_MAX, Math.max(SEAT_FIT_MIN, requiredFitSize()));
+        scroller.style.setProperty('--seat-size', size + 'px');
+    }
+
+    /** 확대(지도) 모드 켜기/끄기. 버튼과 핀치가 같이 쓴다. */
+    function setZoomed(on) {
+        zoomed = on;
+        zoomBtn.setAttribute('aria-pressed', String(on));
+        zoomBtn.textContent = on ? '전체 보기' : '확대';
+        zoomHint.textContent = on ? ZOOM_HINT : FIT_HINT;
+        // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(CSS 에서 높이를 고정한다).
+        scroller.classList.toggle('zoomed', on);
+        applySeatSize();
+        syncZoomBtn();
+    }
+
+    /** 맞춤 크기가 이미 넉넉하면 확대 버튼은 할 일이 없다(20석짜리 기본 홀 등). 지도 모드면 항상 보인다. */
+    function syncZoomBtn() {
+        zoomBtn.hidden = !zoomed && requiredFitSize() >= SEAT_MIN;
     }
 
     applySeatSize();
 
-    /* 맞춤 모드에서 좌석이 작아진 홀에서만 확대 버튼이 의미가 있다. 20석짜리 기본 홀은
-       이미 상한(26px)이라 키울 게 없으므로 버튼을 숨긴다. */
-    function currentFitSize() {
-        return parseFloat(getComputedStyle(scroller).getPropertyValue('--seat-size')) || SEAT_MAX;
+    /* 맞춤이 아예 불가능한 홀·화면은 지도 모드로 시작한다.
+       좁은 화면에서는 하한(9px)까지 줄여도 안 들어간다 — 한 층이 75석 폭인 홀은 그것만 675px 라
+       휴대폰 폭을 넘는다. 그때 맞춤 모드로 두면 "작은 좌석 + 가로 스크롤"로 양쪽을 다 잃는다. */
+    if (requiredFitSize() < SEAT_FIT_MIN) {
+        setZoomed(true);
+        scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
     }
-    if (currentFitSize() >= SEAT_MIN) {
-        zoomBtn.hidden = true;
-    }
-
-    const zoomHint = document.querySelector('.partysize .hint');
-    const FIT_HINT = zoomHint.textContent;
+    syncZoomBtn();
 
     zoomBtn.addEventListener('click', () => {
-        zoomed = !zoomed;
-        zoomBtn.setAttribute('aria-pressed', String(zoomed));
-        zoomBtn.textContent = zoomed ? '전체 보기' : '확대';
-        zoomHint.textContent = zoomed ? '끌어서 움직이고, 좌석을 눌러 고르세요.' : FIT_HINT;
-        // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(CSS 에서 높이를 고정한다).
-        scroller.classList.toggle('zoomed', zoomed);
-        applySeatSize();
+        setZoomed(!zoomed);
         // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
         if (zoomed) {
             scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
@@ -264,12 +288,119 @@
         e.preventDefault();
     }, true);
 
+    /* ---------- 터치: 두 손가락으로 확대·축소 ----------
+       한 손가락 이동은 브라우저 기본 스크롤에 맡긴다(CSS 의 touch-action: pan-x pan-y).
+       관성 스크롤을 직접 구현하면 절대 기본 동작만큼 자연스럽지 않다.
+
+       두 손가락일 때만 가로챈다. 움직이는 동안은 좌석 크기를 건드리지 않고 래퍼(#housecontent)를
+       transform: scale 로 확대해 보여주고, 손을 떼는 순간 실제 좌석 크기로 확정한다.
+       좌석 크기를 직접 바꾸면 2,481개가 전부 다시 배치돼서 한 단계에 300ms 가 걸린다.
+
+       확정할 때는 두 손가락 중간점에 있던 좌석이 제자리에 있어야 한다 — 안 그러면 손을 뗄 때
+       화면이 튄다. 앵커는 계산으로 맞추지 않고 <b>그 자리에 있던 요소를 그대로 추적</b>한다.
+       확정 뒤 그 요소가 얼마나 밀렸는지 재서 그만큼 스크롤을 되돌린다.
+
+       비율로 환산하는 방식은 두 번 틀렸다. 좌석 크기 비율로 하면 행 라벨(고정 16px)이 오차가
+       되고, 콘텐츠 크기(scrollWidth/Height) 비율로 해도 무대·구역 제목·밴드 사이 간격처럼
+       좌석과 무관하게 고정된 높이가 남아서 앵커의 "비율 위치"가 보존되지 않는다. 실측으로는
+       24px -> 44px 확대에서 세로로 94px(좌석 두 줄 넘게) 밀렸다. 요소를 직접 추적하면 그 고정분이
+       무엇이든 자동으로 상쇄된다. */
+    let pinch = null;
+    const houseContent = document.getElementById('housecontent');
+
+    function touchDistance(a, b) {
+        return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    }
+
+    scroller.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 2) { cancelPinch(); return; }
+        const rect = scroller.getBoundingClientRect();
+        const size = currentSeatSize();
+        pinch = {
+            distance: touchDistance(e.touches[0], e.touches[1]),
+            size: size,
+            // 손가락 중간점(격자 좌표계)과 그때의 스크롤. 미리보기 스크롤 보정에 쓴다.
+            px: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+            py: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+            left: scroller.scrollLeft,
+            top: scroller.scrollTop,
+            scale: 1
+        };
+        scroller.classList.add('pinching');
+    }, { passive: true });
+
+    scroller.addEventListener('touchmove', (e) => {
+        if (!pinch || e.touches.length !== 2) return;
+        const distance = touchDistance(e.touches[0], e.touches[1]);
+        if (!distance || !pinch.distance) return;
+        e.preventDefault();   // 브라우저 확대 대신 우리가 처리한다
+
+        // 좌석 크기 한계를 배율 한계로 환산한다. 그래야 한계에 닿았을 때 미리보기도 같이 멈춘다.
+        const raw = distance / pinch.distance;
+        const scale = Math.min(SEAT_PINCH_MAX / pinch.size,
+                Math.max(SEAT_FIT_MIN / pinch.size, raw));
+        pinch.scale = scale;
+
+        // origin 이 0 0 이므로 콘텐츠 좌표 X 는 scale*X 로 간다. 중간점이 제자리에 있으려면
+        // scrollLeft 도 같은 비율로 늘려야 한다.
+        houseContent.style.transform = 'scale(' + scale + ')';
+        scroller.scrollLeft = scale * (pinch.left + pinch.px) - pinch.px;
+        scroller.scrollTop = scale * (pinch.top + pinch.py) - pinch.py;
+    }, { passive: false });
+
+    /** 미리보기를 실제 좌석 크기로 확정한다. 레이아웃은 여기서 한 번만 일어난다. */
+    function commitPinch() {
+        if (!pinch) return;
+        const next = Math.round(Math.min(SEAT_PINCH_MAX,
+                Math.max(SEAT_FIT_MIN, pinch.size * pinch.scale)));
+        const rect = scroller.getBoundingClientRect();
+        // 확정 전(변형된 화면)에서 손가락 중간점에 있던 요소를 앵커로 잡는다.
+        const clientX = rect.left + pinch.px;
+        const clientY = rect.top + pinch.py;
+        const under = document.elementFromPoint(clientX, clientY);
+        const anchor = (under && scroller.contains(under) && under !== scroller) ? under : null;
+        const before = anchor && anchor.getBoundingClientRect();
+
+        houseContent.style.transform = '';
+        scroller.classList.remove('pinching');
+        pinch = null;
+
+        zoomSize = next;
+        if (!zoomed) setZoomed(true); else applySeatSize();
+
+        if (!anchor) return;
+        const after = anchor.getBoundingClientRect();
+        scroller.scrollLeft += (after.left + after.width / 2) - (before.left + before.width / 2);
+        scroller.scrollTop += (after.top + after.height / 2) - (before.top + before.height / 2);
+    }
+
+    function cancelPinch() {
+        if (!pinch) return;
+        houseContent.style.transform = '';
+        scroller.classList.remove('pinching');
+        pinch = null;
+    }
+
+    scroller.addEventListener('touchend', (e) => {
+        if (pinch && e.touches.length < 2) commitPinch();
+    }, { passive: true });
+    scroller.addEventListener('touchcancel', cancelPinch, { passive: true });
+
     // 창 크기가 바뀌면 다시 맞춘다. 리사이즈는 연속으로 들어오므로 한 프레임에 한 번만 계산한다.
     let fitPending = false;
     window.addEventListener('resize', () => {
         if (fitPending) return;
         fitPending = true;
-        requestAnimationFrame(() => { fitPending = false; applySeatSize(); });
+        requestAnimationFrame(() => {
+            fitPending = false;
+            applySeatSize();
+            // 화면을 좁히거나 기기를 돌려서 맞춤이 불가능해졌으면 지도 모드로 넘긴다.
+            if (!zoomed && requiredFitSize() < SEAT_FIT_MIN) {
+                setZoomed(true);
+                scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+            }
+            syncZoomBtn();
+        });
     });
 
     // 각 등급의 대표 가격을 범럈에 표시한다 (이번 회차에 실매한 증 개수로 직적 읽어온다).

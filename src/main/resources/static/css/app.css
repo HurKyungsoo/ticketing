@@ -225,6 +225,13 @@ a { color: inherit; text-decoration: none; }
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-bottom: 4px;
+
+  /*
+     한 손가락 스크롤은 브라우저 기본 동작에 맡기고(관성이 살아 있다), 두 손가락은 우리가
+     받아 좌석 크기를 바꾼다. pan-x pan-y 는 pinch-zoom 을 빼서, 격자 안에서의 두 손가락
+     제스처가 페이지 확대로 가로채이지 않게 한다. 격자 밖에서는 페이지 확대가 그대로 된다.
+  */
+  touch-action: pan-x pan-y;
 }
 
 /*
@@ -243,6 +250,17 @@ a { color: inherit; text-decoration: none; }
 }
 /* 끌기 중에는 텍스트 선택이 잡히지 않게. 안 그러면 구역 이름과 열 번호가 파랗게 물든다. */
 .housescroll.zoomed.dragging { cursor: grabbing; user-select: none; }
+
+/*
+   핀치 중 미리보기용 래퍼. 손가락을 움직이는 동안은 좌석 크기를 건드리지 않고 이 요소만
+   scale 한다 — 합성(compositing)만 하므로 레이아웃이 없다. 좌석 크기를 직접 바꾸면 2,481개가
+   전부 다시 배치돼서 한 단계에 300ms 가 걸렸고, 핀치가 끊겨 보였다.
+   origin 을 0 0 으로 고정해야 스크롤 보정 계산이 간단해진다(콘텐츠 좌표 X -> k*X).
+*/
+#housecontent { transform-origin: 0 0; }
+.housescroll.pinching #housecontent { will-change: transform; }
+/* 핀치 중에는 좌석 hover 효과가 깜빡이지 않게 멈춘다. */
+.housescroll.pinching .seat { transition: none; }
 
 /*
    무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽에, 정면 구역은 무대 아래에 놓는다.
@@ -347,17 +365,22 @@ a { color: inherit; text-decoration: none; }
    --u 를 줄 길이로 정규화하지 않는다. 정규화하면 5석짜리 좌우 블록도 40석짜리 중앙 블록과
    같은 깊이로 휘어서 짧은 줄만 급하게 꺾인다. 절대 칸 수로 재면 짧은 줄은 거의 평평하다.
 
-   계수(0.0024)는 줄 간격(좌석 크기의 1.28배)보다 줄별 휘는 정도의 차이가 작게 유지되는
-   값으로 잡았다. 부채꼴 구역은 줄마다 길이가 달라서, 이 차이가 줄 간격을 넘으면 뒷줄
+   계수(좌석 크기의 0.24%/칸²)는 줄 간격(좌석 크기의 1.28배)보다 줄별 휘는 정도의 차이가 작게
+   유지되는 값으로 잡았다. 부채꼴 구역은 줄마다 길이가 달라서, 이 차이가 줄 간격을 넘으면 뒷줄
    양끝이 앞줄을 파고든다. 44석 줄이 좌석 크기의 1.2배쯤 올라간다.
+
+   깊이를 var(--seat-size) 가 아니라 %로 적는 게 중요하다. translateY 의 %는 그 요소 자신의
+   높이 기준이고 좌석 높이가 곧 --seat-size 이므로 결과는 같은데, 좌석 2,481개의 커스텀 속성이
+   --seat-size 에 의존하지 않게 된다. 의존하게 두면 확대·축소로 --seat-size 를 바꿀 때마다
+   모든 좌석의 --u/--arc-y 가 무효화돼서 한 단계에 700ms 가 걸렸다(핀치가 사실상 멈춤).
 */
-.house { --arc-strength: 0.0024; }
+.house { --arc-strength: -0.24%; }
 /* 무대 뒤 구역은 무대가 아래쪽에 있으니 반대로 휜다. */
-.zoneline-rear .house { --arc-strength: -0.0024; }
+.zoneline-rear .house { --arc-strength: 0.24%; }
 
 .seat {
   --u: calc(var(--i) - (var(--n) - 1) / 2);
-  --arc-y: calc(var(--u) * var(--u) * var(--seat-size) * var(--arc-strength) * -1);
+  --arc-y: calc(var(--u) * var(--u) * var(--arc-strength));
   transform: translateY(var(--arc-y));
   width: var(--seat-size);
   height: var(--seat-size);
