@@ -271,6 +271,11 @@ a { color: inherit; text-decoration: none; }
 
 .house {
   display: flex; flex-direction: column; gap: var(--seat-gap);
+  /* 호로 올라간 첫 줄 양끝이 구역 이름을 덮지 않도록. 가장 넓은 줄(44석)의 상승분만큼 준다.
+     --i/--n 이 없는 경우(조각을 거치지 않고 렌더된 좌석)의 안전한 기본값도 여기 둔다 — 호가 0 이 된다. */
+  padding-top: calc(var(--seat-size) * 1.2);
+  --i: 0;
+  --n: 1;
   /*
      align-items: center 를 쓰면 안 된다. 줄이 컨테이너보다 넓어지는 순간(좌석을 최소
      크기까지 줄여도 안 들어가는 대형 홀 + 좁은 화면) 양쪽으로 똑같이 넘쳐서 줄의 앞부분이
@@ -303,7 +308,28 @@ a { color: inherit; text-decoration: none; }
 .housescroll.has-sides .rowlabel,
 .housescroll.has-sides .floorname { position: static; }
 
+/*
+   부채꼴 호(arc). 실제 극장 줄은 무대를 중심으로 휘어 있어서 양끝이 무대에 더 가깝다.
+   좌석마다 줄 중앙에서 몇 칸 떨어졌는지(--u)의 제곱만큼 무대 쪽으로 당긴다.
+
+   translateY 만 쓰는 게 핵심이다 — transform 은 레이아웃에 영향을 주지 않으므로 줄 너비가
+   그대로고, 좌석 크기 자동 맞춤 계산(가장 넓은 줄 기준)을 건드리지 않는다.
+
+   --u 를 줄 길이로 정규화하지 않는다. 정규화하면 5석짜리 좌우 블록도 40석짜리 중앙 블록과
+   같은 깊이로 휘어서 짧은 줄만 급하게 꺾인다. 절대 칸 수로 재면 짧은 줄은 거의 평평하다.
+
+   계수(0.0024)는 줄 간격(좌석 크기의 1.28배)보다 줄별 휘는 정도의 차이가 작게 유지되는
+   값으로 잡았다. 부채꼴 구역은 줄마다 길이가 달라서, 이 차이가 줄 간격을 넘으면 뒷줄
+   양끝이 앞줄을 파고든다. 44석 줄이 좌석 크기의 1.2배쯤 올라간다.
+*/
+.house { --arc-strength: 0.0024; }
+/* 무대 뒤 구역은 무대가 아래쪽에 있으니 반대로 휜다. */
+.zoneline-rear .house { --arc-strength: -0.0024; }
+
 .seat {
+  --u: calc(var(--i) - (var(--n) - 1) / 2);
+  --arc-y: calc(var(--u) * var(--u) * var(--seat-size) * var(--arc-strength) * -1);
+  transform: translateY(var(--arc-y));
   width: var(--seat-size);
   height: var(--seat-size);
   aspect-ratio: 1 / 1;
@@ -316,7 +342,9 @@ a { color: inherit; text-decoration: none; }
   touch-action: manipulation;
   transition: transform .1s, background .1s, border-color .1s;
 }
-.seat:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--brass); }
+/* 호 오프셋을 유지한 채로 살짝 더 들어올린다. --arc-y 를 빼먹으면 hover 때 좌석이 평평한
+   자리로 튀어 내려간다. */
+.seat:hover:not(:disabled) { transform: translateY(calc(var(--arc-y) - 2px)); border-color: var(--brass); }
 .seat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 /* 등급·가격 툴팁 */

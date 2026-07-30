@@ -9,10 +9,18 @@
     <section class="floor" th:each="floor : ${floors}" th:id="${floor.anchorId}">
         <h2 class="floorname" th:if="${!floor.name.isEmpty()}" th:text="${floor.name}">1층</h2>
         <div class="house">
-            <div class="row" th:each="row : ${floor.rows}">
+            <!--
+                --n(줄 좌석 수) 과 --i(줄 안에서 몇 번째) 로 좌석마다 호(arc) 곡선의 y 오프셋을
+                계산한다. 실제 극장 줄은 무대를 중심으로 휘어서, 양끝이 무대에 더 가깝다.
+                --n 은 줄에 한 번만 적고 좌석은 --i 만 갖는다 — 좌석 3,000개짜리 홀에서 같은 값을
+                좌석마다 반복하면 HTML 만 수십 KB 늘어난다.
+            -->
+            <div class="row" th:each="row : ${floor.rows}"
+                 th:style="'--n:' + ${row.seats.size()}">
                 <span class="rowlabel" th:text="${row.rowNo}">1</span>
                 <button type="button" class="seat"
-                        th:each="seat : ${row.seats}"
+                        th:each="seat, seatStat : ${row.seats}"
+                        th:style="'--i:' + ${seatStat.index}"
                         th:classappend="|grade-${seat.grade}${seat.aisleAfter ? ' aisle' : ''}|"
                         th:attr="data-status=${seat.status},
                                  data-seat-id=${seat.seatId},
