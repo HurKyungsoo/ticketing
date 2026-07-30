@@ -220,12 +220,29 @@ a { color: inherit; text-decoration: none; }
      툴팁은 --zone-gap 이 받아내고, 넘치는 만큼은 이웃 구역 위로 겹쳐 뜬다(z-index:5). */
   --tooltip-bleed: 64px;
 
-  /* 2,500석짜리 홀은 좌석을 최소 크기로 줄여도 좁은 화면에 안 들어간다.
-     그때 페이지 본문이 통째로 옆으로 밀리지 않도록 여기서만 스크롤을 받는다. */
+  /* 맞춤 모드에서는 가로로 넘칠 일이 없지만(폭에 맞춰 좌석을 줄인다), 확대 모드와 아주 좁은
+     화면을 위해 남겨둔다. 넘치더라도 페이지 본문이 통째로 옆으로 밀리지 않아야 한다. */
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-bottom: 4px;
 }
+
+/*
+   확대 모드에서는 격자가 지도처럼 동작한다 — 높이를 고정해 컨테이너 안에서 상하좌우로
+   스크롤되게 하고, 마우스로 끌어 움직인다(pan). 높이를 안 주면 세로는 페이지 스크롤이라
+   끌어 움직일 대상이 없다.
+
+   overscroll-behavior: contain — 지도 안에서 휠을 굴리다 끝에 닿았다고 페이지가 따라
+   움직이면, 좌석을 보다가 화면이 통째로 튀어 나간다.
+*/
+.housescroll.zoomed {
+  overflow: auto;
+  height: min(72vh, 860px);
+  overscroll-behavior: contain;
+  cursor: grab;
+}
+/* 끌기 중에는 텍스트 선택이 잡히지 않게. 안 그러면 구역 이름과 열 번호가 파랗게 물든다. */
+.housescroll.zoomed.dragging { cursor: grabbing; user-select: none; }
 
 /*
    무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽에, 정면 구역은 무대 아래에 놓는다.

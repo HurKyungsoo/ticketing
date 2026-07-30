@@ -191,16 +191,78 @@
         zoomBtn.hidden = true;
     }
 
+    const zoomHint = document.querySelector('.partysize .hint');
+    const FIT_HINT = zoomHint.textContent;
+
     zoomBtn.addEventListener('click', () => {
         zoomed = !zoomed;
         zoomBtn.setAttribute('aria-pressed', String(zoomed));
         zoomBtn.textContent = zoomed ? '전체 보기' : '확대';
+        zoomHint.textContent = zoomed ? '끌어서 움직이고, 좌석을 눌러 고르세요.' : FIT_HINT;
+        // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(CSS 에서 높이를 고정한다).
+        scroller.classList.toggle('zoomed', zoomed);
         applySeatSize();
         // 확대하면 격자가 화면보다 넓어진다. 왼쪽 끝부터 보여주면 무대 정면을 놓치므로 가운데로.
         if (zoomed) {
             scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
+            scroller.scrollTop = 0;
         }
     });
+
+    /* ---------- 확대 모드에서 끌어 움직이기 ----------
+       마우스만 처리한다. 터치·펜은 브라우저 기본 스크롤이 이미 같은 일을 하고, pointer 로
+       가로채면 touch-action 을 꺼야 해서 오히려 관성 스크롤을 잃는다.
+
+       좌석이 버튼이라 끌기와 클릭이 겹친다. 문턱(4px)을 넘게 움직였으면 그 다음 click 을
+       캡처 단계에서 한 번 막는다 — 안 그러면 지도를 끌 때마다 지나간 좌석이 선택된다.
+
+       포인터 캡처는 문턱을 넘은 뒤에 건다. pointerdown 에서 바로 걸면 이어지는 click 이
+       좌석이 아니라 캡처 대상(컨테이너)으로 배달돼서, 확대 모드에서 좌석을 아예 고를 수 없다.
+       움직이지 않은 클릭은 캡처를 거치지 않으므로 종전대로 좌석까지 간다. */
+    const DRAG_THRESHOLD = 4;
+    let pan = null;
+    let swallowClick = false;
+
+    scroller.addEventListener('pointerdown', (e) => {
+        swallowClick = false;
+        if (!zoomed || e.pointerType !== 'mouse' || e.button !== 0) return;
+        pan = { id: e.pointerId, x: e.clientX, y: e.clientY,
+                left: scroller.scrollLeft, top: scroller.scrollTop, moved: false };
+    });
+
+    scroller.addEventListener('pointermove', (e) => {
+        if (!pan) return;
+        const dx = e.clientX - pan.x;
+        const dy = e.clientY - pan.y;
+        if (!pan.moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+        if (!pan.moved) {
+            pan.moved = true;
+            scroller.classList.add('dragging');
+            // 여기서부터는 커서가 격자를 벗어나도 계속 따라와야 한다.
+            // 포인터가 이미 놓인 뒤라면 setPointerCapture 가 던진다. 그때도 끌기 자체는
+            // 계속돼야 하므로(격자 안에서는 이벤트가 그대로 올라온다) 삼켜둔다.
+            try { scroller.setPointerCapture(pan.id); } catch (ignored) { /* 캡처 없이 진행 */ }
+        }
+        scroller.scrollLeft = pan.left - dx;
+        scroller.scrollTop = pan.top - dy;
+    });
+
+    function endPan() {
+        if (!pan) return;
+        swallowClick = pan.moved;
+        if (pan.moved && scroller.hasPointerCapture(pan.id)) scroller.releasePointerCapture(pan.id);
+        pan = null;
+        scroller.classList.remove('dragging');
+    }
+    scroller.addEventListener('pointerup', endPan);
+    scroller.addEventListener('pointercancel', endPan);
+
+    scroller.addEventListener('click', (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+    }, true);
 
     // 창 크기가 바뀌면 다시 맞춘다. 리사이즈는 연속으로 들어오므로 한 프레임에 한 번만 계산한다.
     let fitPending = false;
