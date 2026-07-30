@@ -280,6 +280,12 @@ a { color: inherit; text-decoration: none; }
      좌석도에서 글자를 선택할 일도 없다.
   */
   user-select: none;
+  /*
+     스크롤이 잦은 요소라고 미리 알려서 별도 합성 레이어를 앞서 만들어둔다. 이게 없으면
+     처음 끌 때 브라우저가 그제서야 레이어를 만드느라 첫 프레임이 끊긴다. 지도 모드에서만
+     켠다 — 상시로 켜두면 페이지 전체가 이 레이어 하나를 위한 메모리를 계속 들고 있는다.
+  */
+  will-change: scroll-position;
 }
 .housescroll.zoomed.dragging { cursor: grabbing; }
 
@@ -291,8 +297,22 @@ a { color: inherit; text-decoration: none; }
 */
 #housecontent { transform-origin: 0 0; }
 .housescroll.pinching #housecontent { will-change: transform; }
-/* 핀치 중에는 좌석 hover 효과가 깜빡이지 않게 멈춘다. */
-.housescroll.pinching .seat { transition: none; }
+
+/*
+   끌기·핀치 중에는 좌석의 :hover 를 완전히 죽인다.
+
+   setPointerCapture 는 pointermove 이벤트만 scroller 로 돌릴 뿐, :hover 는 여전히 커서
+   바로 아래 있는 좌석에 그대로 걸린다(스펙상 포인터 캡처가 :hover 를 대신 가져가지
+   않는다). 그래서 빠르게 끌면 지나가는 좌석마다 transform·border-color 전환(.1s)이
+   연달아 걸려 버벅였다. pointer-events: none 이면 히트테스트 자체에서 빠져서 :hover 가
+   아예 안 걸린다 — transition: none 만으로는(전환 없이 즉시 바뀌긴 해도) 좌석마다 스타일을
+   다시 계산하는 비용 자체는 남는다.
+*/
+.housescroll.dragging .seat,
+.housescroll.pinching .seat {
+  transition: none;
+  pointer-events: none;
+}
 
 /*
    무대 기준 배치. 무대 뒤 구역(합창석 등)은 무대 위쪽에, 정면 구역은 무대 아래에 놓는다.
