@@ -35,6 +35,26 @@ public class Reservation {
     @Builder.Default
     private List<Seat> seats = new ArrayList<>();
 
+    /**
+     * 이 예매의 회차. 좌석을 통해서도 갈 수 있지만 그것만으로는 부족하다 —
+     * 취소/만료되면 {@link Seat#release()} 가 좌석 연결을 끊어서 공연명·일시를 잃는다.
+     * 예매는 지난 내역으로 남아야 하므로 회차를 직접 들고 있는다.
+     *
+     * <p>한 예매의 좌석은 모두 같은 회차다 (ReservationService.createReservation 에서 강제).
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "schedule_id")
+    private PerformanceSchedule schedule;
+
+    /**
+     * 예매 시점의 좌석 표기 스냅샷("1층 1열 1번 VIP, 3층 5열 1번 A").
+     *
+     * <p>취소하면 좌석 연결이 끊기고 그 좌석은 다시 팔리므로, 어떤 좌석이었는지는 살아 있는
+     * seat 행에서 되짚을 수 없다. 예매는 영수증 성격이라 그 시점 값을 그대로 남긴다.
+     */
+    @Column(length = 500)
+    private String seatSummary;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     @Builder.Default

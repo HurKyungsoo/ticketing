@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * 예매 핵심 로직.
@@ -247,9 +248,20 @@ public class ReservationService {
             throw new IllegalStateException("본인 예매만 취소할 수 있습니다.");
         }
 
+        // 이미 취소/만료된 건은 좌석 연결이 이미 끊겨 있다(Seat.release()). 그대로 진행하면
+        // 잠글 좌석이 하나도 없어 seats.get(0) 에서 터진다 — 취소 버튼을 두 번 누르거나
+        // 만료된 화면에서 취소하면 500 이 났다. 풀어줄 좌석도 환불할 돈도 없으니 여기서 끝낸다.
+        if (reservation.getStatus() == ReservationStatus.CANCELED
+                || reservation.getStatus() == ReservationStatus.EXPIRED) {
+            log.debug("이미 종료된 예매라 취소를 건너뛴다. no={}, status={}",
+                    reservationNo, reservation.getStatus());
+            return 0;
+        }
+
         List<Seat> seats = lockSeatsInOrder(reservation);
 
-        LocalDateTime showAt = seats.get(0).getSchedule().getShowAt();
+        // 회차는 예매가 직접 들고 있다. 좌석에서 꺼내면 위처럼 좌석이 없는 순간 못 쓴다.
+        LocalDateTime showAt = reservation.getSchedule().getShowAt();
         int feeRate = reservation.refundFeeRate(showAt, LocalDateTime.now());
         int refund = reservation.getAmount() * (100 - feeRate) / 100;
 
@@ -265,7 +277,8 @@ public class ReservationService {
             seatHoldRepository.deleteById(seat.getId());
         }
 
-        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(seats.get(0).getSchedule().getId())
+        // 락 순서는 Seat -> PerformanceSchedule 유지 (좌석은 위에서 이미 잠갔다).
+        PerformanceSchedule schedule = scheduleRepository.findByIdForUpdate(reservation.getSchedule().getId())
                 .orElseThrow(() -> new IllegalStateException("회차 없음"));
         for (int i = 0; i < seats.size(); i++) {
             schedule.increaseRemaining();
@@ -311,6 +324,8 @@ public class ReservationService {
         Reservation reservation = reservationRepository.save(Reservation.builder()
                 .reservationNo(generateReservationNo())
                 .memberId(memberId)
+                .schedule(schedule)
+                .seatSummary(summarizeSeats(seats))
                 .status(ReservationStatus.PENDING)
                 .amount(seats.stream().mapToInt(Seat::getPrice).sum())
                 .createdAt(now)
@@ -318,6 +333,13 @@ public class ReservationService {
                 .build());
         seats.forEach(seat -> seat.assignReservation(reservation));
         return reservation;
+    }
+
+    /** 좌석 표기를 예매에 스냅샷으로 남긴다. 취소되면 좌석 연결이 끊겨 되짚을 수 없기 때문이다. */
+    private String summarizeSeats(List<Seat> seats) {
+        return seats.stream()
+                .map(seat -> seat.seatLabel() + " " + seat.getGrade())
+                .collect(Collectors.joining(", "));
     }
 
     /** yyMMdd + 8자리 난수 */
@@ -329,6 +351,6 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<Reservation> findMyReservations(Long memberId) {
-        return reservationRepository.findWithSeatDetailsByMemberIdOrderByCreatedAtDesc(memberId);
+        return reservationRepository.findWithScheduleByMemberIdOrderByCreatedAtDesc(memberId);
     }
 }

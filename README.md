@@ -122,6 +122,8 @@ KopisPerformanceClient ───┤    (showTimesByDay/pricesByGrade            
 │ PK id             │
 │ UK reservationNo  │
 │    memberId       │ ← member.id 값 (FK 아님)
+│ FK schedule_id    │ ← 취소되면 좌석 연결이 끊겨서, 공연 정보는 여기로 온다
+│    seatSummary    │ ← 예매 시점 좌석 표기 스냅샷 ("1층 3열 12번 VIP, …")
 │ FK seat_id        │
 │    status         │  PENDING / CONFIRMED / CANCELED / EXPIRED
 │    amount         │
@@ -243,6 +245,8 @@ SET seat:lock:{seatId} {token} NX PX 3000
 | 결제창에서 10분(선점 만료)을 넘기면 `HoldExpireScheduler` 가 좌석을 `AVAILABLE` 로 되돌리는데, 그 사이 토스 승인이 끝나 "돈은 나갔는데 좌석은 없는" 상태 발생 | 컨트롤러가 토스 승인 호출 **전**에 만료 여부를 조기 검사 + `confirmPayment`/스케줄러 양쪽에서 `Seat` 를 `findByIdForUpdate` 로 잠가 경쟁을 없앰(락 순서 Seat → PerformanceSchedule) + 그래도 승인 후 확정 실패 시 토스 결제취소 API로 자동 환불 |
 | 다중 좌석 예매를 도입하며 FK 를 `reservation.seat_id` → `seat.reservation_id` 로 뒤집었더니, 좌석이 예매를 참조하는 상태에서 예매를 먼저 지우는 `ReservationConcurrencyTest` 의 `@BeforeEach` 가 제약 위반으로 터져 4전략 중 3개가 실패 (첫 케이스만 DB 가 비어 있어 통과해 원인이 가려짐) | 테스트 정리 순서를 FK 방향에 맞게 `seat → reservation` 으로 교체. 운영 경로는 예매를 삭제하지 않고 상태만 바꾸며 `Seat.release()` 가 연결을 끊으므로 영향 없음 |
 | 좌석을 여러 개 잠그면 두 요청이 겹치는 좌석을 서로 다른 순서로 잠가 데드락 가능 | 기존 "Seat → PerformanceSchedule" 규칙에 **"여러 Seat 사이에도 id 오름차순"** 을 추가. `sortedIds()` / `lockSeatsInOrder()` 로 강제 |
+| **취소한 예매가 마이페이지에서 영구히 안 보임.** 화면에 「취소됨」 배지와 `badge-CANCELED` 스타일까지 만들어 놨는데도 한 번도 뜰 수 없는 상태였다. `Seat.release()` 가 좌석–예매 연결을 끊는 건 의도된 설계인데(끊지 않으면 그 좌석이 재판매될 때 `reservation_id` 가 덮여 어차피 잃는다), 마이페이지 쿼리가 `join fetch r.seats` 로 **좌석을 거쳐** 공연명·일시를 가져와서 좌석 0개가 된 예매는 inner join 에서 통째로 탈락했다 | `left join fetch` 로 바꾸는 건 답이 아니다 — 좌석이 0개면 공연명·일시·좌석 표기를 어디서도 못 가져온다. 예매를 **영수증**으로 다뤘다: `Reservation.schedule` FK 로 회차를 직접 들고(생성 시 이미 동일 회차를 강제하고 회차를 잠가 들고 있어서 추가 비용 없음), 좌석 표기는 `seatSummary` 스냅샷으로 남긴다. 좌석 컬렉션을 fetch 하지 않으니 행이 늘지 않아 `distinct` 도 필요없어졌다. **지난 내역을 살아 있는 행에서 되짚으려 하면 안 된다** — 재활용되는 자원(좌석)을 참조로 들고 있으면 이력이 사라진다 |
+| 위 조사 중 발견 — **취소 버튼을 두 번 누르면 500.** `cancel()` 이 `lockSeatsInOrder()` 결과에 바로 `seats.get(0)` 을 쓰는데, 이미 취소·만료된 건은 좌석이 0개라 `IndexOutOfBoundsException` 이 난다. `Reservation.cancel()` 에 멱등 가드(`if (status == CANCELED) return`)가 이미 있었지만 **그 앞에서 터져 도달하지 못했다** | 상태 가드를 서비스 진입부로 옮겨 CANCELED/EXPIRED 는 환불 0 으로 조용히 끝낸다. `showAt` 과 회차 락 대상도 `reservation.getSchedule()` 에서 가져오게 바꿔 좌석 유무에 의존하지 않게 했다 (락 순서 `Seat → PerformanceSchedule` 은 유지). 가드가 `increaseRemaining()` 앞에 있어 중복 취소로 잔여석이 두 번 오르지도 않는다 |
 | 예매–좌석이 1:N 이 되면서 통계 쿼리가 `seat` 를 join 하면 예매 행이 좌석 수만큼 늘어나 `SUM(r.amount)` 가 중복 합산됨 | 집계를 좌석 단위 `SUM(s.price)` 로 변경 (늘어난 행 수와 일치). JPA 쪽 `join fetch` 도 `distinct` 로 행 뻥튀기를 접음 |
 
 ---
@@ -415,5 +419,6 @@ docker compose up --build
 - [x] 회차 시각을 실측 분포 기반으로 전환 — 원본에 공연 시각이 없을 때 쓰던 "19:00 고정"을 KOPIS 시간대별 상연 통계(`boxStatsTime`) 실측 분포로 교체(`showtime-distribution.yml`). 최근 30일 상연 24,186회 기준 09~12시 10.4% / 12~15시 21.8% / 15~18시 29.9% / 18~21시 36.3%. 공연ID+날짜를 seed 로 쓰는 결정적 선택이라 배치를 다시 돌려도 같은 결과가 나온다
 - [x] 대형 홀 좌석 맵 — 2,501석 콘서트홀 기준으로 좌석도를 다시 잡았다. `section`("1층뒤P")을 층/행으로 분리해 층 블록 + 층별 잔여석 바로가기로 보여주고, 가장 긴 줄(41석)이 컨테이너에 들어가는 좌석 크기를 계산해 적용한다. 좁은 화면에서는 격자 안에서만 가로 스크롤하고 행 문자는 왼쪽에 고정한다. 이 과정에서 각 줄 앞 4석이 클릭 불가였던 버그와 통로 좌석 툴팁이 사라지던 버그를 같이 잡았다
 - [x] 좌석 행을 `section` 에서 분리 — `Seat.rowNo` 정수 컬럼 신설, 표기를 한국 공연장 관례인 "1층 3열 12번" 으로 통일. 실데이터에서 구역명이 깨져 있던 228 회차 32,792 좌석을 정리했고, 26줄 상한이 사라져 yml 좌석도에 실제 극장 줄 수(콘서트홀 1층 31줄 등)를 그대로 적을 수 있게 됐다
+- [x] 취소 내역 조회 정상화 — 예매가 회차를 직접 참조하고(`Reservation.schedule`) 좌석 표기를 스냅샷(`seatSummary`)으로 남겨, 좌석 연결이 끊긴 취소·만료 예매도 마이페이지에 남는다. 중복 취소가 500 나던 문제도 함께 수정
 - [ ] 카카오/네이버 소셜 로그인 — `spring-boot-starter-oauth2-client` + `CustomOAuth2UserService` 로 최초 로그인 시 자동 회원가입까지 구현 완료. 카카오/네이버 개발자 콘솔에서 REST API 키 발급 및 리다이렉트 URI 등록 대기 중(`KAKAO_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` 환경변수 미설정 상태)
 - [ ] AWS EC2 + RDS 배포 (CD)
