@@ -152,6 +152,18 @@
             ? '끌어서 움직이고, 두 손가락으로 확대·축소하세요.'
             : '끌어서 움직이고, 좌석을 눌러 고르세요.';
 
+    /*
+       맞춤 모드인데 좌석이 SEAT_MIN 보다 작을 때의 안내.
+
+       2,505석 콘서트홀은 맞춤 모드에서 좌석이 11px 까지 내려간다. 누르면 실제로 골라지긴 하지만
+       WCAG 2.2 의 최소 타깃 크기(24×24px)에 한참 못 미쳐서 정확히 겨냥해야 한다. 확대 버튼이
+       이미 그 답인데, 종전에는 버튼이 다른 요소와 똑같은 외곽선 스타일이고 안내문도
+       "인원수만큼 고를 수 있습니다" 그대로라 <b>확대해야 한다는 신호가 어디에도 없었다.</b>
+    */
+    const FIT_SMALL_HINT = CAN_TOUCH
+            ? '좌석이 작습니다. 두 손가락으로 벌리거나 「확대」를 눌러 고르세요.'
+            : '좌석이 작습니다. 「확대」를 누르면 크게 보고 고를 수 있어요.';
+
     const scroller = document.getElementById('housescroll');
     const bookbar = document.getElementById('bookbar');
 
@@ -250,7 +262,7 @@
         zoomed = on;
         zoomBtn.setAttribute('aria-pressed', String(on));
         zoomBtn.textContent = on ? '전체 보기' : '확대';
-        zoomHint.textContent = on ? ZOOM_HINT : FIT_HINT;
+        // 안내문은 syncZoomBtn 이 좌석 크기까지 보고 정한다(아래에서 호출된다).
         // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(높이를 고정한다).
         scroller.classList.toggle('zoomed', on);
         applySeatSize();
@@ -273,9 +285,23 @@
         scroller.style.height = Math.round(Math.max(280, Math.min(860, available))) + 'px';
     }
 
-    /** 맞춤 크기가 이미 넉넉하면 확대 버튼은 할 일이 없다(20석짜리 기본 홀 등). 지도 모드면 항상 보인다. */
+    /**
+     * 확대 버튼의 노출·강조와 안내문을 좌석 크기에 맞춰 정한다.
+     *
+     * <p>맞춤 크기가 이미 넉넉하면 버튼은 할 일이 없다(20석짜리 기본 홀 등). 지도 모드면 항상 보인다.
+     *
+     * <p>맞춤 모드인데 좌석이 누르기엔 작을 때만 버튼을 <b>주요 액션으로 올린다</b>. 그 순간
+     * 사용자가 할 수 있는 의미 있는 행동이 확대뿐이기 때문이다(좌석은 아직 못 골랐으니
+     * 예매 버튼도 비활성이다). 좌석이 충분히 크면 다시 보조 스타일로 내려서, 화면에 강조가
+     * 두 개씩 떠 있지 않게 한다.
+     */
     function syncZoomBtn() {
-        zoomBtn.hidden = !zoomed && requiredFitSize() >= SEAT_MIN;
+        const tooSmallToTap = requiredFitSize() < SEAT_MIN;
+        zoomBtn.hidden = !zoomed && !tooSmallToTap;
+
+        const suggestZoom = !zoomed && tooSmallToTap;
+        zoomBtn.classList.toggle('zoomtoggle--suggest', suggestZoom);
+        zoomHint.textContent = zoomed ? ZOOM_HINT : (tooSmallToTap ? FIT_SMALL_HINT : FIT_HINT);
     }
 
     applySeatSize();

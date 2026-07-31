@@ -182,6 +182,18 @@ a { color: inherit; text-decoration: none; }
 .zoomtoggle:hover { border-color: var(--brass-dim); }
 .zoomtoggle[aria-pressed="true"] { border-color: var(--brass); color: var(--brass); }
 
+/*
+   맞춤 모드에서 좌석이 누르기엔 작을 때만(2,505석 홀은 11px 까지 내려간다) 이 버튼을
+   주요 액션으로 올린다. 그 순간 할 수 있는 의미 있는 행동이 확대뿐이라서다 —
+   좌석을 아직 못 골랐으니 예매 버튼도 비활성이고, 강조가 겹치지 않는다.
+   좌석이 충분히 큰 홀에서는 이 클래스가 안 붙어 조용한 보조 버튼으로 남는다.
+*/
+.zoomtoggle--suggest {
+  background: var(--brass); border-color: var(--brass);
+  color: var(--ink); font-weight: 700;
+}
+.zoomtoggle--suggest:hover { border-color: var(--brass); filter: brightness(1.08); }
+
 .stage {
   position: relative;
   margin: 8px auto 44px;
