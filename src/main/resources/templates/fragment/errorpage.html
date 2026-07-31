@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    에러 페이지 공통 본문. 404/403/5xx 가 문구만 다르고 구조가 같아서 프래그먼트로 뺐다.
+      code    : 화면에 크게 띄우는 상태코드 문자열
+      heading : 한 줄 요약
+      detail  : 사용자가 다음에 뭘 할 수 있는지
+
+    reason 은 어드바이스가 "보여줘도 되는 예외 메시지"일 때만 모델에 넣는다
+    (PageExceptionHandler.page 참고). 스프링 부트 기본 에러 처리로 들어온 경우엔
+    없으므로 th:if 로 통째로 건너뛴다.
+*/-->
+<div th:fragment="errorbody(code, heading, detail)" class="empty-state" style="text-align:left;padding:0">
+    <p style="font-family:var(--display);font-size:56px;line-height:1;color:var(--brass-dim);margin:0 0 16px"
+       th:text="${code}">404</p>
+    <p><strong style="font-size:17px" th:text="${heading}">요약</strong></p>
+    <p th:text="${detail}">안내</p>
+    <p th:if="${reason}" style="color:var(--mute);font-size:13px;margin-top:10px" th:text="${reason}">사유</p>
+</div>
+</body>
+</html>

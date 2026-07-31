@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>페이지를 찾을 수 없습니다</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<body>
+<div class="wrap authwrap">
+    <header th:replace="~{fragment/header :: masthead(tag='페이지 없음', showAuthNav=true)}"></header>
+
+    <div th:replace="~{fragment/errorpage :: errorbody(
+            code='404',
+            heading='요청하신 페이지를 찾을 수 없습니다.',
+            detail='주소가 바뀌었거나 종료된 공연일 수 있습니다.')}"></div>
+
+    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+</div>
+</body>
+</html>

@@ -9,6 +9,8 @@ import com.portfolio.ticket.payment.TossPaymentResult;
 import com.portfolio.ticket.payment.TossProperties;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.security.CustomUserDetails;
+import com.portfolio.ticket.service.ForbiddenException;
+import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -106,9 +108,11 @@ public class PaymentController {
 
     private Reservation getOwnedReservation(String reservationNo, CustomUserDetails principal) {
         Reservation reservation = reservationRepository.findWithSeatDetailsByReservationNo(reservationNo)
-                .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
+                .orElseThrow(() -> new NotFoundException("예매 내역을 찾을 수 없습니다."));
         if (!reservation.getMemberId().equals(principal.getMemberId())) {
-            throw new IllegalStateException("본인 예매만 결제할 수 있습니다.");
+            // 남의 예매다. 종전에는 IllegalStateException 이라 Whitelabel 500 이 나갔다.
+            // 예매번호를 메시지에 담지 않는다 — 존재 여부를 알려줄 이유가 없다.
+            throw new ForbiddenException("본인 예매만 결제할 수 있습니다.");
         }
         return reservation;
     }

@@ -220,7 +220,7 @@ public class ReservationService {
     @Transactional
     public Reservation confirmPayment(String reservationNo, String paymentKey) {
         Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
-                .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
+                .orElseThrow(() -> new NotFoundException("예매 내역 없음. no=" + reservationNo));
 
         // 락 순서: Seat(오름차순) -> PerformanceSchedule (CLAUDE.md 동시성 규칙).
         // HoldExpireScheduler 가 같은 좌석을 만료 처리 중일 수 있어 좌석 행을 먼저 잠가
@@ -242,10 +242,10 @@ public class ReservationService {
     @Transactional
     public int cancel(String reservationNo, Long memberId) {
         Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
-                .orElseThrow(() -> new IllegalArgumentException("예매 내역 없음. no=" + reservationNo));
+                .orElseThrow(() -> new NotFoundException("예매 내역을 찾을 수 없습니다."));
 
         if (!reservation.getMemberId().equals(memberId)) {
-            throw new IllegalStateException("본인 예매만 취소할 수 있습니다.");
+            throw new ForbiddenException("본인 예매만 취소할 수 있습니다.");
         }
 
         // 이미 취소/만료된 건은 좌석 연결이 이미 끊겨 있다(Seat.release()). 그대로 진행하면

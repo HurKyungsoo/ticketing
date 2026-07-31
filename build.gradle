@@ -43,6 +43,9 @@ dependencies {
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // MockMvc 요청에 로그인 주체를 붙이기 위한 것. 컨트롤러가 @AuthenticationPrincipal 로
+    // CustomUserDetails 를 받으므로 @WithMockUser 의 기본 User 로는 대체할 수 없다.
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // DISTRIBUTED 전략 측정용 실제 Redis. 로컬/CI 에 Docker 가 없어도

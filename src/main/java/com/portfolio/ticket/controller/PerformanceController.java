@@ -8,6 +8,7 @@ import com.portfolio.ticket.mapper.dto.GradePriceRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
+import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.PerformanceListService;
 import com.portfolio.ticket.service.SeatMapView;
 import lombok.RequiredArgsConstructor;
@@ -106,7 +107,7 @@ public class PerformanceController {
     @GetMapping("/performances/{id}")
     public String detail(@PathVariable Long id, Model model) {
         Performance performance = performanceRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("공연을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
         List<PerformanceSchedule> schedules = scheduleRepository.findByPerformanceIdOrderByShowAtAsc(id);
 
         // 등급별 가격은 회차 아무거나 하나로 대표한다 — 같은 공연의 모든 회차는 SeatGenerator 가
@@ -126,7 +127,7 @@ public class PerformanceController {
     @GetMapping("/schedules/{scheduleId}/seats")
     public String seatMap(@PathVariable Long scheduleId, Model model) {
         PerformanceSchedule schedule = scheduleRepository.findWithPerformanceById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("회차를 찾을 수 없습니다."));
+                .orElseThrow(() -> new NotFoundException("회차를 찾을 수 없습니다."));
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);
         Performance performance = schedule.getPerformance();
 
