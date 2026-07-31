@@ -1215,6 +1215,39 @@ body.page-detail .pf-title {
   overflow: hidden;
 }
 
+/* ---- 포스터 아래 요약 카드 ----
+   sticky 칸의 남는 자리를 채운다. 강조는 최저가 하나로 몰고 CTA 는 외곽선으로 둔다 —
+   여기서 CTA 까지 채우면 화면에 브라스 덩어리가 둘이 되어 시선이 갈린다. */
+body.page-detail .summarycard {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink-soft);
+}
+body.page-detail .sc-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+}
+body.page-detail .sc-row + .sc-row { margin-top: 10px; }
+body.page-detail .sc-label { font-size: 13px; color: var(--mute); }
+body.page-detail .sc-price {
+  font-family: var(--display); font-size: 19px; font-weight: 800;
+  color: var(--brass);
+}
+body.page-detail .sc-next { font-size: 14px; font-weight: 600; color: var(--paper); }
+body.page-detail .sc-cta {
+  display: block; margin-top: 14px; padding: 11px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  text-align: center; font-size: 14px; font-weight: 600; color: var(--paper);
+  transition: border-color .12s, color .12s, background .12s;
+}
+body.page-detail .sc-cta:hover {
+  border-color: var(--brass); color: var(--brass);
+  background: rgba(255, 201, 64, 0.08);
+}
+/* 헤더가 sticky 라 앵커로 점프하면 제목이 그 아래 가린다. */
+body.page-detail #schedule-pick { scroll-margin-top: 88px; }
+
 body.page-detail h2 {
   font-family: var(--display); font-size: 30px; font-weight: 800;
   letter-spacing: -0.02em; color: var(--paper); margin: 0 0 8px;
@@ -1325,6 +1358,10 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
   body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
+  /* 요약 카드는 sticky 칸의 남는 자리를 채우려고 있는 것인데, 여기서는 칸이 sticky 가 아니라
+     제목 위로 올라간다 — 공연명보다 최저가가 먼저 읽히는 이상한 순서가 되고, 같은 정보가
+     바로 아래 공연 정보 표에 다시 나온다. 그래서 숨긴다. */
+  body.page-detail .summarycard { display: none; }
   /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
   body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
   body.page-detail .sd-date { width: auto; }

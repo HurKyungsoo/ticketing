@@ -10,6 +10,7 @@ import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.PerformanceListService;
+import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
@@ -125,6 +127,9 @@ public class PerformanceController {
         // 칩 수십 개가 한 덩어리로 쏟아져 어느 날 몇 시인지 읽어낼 수 없다.
         model.addAttribute("scheduleDays", ScheduleDayView.groupByDay(schedules));
         model.addAttribute("gradePrices", gradePrices);
+        // 포스터 아래 sticky 요약(최저가 · 가장 빠른 회차).
+        model.addAttribute("summary",
+                PerformanceSummaryView.of(performance, schedules, gradePrices, LocalDateTime.now()));
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         return "performance/detail";

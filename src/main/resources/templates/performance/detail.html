@@ -30,6 +30,30 @@
                     <span class="pf-title" th:text="${performance.title}">공연명</span>
                 </div>
             </div>
+
+            <!--
+                포스터 아래 요약. 이 칸은 sticky 라 스크롤 내내 화면에 남는데 포스터 아래가
+                끝까지 비어 있었다 — 긴 공연 소개를 읽다 보면 가격도 예매 진입점도 화면 밖으로
+                사라진다. 보여줄 게 하나도 없으면(회차 없음 + 가격 미상) 카드째 숨긴다.
+                좁은 화면에서는 CSS 가 숨긴다 — 그때는 이 칸이 sticky 가 아니라 제목 위로
+                올라가서, 공연명보다 가격이 먼저 읽히는 이상한 순서가 된다.
+            -->
+            <div class="summarycard" th:if="${summary.hasAnything()}">
+                <div class="sc-row" th:if="${summary.lowestPrice() != null}">
+                    <span class="sc-label">최저가</span>
+                    <strong class="sc-price"
+                            th:text="${summary.lowestPrice() == 0} ? '무료'
+                                     : ${#numbers.formatInteger(summary.lowestPrice(),0,'COMMA')} + '원~'">62,000원~</strong>
+                </div>
+                <div class="sc-row" th:if="${summary.nextSchedule() != null}">
+                    <span class="sc-label">가장 빠른 회차</span>
+                    <strong class="sc-next"
+                            th:text="${#temporals.format(summary.nextSchedule().showAt, 'M/d(E) HH:mm')}">8/7(금) 19:00</strong>
+                </div>
+                <!-- 회차 목록으로 보낸다. 특정 회차로 바로 보내지 않는 건, 관람일은 사용자가
+                     고르는 것이지 가장 빠른 회차가 기본값이 아니기 때문이다. -->
+                <a class="sc-cta" th:if="${summary.nextSchedule() != null}" href="#schedule-pick">회차 선택하기</a>
+            </div>
         </div>
 
         <div>
@@ -105,7 +129,8 @@
                 <p class="description" th:text="${performance.description}">설명</p>
             </th:block>
 
-            <h3 class="detail-heading">회차 선택</h3>
+            <!-- 요약 카드의 "회차 선택하기" 가 여기로 온다. scroll-margin-top 은 CSS 에서 준다. -->
+            <h3 class="detail-heading" id="schedule-pick">회차 선택</h3>
             <!-- 날짜 한 줄 + 그 날의 시각들. 그룹핑은 ScheduleDayView 가 한다(정렬 보장). -->
             <div class="scheduledays">
                 <div class="scheduleday" th:each="d : ${scheduleDays}"
