@@ -63,11 +63,13 @@
     <!-- 좌석 상태 표시는 한 번 익히면 계속 볼 필요가 없어서 본문 맨 아래에 둔다.
          고르는 내내 확인하게 되는 등급별 가격만 예매 바에 고정한다. -->
     <div class="seatstatus">
+        <!-- "선택 가능"은 견본을 두지 않는다. 이제 예매 가능한 좌석은 등급색 네 가지 중
+             하나로 칠해지므로 대표 견본 하나를 두면 오히려 틀린 설명이 된다
+             (예매 바에 고정된 등급별 가격표가 그 넷을 이미 보여준다). -->
         <div class="legend-row">
-            <span><i style="background:var(--ink-soft);border:1px solid var(--line)"></i> 선택 가능</span>
-            <span><i style="background:var(--brass)"></i> 선택함</span>
-            <span><i style="background:var(--brass-dim)"></i> 결제 대기</span>
-            <span><i style="background:var(--rose);opacity:.55"></i> 판매 완료</span>
+            <span><i style="background:var(--paper);box-shadow:0 0 0 2px var(--brass)"></i> 선택함</span>
+            <span><i style="background:var(--seat-held)"></i> 결제 대기</span>
+            <span><i style="background:var(--seat-sold)"></i> 판매 완료</span>
         </div>
     </div>
 </div>

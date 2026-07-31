@@ -46,6 +46,30 @@
   --display: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
   --body: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 
+  /*
+     좌석 등급 색. 이 화면에는 포스터가 없어서 "배경에서 색을 빼 포스터를 유일한 색으로
+     둔다"는 위 원칙이 적용되지 않는다 — 여기서는 등급이 곧 콘텐츠다.
+
+     종전에는 등급을 앰버 한 색의 투명도 + 테두리 굵기로만 구분했는데 둘 다 무너져 있었다.
+     측정값: 좌석 대비 명암비가 VIP 11.88 / R 6.03 / S 2.28 / A 1.23 로 S·A 가 WCAG
+     1.4.11(비텍스트 3.0) 미달이었고, 굵기도 맞춤 배율에서 R·S·A 가 전부 0.67px,
+     확대해도 R 과 S 가 똑같이 1.33px 라 4단계가 실제로는 3단계로 접혀 있었다.
+     콘서트홀 기준 2,481석 중 1,619석(65%)이 서로 구별되지 않는 상태였다.
+
+     그래서 색상(hue)으로 가르되 **명도도 같이 단조 감소**시킨다. 색상만으로 가르면
+     색각 이상이나 흑백 출력에서 등급 순서가 사라진다. 네 색 모두 배경 대비 3.0 을 넘는다
+     (VIP 9.08 / R 5.33 / S 4.06 / A 3.37). 더 선명한 팔레트도 검토했지만
+     (#FFC940/#F0835A/#4E8FBF/#5F5F69) 무대 조명 연출과 부딪혀 이쪽으로 낮췄다.
+  */
+  --grade-vip: #D9A93F;
+  --grade-r:   #BF7150;
+  --grade-s:   #4A7791;
+  --grade-a:   #646470;
+  /* 예매 불가 좌석은 무채색으로 뒤로 물린다. 종전엔 판매 완료가 --rose 였는데,
+     살 수 없는 좌석이 가장 눈에 띄는 색을 갖는 건 시선 유도가 거꾸로 된 것이다. */
+  --seat-held: #3A3A42;
+  --seat-sold: #212125;
+
   --radius: 14px;
   --radius-sm: 10px;
 }
@@ -501,18 +525,27 @@ a { color: inherit; text-decoration: none; }
   width: var(--seat-size);
   height: var(--seat-size);
   aspect-ratio: 1 / 1;
-  border: 1px solid var(--line);
-  background: var(--ink-soft);
+  /*
+     테두리를 아예 쓰지 않고 채움으로만 등급을 나타낸다. 좌석 사이는 --seat-gap 이
+     이미 벌려주므로 칸 경계를 그릴 테두리가 필요 없고, 10px 좌석에서 1px 테두리는
+     면적의 36% 를 먹어 채움색을 못 알아보게 만든다.
+  */
+  border: 0;
+  background: var(--seat-fill, var(--ink-soft));
   border-radius: 3px;
   cursor: pointer;
   padding: 0;
   position: relative;
   touch-action: manipulation;
-  transition: transform .1s, background .1s, border-color .1s;
+  transition: transform .1s, background .1s, box-shadow .1s;
 }
 /* 호 오프셋을 유지한 채로 살짝 더 들어올린다. --arc-y 를 빼먹으면 hover 때 좌석이 평평한
-   자리로 튀어 내려간다. */
-.seat:hover:not(:disabled) { transform: translateY(calc(var(--arc-y) - 2px)); border-color: var(--brass); }
+   자리로 튀어 내려간다. 테두리를 없앴으므로 강조는 바깥 링(box-shadow)으로 준다 —
+   링은 레이아웃을 차지하지 않아서 좌석 크기 자동 맞춤 계산에 영향을 주지 않는다. */
+.seat:hover:not(:disabled) {
+  transform: translateY(calc(var(--arc-y) - 2px));
+  box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.12)) var(--paper);
+}
 .seat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 /* 등급·가격 툴팁 */
@@ -541,20 +574,28 @@ a { color: inherit; text-decoration: none; }
 }
 .seat:hover::after, .seat:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .seat:hover::before, .seat:focus-visible::before { opacity: 1; }
-/*
-   등급: 색이 아닌 테두리 강도로 구분.
+/* 등급은 채움 색으로 구분한다. 근거와 측정값은 :root 의 --grade-* 주석 참고. */
+.seat.grade-VIP { --seat-fill: var(--grade-vip); }
+.seat.grade-R   { --seat-fill: var(--grade-r); }
+.seat.grade-S   { --seat-fill: var(--grade-s); }
+.seat.grade-A   { --seat-fill: var(--grade-a); }
 
-   두께를 좌석 크기에 비례시킨다. 고정 3px 로 두면 맞춤 모드에서 좌석이 10px 까지 작아지는
-   대형 홀에서 VIP 좌석이 테두리로 거의 다 채워져, 브래스로 칠하는 「선택함」 상태와 구별되지
-   않는다. max() 로 하한을 둬서 커도 작아도 등급 순서(VIP > R > S > A)는 유지된다.
+/*
+   예매 불가 좌석. 등급색을 무채색으로 덮어 화면 뒤로 물린다 — 어느 등급이었는지는
+   살 수 없는 이상 결정에 쓰이지 않는 정보다. 둘은 서로 다른 명도로 구분한다
+   (결제 대기는 풀릴 수 있고, 판매 완료는 끝난 좌석이라 가장 어둡다).
 */
-.seat.grade-VIP { border-width: max(1.5px, calc(var(--seat-size) * 0.115)); border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
-.seat.grade-R   { border-width: max(1.2px, calc(var(--seat-size) * 0.077)); border-color: rgba(255,201,64,.68); }
-.seat.grade-S   { border-width: max(1px,   calc(var(--seat-size) * 0.058)); border-color: rgba(255,201,64,.32); }
-.seat.grade-A   { border-width: 1px;   border-color: var(--line); }
-.seat[data-status="HELD"] { background: var(--brass-dim); border-color: transparent; cursor: not-allowed; }
-.seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
-.seat.selected { background: var(--brass); border-color: var(--brass); }
+.seat[data-status="HELD"] { --seat-fill: var(--seat-held); cursor: not-allowed; }
+.seat[data-status="SOLD"] { --seat-fill: var(--seat-sold); cursor: not-allowed; }
+/*
+   고른 좌석. 등급색 넷 중 무엇과도 겹치지 않아야 해서 흰 채움 + 브라스 링으로 둔다.
+   종전처럼 브라스로 칠하면 VIP 등급색과 같아져 "고른 좌석"과 "VIP 좌석"이 구별되지 않는다
+   — 링 두께를 좌석 크기에 비례시켜 10px 맞춤 배율에서도 링이 보인다.
+*/
+.seat.selected {
+  --seat-fill: var(--paper);
+  box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.14)) var(--brass);
+}
 /*
    통로. 실제 극장처럼 블록 사이에 여백을 준다. 어느 좌석 뒤에 통로가 오는지는
    좌석 생성 시점에 seat.aisle_after 로 기록되므로 화면은 그 값만 따른다.
@@ -583,14 +624,16 @@ a { color: inherit; text-decoration: none; }
 .legend-row i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
 .legend-grades span { color: var(--paper); }
 .legend-price { color: var(--brass); font-weight: 700; margin-left: 2px; }
+/* 범례 견본은 좌석과 같은 방식(채움)이어야 한다 — 견본과 좌석이 다른 규칙으로 그려지면
+   범례를 보고 지도를 못 읽는다. 그래서 .seat 과 같은 --grade-* 토큰을 쓴다. */
 .legend-grade {
   width: 13px; height: 13px; border-radius: 3px; display: inline-block;
-  background: var(--ink-soft);
+  border: 0;
 }
-.legend-grade.grade-VIP { border-width: 3px;   border-style: solid; border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
-.legend-grade.grade-R   { border-width: 2px;   border-style: solid; border-color: rgba(255,201,64,.68); }
-.legend-grade.grade-S   { border-width: 1.5px; border-style: solid; border-color: rgba(255,201,64,.32); }
-.legend-grade.grade-A   { border-width: 1px;   border-style: solid; border-color: var(--line); }
+.legend-grade.grade-VIP { background: var(--grade-vip); }
+.legend-grade.grade-R   { background: var(--grade-r); }
+.legend-grade.grade-S   { background: var(--grade-s); }
+.legend-grade.grade-A   { background: var(--grade-a); }
 
 /* ---------- 예매 바 (좌석 표시·가격표 + 고른 좌석 + 예매 버튼) ---------- */
 .bookbar {
