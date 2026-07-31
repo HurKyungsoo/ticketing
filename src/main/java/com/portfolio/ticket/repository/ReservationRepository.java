@@ -16,13 +16,22 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     Optional<Reservation> findByReservationNo(String reservationNo);
 
     /**
-     * 결제 페이지용. open-in-view=false 라 seat->schedule->performance 를 미리 가져와야 한다.
-     * 좌석이 여러 개인 예매는 join fetch 로 행이 좌석 수만큼 뻥튀기되므로 distinct 로 접어준다.
+     * 결제 페이지용. open-in-view=false 라 화면에서 쓸 연관관계를 미리 가져와야 한다.
+     *
+     * <p><b>좌석은 left join 이어야 한다.</b> 선점이 만료되면 {@link Seat#release()} 가 좌석
+     * 연결을 끊어 좌석이 0개가 되는데, inner join 이면 그 예매가 결과에서 통째로 빠져
+     * 결제 페이지가 404 가 된다 — 정작 "선점이 만료됐다"고 알려줘야 할 상황에서 아무것도
+     * 설명하지 못한다. (마이페이지 조회에서 이미 같은 함정을 겪었다.)
+     *
+     * <p>공연 정보는 좌석이 아니라 예매가 직접 든 회차에서 가져온다. 같은 이유로 좌석을
+     * 거치면 만료·취소된 예매에서 공연명·일시를 잃는다.
+     *
+     * <p>좌석이 여러 개면 join fetch 로 행이 좌석 수만큼 뻥튀기되므로 distinct 로 접어준다.
      */
     @Query("select distinct r from Reservation r " +
-            "join fetch r.seats s " +
-            "join fetch s.schedule sc " +
+            "join fetch r.schedule sc " +
             "join fetch sc.performance " +
+            "left join fetch r.seats " +
             "where r.reservationNo = :reservationNo")
     Optional<Reservation> findWithSeatDetailsByReservationNo(@Param("reservationNo") String reservationNo);
 

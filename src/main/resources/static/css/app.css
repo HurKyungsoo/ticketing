@@ -709,6 +709,17 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   transition: filter .12s;
 }
 .paybtn:hover { filter: brightness(1.08); }
+.paybtn:disabled {
+  background: var(--ink-raised); color: var(--mute);
+  cursor: not-allowed; filter: none;
+}
+/* 결제할 수 없는 상태에서 대신 놓는 이동 링크. 주요 액션이 아니므로 테두리만 쓴다. */
+.paybtn--ghost {
+  background: none; color: var(--paper);
+  border: 1px solid var(--line-strong);
+  text-align: center;
+}
+.paybtn--ghost:hover { border-color: var(--brass); color: var(--brass); filter: none; }
 
 .oauthdivider {
   display: flex; align-items: center; gap: 12px;
@@ -1273,25 +1284,31 @@ body.page-detail .sd-times a.soldout {
 
 body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0; }
 
-/* ---- 취소 · 환불 규정 ---- */
-body.page-detail .refund-heading { margin-top: 40px; }
-body.page-detail .refundpolicy {
+/* ---- 취소 · 환불 규정 (공연 상세 + 결제, 두 화면 공용) ----
+   처음엔 page-detail 스코프였는데 결제 화면에서도 같은 목록을 보여주게 되면서 풀었다.
+   규정 자체가 Reservation.REFUND_TIERS 하나에서 나오므로 표기도 한 벌만 둔다. */
+.refundpolicy {
   list-style: none; margin: 0; padding: 0;
   border-top: 1px solid var(--line);
 }
-body.page-detail .refundpolicy li {
+.refundpolicy li {
   display: flex; justify-content: space-between; gap: 20px;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
-body.page-detail .rp-when { color: var(--mute); }
-body.page-detail .rp-fee { color: var(--paper); font-weight: 600; }
-body.page-detail .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
-body.page-detail .refundnote {
+.rp-when { color: var(--mute); }
+.rp-fee { color: var(--paper); font-weight: 600; }
+.refundpolicy .rp-deny .rp-fee { color: var(--rose); }
+.refundnote {
   margin: 14px 0 0;
   font-size: 13px; line-height: 1.7; color: var(--mute);
 }
+/* 상세 화면의 제목 스타일도 결제에서 그대로 쓴다. */
+.detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
+/* .detail-heading 뒤에 와야 한다 — 앞에 두면 위 margin 단축 속성이 margin-top 을 0 으로
+   되돌려서(같은 명시도라 나중 선언이 이김) 규정 제목이 결제 버튼에 딱 붙는다. */
+.refund-heading { margin-top: 40px; }
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
@@ -1299,4 +1316,76 @@ body.page-detail .refundnote {
   /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
   body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
   body.page-detail .sd-date { width: auto; }
+}
+
+/* ==================================================================
+   결제 화면.
+
+   종전에는 주문명 한 줄 + 버튼 하나가 전부였다. 돈이 나가는 마지막 화면인데
+   예매 정보도, 남은 시간도, 환불 규정도 없었다.
+   ================================================================== */
+body.page-payment .paytitle {
+  font-family: var(--display); font-size: 22px; font-weight: 800;
+  letter-spacing: -0.02em; color: var(--paper);
+  margin: 28px 0 18px;
+}
+
+/* ---- 선점 만료 타이머 ----
+   이 화면에서 가장 먼저 읽혀야 하는 정보라 본문 위, 헤더 바로 아래에 둔다. */
+body.page-payment .paytimer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "label clock" "note note";
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 201, 64, 0.06);
+}
+body.page-payment .pt-label { grid-area: label; font-size: 13px; color: var(--mute); }
+body.page-payment .pt-clock {
+  grid-area: clock;
+  font-family: var(--display);
+  /* 초가 바뀔 때마다 숫자 폭이 달라져 시계가 떨리지 않게 고정폭 숫자를 쓴다. */
+  font-variant-numeric: tabular-nums;
+  font-size: 26px; font-weight: 800; line-height: 1.1;
+  color: var(--brass);
+}
+body.page-payment .pt-note { grid-area: note; font-size: 12px; color: var(--mute); }
+
+/* 1분 미만. 색만 바꾸고 깜빡이지는 않는다 — 결제 정보를 입력하는 중에 화면이
+   깜빡이면 오히려 방해가 된다. */
+body.page-payment .paytimer--urgent {
+  border-color: var(--rose);
+  background: rgba(255, 92, 122, 0.08);
+}
+body.page-payment .paytimer--urgent .pt-clock { color: var(--rose); }
+
+/* 결제 불가(만료·취소·이미 결제됨). 강조를 걷어 조용한 안내로 만든다. */
+body.page-payment .paytimer--dead {
+  border-color: var(--line);
+  background: var(--ink-soft);
+}
+body.page-payment .paytimer--dead .pt-clock { color: var(--mute); font-size: 20px; }
+
+/* ---- 예매 정보 ---- */
+body.page-payment .payspec {
+  border-top: 1px solid var(--line);
+  margin: 0 0 24px;
+}
+body.page-payment .payspec div {
+  display: flex; gap: 20px; align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+body.page-payment .payspec dt { width: 74px; flex: none; color: var(--mute); margin: 0; }
+body.page-payment .payspec dd { margin: 0; color: var(--paper); }
+/* 예매번호는 자릿수를 세게 되는 값이라 고정폭으로. */
+body.page-payment .payspec-no { font-variant-numeric: tabular-nums; color: var(--mute); }
+/* 결제금액은 이 목록에서 유일하게 크게 읽혀야 하는 값이다. */
+body.page-payment .payspec-total dd {
+  font-family: var(--display); font-size: 20px; font-weight: 800;
+  color: var(--brass);
 }

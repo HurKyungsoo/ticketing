@@ -8,42 +8,158 @@
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
     <script src="https://js.tosspayments.com/v2/standard"></script>
 </head>
-<body>
+<body class="page-payment">
 <div class="wrap authwrap">
     <header th:replace="~{fragment/header :: masthead(tag='결제', showAuthNav=false)}"></header>
 
-    <p class="picked" style="margin-bottom:24px">
-        <strong th:text="${orderName}">주문명</strong> ·
-        <span th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">금액</span>
-    </p>
+    <!--
+        선점 만료 타이머. 이 화면에서 가장 중요한 정보다 — 종전에는 남은 시간을 어디에도
+        보여주지 않아서, 카드 정보를 입력하는 도중 선점이 풀려도 아무 예고가 없었다.
+        남은 초는 서버가 계산해 넘긴다(PaymentController 주석 참고).
+    -->
+    <div class="paytimer" th:if="${payable}" id="payTimer" th:attr="data-remaining=${remainingSeconds}">
+        <span class="pt-label">결제 남은 시간</span>
+        <strong class="pt-clock" id="payClock">--:--</strong>
+        <span class="pt-note">시간이 지나면 좌석 선점이 해제됩니다.</span>
+    </div>
 
-    <button type="button" id="payBtn" class="paybtn">카드로 결제하기</button>
+    <div class="paytimer paytimer--dead" th:unless="${payable}">
+        <span class="pt-label">결제 불가</span>
+        <strong class="pt-clock" th:switch="${reservation.status.name()}">
+            <th:block th:case="'CONFIRMED'">결제 완료</th:block>
+            <th:block th:case="'CANCELED'">취소된 예매</th:block>
+            <th:block th:case="*">선점 만료</th:block>
+        </strong>
+        <span class="pt-note" th:switch="${reservation.status.name()}">
+            <th:block th:case="'CONFIRMED'">이미 결제가 완료된 예매입니다.</th:block>
+            <th:block th:case="'CANCELED'">취소된 예매는 결제할 수 없습니다.</th:block>
+            <th:block th:case="*">좌석 선점 시간이 지나 결제할 수 없습니다. 좌석을 다시 선택해 주세요.</th:block>
+        </span>
+    </div>
+
+    <h2 class="paytitle" th:text="${performance.title}">공연명</h2>
+
+    <dl class="payspec">
+        <div>
+            <dt>일시</dt>
+            <dd th:text="${#temporals.format(schedule.showAt, 'yyyy.M.d(E) HH:mm')}">2026.8.28(금) 11:00</dd>
+        </div>
+        <div>
+            <dt>공연장</dt>
+            <dd th:text="${performance.venue}">공연장</dd>
+        </div>
+        <div>
+            <!-- 좌석 표기는 스냅샷을 쓴다. 만료되면 좌석 연결이 끊겨 실제 좌석에서 못 읽는다. -->
+            <dt>좌석</dt>
+            <dd th:text="${reservation.seatSummary}">1층 A 1열 1번 VIP</dd>
+        </div>
+        <div>
+            <dt>예매번호</dt>
+            <dd class="payspec-no" th:text="${reservation.reservationNo}">26073177684019</dd>
+        </div>
+        <div class="payspec-total">
+            <dt>결제금액</dt>
+            <dd th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">180,000원</dd>
+        </div>
+    </dl>
+
+    <button type="button" id="payBtn" class="paybtn" th:if="${payable}">카드로 결제하기</button>
+    <a class="paybtn paybtn--ghost" th:unless="${payable}" th:href="@{/mypage/reservations}">예매 내역으로</a>
+
+    <!-- 상세 화면과 같은 목록(Reservation.REFUND_TIERS)을 읽는다. 결제 직전에 한 번 더
+         보여줘야 하는 정보라 여기에도 둔다. -->
+    <h3 class="detail-heading refund-heading">취소 · 환불 규정</h3>
+    <ul class="refundpolicy">
+        <li th:each="t : ${T(com.portfolio.ticket.domain.Reservation).REFUND_TIERS}">
+            <span class="rp-when" th:text="'관람일 ' + ${t.minDaysBefore()} + '일 전까지'">관람일 10일 전까지</span>
+            <span class="rp-fee" th:text="${t.feeRate() == 0} ? '수수료 없음' : '수수료 ' + ${t.feeRate()} + '%'">수수료 없음</span>
+        </li>
+        <li class="rp-deny">
+            <span class="rp-when">관람일 당일</span>
+            <span class="rp-fee">취소 불가</span>
+        </li>
+    </ul>
 </div>
 
 <script th:inline="javascript">
-    const clientKey = /*[[${tossClientKey}]]*/ 'test_ck_00000000000000000000';
-    const reservationNo = /*[[${reservation.reservationNo}]]*/ '';
-    const orderName = /*[[${orderName}]]*/ '';
-    const amount = /*[[${reservation.amount}]]*/ 0;
+    /* ---------------- 남은 시간 카운트다운 ---------------- */
+    (function () {
+        const box = document.getElementById('payTimer');
+        if (!box) return;                       // 이미 결제 불가 상태
+        const clock = document.getElementById('payClock');
+        const payBtn = document.getElementById('payBtn');
 
-    const tossPayments = TossPayments(clientKey);
-    const payment = tossPayments.payment({ customerKey: "ANONYMOUS" });
+        // 서버가 계산한 남은 초에서 시작한다. 브라우저 시계가 어긋나 있어도
+        // 시작점이 서버 기준이므로 표시와 실제가 크게 벌어지지 않는다.
+        let remaining = parseInt(box.dataset.remaining, 10) || 0;
 
-    document.getElementById('payBtn').addEventListener('click', async () => {
-        try {
-            await payment.requestPayment({
-                method: "CARD",
-                amount: { currency: "KRW", value: amount },
-                orderId: reservationNo,
-                orderName: orderName,
-                successUrl: `${window.location.origin}/reservations/${reservationNo}/payment/success`,
-                failUrl: `${window.location.origin}/reservations/${reservationNo}/payment/fail`,
-                card: { useEscrow: false },
-            });
-        } catch (e) {
-            alert('결제 요청 중 오류가 발생했습니다: ' + (e.message || e));
+        function render() {
+            const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+            const s = String(remaining % 60).padStart(2, '0');
+            clock.textContent = `${m}:${s}`;
+            // 1분 미만이면 경고색. 남은 시간이 얼마 없다는 걸 색으로도 알린다.
+            box.classList.toggle('paytimer--urgent', remaining <= 60);
         }
-    });
+
+        function expire() {
+            box.classList.remove('paytimer--urgent');
+            box.classList.add('paytimer--dead');
+            clock.textContent = '선점 만료';
+            box.querySelector('.pt-label').textContent = '결제 불가';
+            box.querySelector('.pt-note').textContent =
+                '좌석 선점 시간이 지났습니다. 좌석을 다시 선택해 주세요.';
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.textContent = '결제 시간이 만료되었습니다';
+            }
+        }
+
+        render();
+        if (remaining <= 0) { expire(); return; }
+
+        const tick = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                remaining = 0;
+                render();
+                expire();
+                clearInterval(tick);
+                return;
+            }
+            render();
+        }, 1000);
+    })();
+
+    /* ---------------- 토스 결제 요청 ---------------- */
+    (function () {
+        const payBtn = document.getElementById('payBtn');
+        if (!payBtn) return;
+
+        const clientKey = /*[[${tossClientKey}]]*/ 'test_ck_00000000000000000000';
+        const reservationNo = /*[[${reservation.reservationNo}]]*/ '';
+        const orderName = /*[[${orderName}]]*/ '';
+        const amount = /*[[${reservation.amount}]]*/ 0;
+
+        const tossPayments = TossPayments(clientKey);
+        const payment = tossPayments.payment({ customerKey: "ANONYMOUS" });
+
+        payBtn.addEventListener('click', async () => {
+            if (payBtn.disabled) return;
+            try {
+                await payment.requestPayment({
+                    method: "CARD",
+                    amount: { currency: "KRW", value: amount },
+                    orderId: reservationNo,
+                    orderName: orderName,
+                    successUrl: `${window.location.origin}/reservations/${reservationNo}/payment/success`,
+                    failUrl: `${window.location.origin}/reservations/${reservationNo}/payment/fail`,
+                    card: { useEscrow: false },
+                });
+            } catch (e) {
+                alert('결제 요청 중 오류가 발생했습니다: ' + (e.message || e));
+            }
+        });
+    })();
 </script>
 </body>
 </html>

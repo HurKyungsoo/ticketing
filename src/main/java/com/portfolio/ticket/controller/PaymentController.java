@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -43,8 +44,20 @@ public class PaymentController {
                                Model model) {
         Reservation reservation = getOwnedReservation(reservationNo, principal);
 
+        // 남은 시간은 서버가 계산해 "초"로 넘긴다. 만료 시각(holdExpiresAt)을 그대로 주고
+        // 브라우저가 자기 시계로 빼게 하면, 시계가 어긋난 기기에서 남은 시간이 실제와 달라진다
+        // (몇 분 남았다고 표시하는데 서버는 이미 만료로 처리하는 상황).
+        long remainingSeconds = Math.max(0,
+                Duration.between(LocalDateTime.now(), reservation.getHoldExpiresAt()).toSeconds());
+        // 결제할 수 없는 상태 — 이미 결제됐거나, 취소됐거나, 선점이 풀렸거나.
+        boolean payable = reservation.getStatus() == ReservationStatus.PENDING && remainingSeconds > 0;
+
         model.addAttribute("reservation", reservation);
+        model.addAttribute("schedule", reservation.getSchedule());
+        model.addAttribute("performance", reservation.getSchedule().getPerformance());
         model.addAttribute("orderName", orderName(reservation));
+        model.addAttribute("remainingSeconds", remainingSeconds);
+        model.addAttribute("payable", payable);
         model.addAttribute("tossClientKey", tossProperties.getClientKey());
         return "reservation/payment";
     }
@@ -117,12 +130,23 @@ public class PaymentController {
         return reservation;
     }
 
+    /**
+     * 토스에 넘길 주문명.
+     *
+     * <p>공연명은 좌석이 아니라 예매가 직접 든 회차에서 가져오고, 좌석 수도 살아 있는
+     * 좌석이 아니라 없으면 스냅샷으로 대체한다 — 선점이 만료되면 좌석이 0개가 되는데
+     * {@code seats.get(0)} 을 쓰면 그 순간 결제 페이지가 통째로 터진다(만료 안내를
+     * 띄워야 할 자리에서 500). 만료된 예매는 결제 자체가 막히므로 이 값은 표시용이다.
+     */
     private String orderName(Reservation reservation) {
+        String title = reservation.getSchedule().getPerformance().getTitle();
         List<Seat> seats = reservation.getSeats();
-        String title = seats.get(0).getSchedule().getPerformance().getTitle();
-        if (seats.size() == 1) {
-            return title + " - " + seats.get(0).seatLabel();
+        if (seats.isEmpty()) {
+            return title;
         }
-        return title + " - " + seats.get(0).seatLabel() + " 외 " + (seats.size() - 1) + "석";
+        String first = seats.get(0).seatLabel();
+        return seats.size() == 1
+                ? title + " - " + first
+                : title + " - " + first + " 외 " + (seats.size() - 1) + "석";
     }
 }
