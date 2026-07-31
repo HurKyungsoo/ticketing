@@ -16,7 +16,6 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
         default_batch_fetch_size: 100
     open-in-view: false
 
@@ -30,8 +29,12 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
 
-  thymeleaf:
-    cache: false
+  # 배포 시 처리 중이던 요청(결제 승인 대기 등)을 끊지 않고 마무리한 뒤 종료한다.
+  # 기본(즉시 종료)이면 컨테이너를 내리는 순간 토스 승인 API 응답을 기다리던 요청이
+  # 그대로 잘려서, PaymentController 의 "승인 후 확정 실패 시 자동 환불" 경로가
+  # 애초에 실행될 기회를 못 얻는다.
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
   # 카카오/네이버 소셜 로그인 - 절대 커밋하지 말 것
   # 카카오/네이버 둘 다 Spring Security 기본 제공 provider 가 아니라서
@@ -72,6 +75,31 @@ mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+# graceful shutdown 은 진행 중인 요청을 마무리하는 최대 대기시간(위 spring.lifecycle 값)까지만
+# 늦추고, 그 안에 끝나면 즉시 종료한다.
+server:
+  shutdown: graceful
+
+# 컨테이너/로드밸런서 헬스체크용. health 만 노출하고 나머지 actuator 엔드포인트(env, beans 등)는
+# 열지 않는다 — 내부 설정·의존성 버전이 그대로 드러나는 정보 노출이다.
+# show-details 도 never 로 둔다: 공개 헬스체크는 UP/DOWN 만 알면 되고, DB 종류·버전 같은
+# 컴포넌트 상세는 인증 없이 볼 이유가 없다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    redis:
+      # Redis 는 HoldStrategy.DISTRIBUTED 전용 선택 인프라라 CLAUDE.md/README 원칙대로
+      # "Redis 없이도 앱 기동"이 유지돼야 한다. 기본값(활성화)이면 Redis 가 없거나 잠깐
+      # 끊길 때마다 헬스체크 전체가 DOWN 이 되어, 나머지 4개 전략과 결제·예매가 전부
+      # 멀쩡한데도 오케스트레이터가 컨테이너를 재시작하거나 로드밸런서에서 빼버린다.
+      enabled: false
 
 # 공공데이터포털 인증키 (활용신청 후 발급) - 절대 커밋하지 말 것
 publicdata:
@@ -126,6 +154,14 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  # 템플릿을 고쳐가며 바로 반영해서 봐야 하는 로컬 개발 전용. prod 에 이게 새어나가면
+  # 매 요청마다 템플릿을 디스크에서 다시 읽고 파싱한다.
+  thymeleaf:
+    cache: false
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
 
 ---
 spring:

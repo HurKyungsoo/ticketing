@@ -20,6 +20,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    // 컨테이너/로드밸런서 헬스체크(/actuator/health)용. 다른 엔드포인트는 노출하지 않는다.
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 

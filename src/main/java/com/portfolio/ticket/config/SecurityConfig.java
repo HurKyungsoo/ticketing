@@ -70,7 +70,10 @@ public class SecurityConfig {
                         // h2-console 은 local 프로파일에서만 등록된다(spring.h2.console.enabled).
                         // prod 에서는 서블릿 자체가 뜨지 않으므로 이 허용이 노출로 이어지지 않는다.
                         "/h2-console/**",
-                        "/api/webhooks/**"
+                        "/api/webhooks/**",
+                        // 컨테이너/로드밸런서 헬스체크. management.endpoints.web.exposure.include 가
+                        // health 하나뿐이라 다른 actuator 엔드포인트는 애초에 등록되지 않는다.
+                        "/actuator/health"
                 ).permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()

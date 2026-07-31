@@ -60,6 +60,15 @@ services:
       SPRING_DATA_REDIS_HOST: redis
     ports:
       - "8080:8080"
+    # Dockerfile 에도 같은 HEALTHCHECK 가 있지만, db/redis 와 같은 방식으로 compose 파일만
+    # 보고도 app 상태를 알 수 있게 여기 명시한다. start-period 는 Flyway 마이그레이션을
+    # 포함한 최초 기동 시간을 감안한 값이다.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 40s
+      retries: 5
 
 volumes:
   db-data:
