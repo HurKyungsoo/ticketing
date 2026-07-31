@@ -86,12 +86,10 @@ public class PublicPerformanceClient {
     }
 
     private ExternalPerformance toExternal(JsonNode item) {
-        String title = parser.text(item, "eventNm", "공연행사명", "title");
-
         return ExternalPerformance.builder()
-                .externalId(SOURCE_PREFIX + buildKey(item, title))
+                .externalId(SOURCE_PREFIX + buildKey(item))
                 .sourceType(SourceType.STANDARD)
-                .title(title)
+                .title(parser.text(item, "eventNm", "공연행사명", "title"))
                 .genre(parser.text(item, "eventCo", "장르"))
                 .venue(parser.text(item, "opar", "장소", "eventPlace"))
                 .address(parser.text(item, "rdnmadr", "lnmadr", "소재지도로명주소"))
@@ -105,10 +103,17 @@ public class PublicPerformanceClient {
                 .build();
     }
 
-    /** 원본에 고유키가 없는 경우가 많아 공연명+장소+시작일로 대체키를 만든다. */
-    private String buildKey(JsonNode item, String title) {
-        String venue = parser.text(item, "opar", "장소");
-        String start = parser.text(item, "eventStartDate", "행사시작일자");
+    /**
+     * 원본에 고유키가 없는 경우가 많아 공연명+장소+시작일로 대체키를 만든다.
+     *
+     * <p>여기서만 {@code rawText} 를 쓴다 — 엔티티를 푼 제목으로 해시하면 이미 적재된 행의
+     * external_id 와 달라져서, 같은 공연이 갱신되지 않고 한 벌 더 쌓인다. 키는 사람이 읽을
+     * 값이 아니므로 원문 기준으로 고정해 둔다.
+     */
+    private String buildKey(JsonNode item) {
+        String title = parser.rawText(item, "eventNm", "공연행사명", "title");
+        String venue = parser.rawText(item, "opar", "장소");
+        String start = parser.rawText(item, "eventStartDate", "행사시작일자");
         return Integer.toHexString((title + "|" + venue + "|" + start).hashCode());
     }
 }
