@@ -73,7 +73,10 @@ class PerformanceFilterTest {
                 // 시작일은 일부러 전부 8월로 맞춘다 — 월 필터가 start_date 가 아니라
                 // 회차를 본다는 걸 확인하려면 start_date 로는 구분이 안 돼야 한다.
                 .startDate(LocalDate.of(2026, 8, 1))
-                .endDate(LocalDate.of(2026, 9, 30))
+                // 종료일만은 "오늘"에 상대적으로 잡는다. 고정 날짜(2026-09-30)로 두면
+                // 그 날이 지나는 순간 이 공연들이 종료작이 되어, status=ongoing 을 쓰는
+                // 테스트가 어느 날 갑자기 깨진다.
+                .endDate(LocalDate.now().plusYears(1))
                 .totalSeatCount(100)
                 .basePrice(50_000)
                 .build());
@@ -88,9 +91,29 @@ class PerformanceFilterTest {
         }
     }
 
+    /** 종료일을 직접 정해야 하는 진행 현황(status) 테스트용. */
+    private void createPerformanceEndingOn(String title, LocalDate endDate) {
+        performanceRepository.save(Performance.builder()
+                .externalId("FILTER-" + title + "-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title(title)
+                .category(PerformanceCategory.MUSICAL)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(endDate.minusDays(10))
+                .endDate(endDate)
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build());
+    }
+
     /** status 는 "전체"로 둔다 — 기본값(ongoing)은 오늘 기준이라 테스트 날짜에 좌우된다. */
     private List<String> titlesOf(Integer month, String dayOfWeek) {
-        return listService.search(null, month, dayOfWeek, null, "ALL", null, null, null, 0)
+        return titlesOf(month, dayOfWeek, "ALL");
+    }
+
+    private List<String> titlesOf(Integer month, String dayOfWeek, String status) {
+        return listService.search(null, month, dayOfWeek, null, status, null, null, null, 0)
                 .performances().stream()
                 .map(r -> r.getTitle())
                 .toList();
@@ -141,6 +164,66 @@ class PerformanceFilterTest {
         // 이게 참이어야 위 단언이 "축을 묶었기 때문에" 통과한 것이 된다.
         assertThat(titlesOf(8, null)).hasSize(2);
         assertThat(titlesOf(null, "weekend")).hasSize(2);
+    }
+
+    /* ------------------------------------------------------------------
+     *  진행 현황(status)
+     *
+     *  실데이터로는 검증할 수 없는 필터다 — PerformanceSyncService 가 수집 단계에서
+     *  이미 종료된 공연을 걸러내서 DB 에 종료작이 아예 없다. 그래서 "진행·예정작" 을
+     *  골라도 전체와 건수가 같고, 필터가 걸린 건지 무시된 건지 화면으로는 구분되지 않는다.
+     *  종료일을 직접 정한 데이터로 여기서 확인한다.
+     * ------------------------------------------------------------------ */
+
+    @DisplayName("진행 현황 — 오늘 끝나는 공연은 '진행·예정작'에 포함된다(경계값)")
+    @Test
+    void statusFilterSplitsByEndDate() {
+        LocalDate today = LocalDate.now();
+        createPerformanceEndingOn("어제끝남", today.minusDays(1));
+        createPerformanceEndingOn("오늘끝남", today);
+        createPerformanceEndingOn("내일끝남", today.plusDays(1));
+
+        // 쿼리 파라미터는 소문자로 들어온다. 매퍼는 대문자로만 비교하므로 서비스가
+        // 대문자로 바꿔주는데, 그게 빠지면 조건이 통째로 사라져 필터가 조용히 무시된다
+        // (README 5번에 기록된 실제 버그 — 세 값이 전부 같은 건수를 내놓았다).
+        assertThat(titlesOf(null, null, "ongoing"))
+                .containsExactlyInAnyOrder("오늘끝남", "내일끝남");
+        assertThat(titlesOf(null, null, "ended"))
+                .containsExactly("어제끝남");
+    }
+
+    @DisplayName("진행 현황 — 세 값이 서로 다른 결과를 내야 한다(무시되면 전부 같아진다)")
+    @Test
+    void statusFilterIsNotSilentlyIgnored() {
+        LocalDate today = LocalDate.now();
+        createPerformanceEndingOn("종료작", today.minusDays(5));
+        createPerformanceEndingOn("진행작", today.plusDays(5));
+
+        List<String> all = titlesOf(null, null, null);       // 필터 없음
+        List<String> ongoing = titlesOf(null, null, "ongoing");
+        List<String> ended = titlesOf(null, null, "ended");
+
+        assertThat(all).hasSize(2);
+        assertThat(ongoing).containsExactly("진행작");
+        assertThat(ended).containsExactly("종료작");
+        assertThat(ongoing).isNotEqualTo(all);
+        assertThat(ended).isNotEqualTo(all);
+    }
+
+    @DisplayName("진행 현황은 다른 필터와 함께 걸린다 — 요일과 조합해도 둘 다 적용")
+    @Test
+    void statusCombinesWithOtherFilters() {
+        LocalDate today = LocalDate.now();
+        // 회차까지 있어야 요일 조건이 의미를 갖는다. 종료일만 다르게 둔다.
+        createPerformance("진행_토요일", AUG_SAT);
+        createPerformanceEndingOn("종료_회차없음", today.minusDays(5));
+
+        assertThat(titlesOf(null, "weekend", "ongoing"))
+                .as("진행 중이면서 주말 회차가 있는 공연만")
+                .containsExactly("진행_토요일");
+        assertThat(titlesOf(null, "weekend", "ended"))
+                .as("종료작 중에는 주말 회차를 가진 공연이 없다")
+                .isEmpty();
     }
 
     @DisplayName("월별 건수도 회차 기준 — 요일을 걸면 그 요일 회차가 있는 달만 세어진다")
