@@ -68,6 +68,24 @@
       </div>
     </div>
 
+    <!--
+        확대 모드 미니맵. 2,481석 홀을 24px 로 키우면 화면에 한 번에 열 몇 줄밖에 안 들어와서
+        지금 홀의 어디를 보고 있는지 알 수 없다 — 열쇠구멍으로 보는 상태가 된다.
+
+        구역 블록은 좌석도 레이아웃을 다시 계산하지 않고 **이미 그려진 DOM 의 기하를 그대로
+        축소**해서 만든다. 부채꼴 호·무대 뒤 밴드·한 층이 A~E 로 갈리는 배치가 전부 자동으로
+        따라오고, 나중에 배치 규칙이 바뀌어도 미니맵은 손댈 필요가 없다.
+
+        aria-hidden 인 이유: 스크롤로 할 수 있는 일을 좌표로 한 번 더 제공하는 보조 수단이라
+        스크린리더에는 좌석 격자만 남기는 편이 낫다.
+    -->
+    <div class="minimap" id="minimap" hidden aria-hidden="true">
+        <div class="minimap-inner" id="minimapInner">
+            <div id="minimapZones"></div>
+            <div class="minimap-view" id="minimapView"></div>
+        </div>
+    </div>
+
     <!-- 좌석 상태 표시는 한 번 익히면 계속 볼 필요가 없어서 본문 맨 아래에 둔다.
          고르는 내내 확인하게 되는 등급별 가격만 예매 바에 고정한다. -->
     <div class="seatstatus">
@@ -278,6 +296,8 @@
         applySeatSize();
         sizeMapViewport();
         syncZoomBtn();
+        // 좌석 크기와 격자 높이가 확정된 뒤라야 미니맵 배율이 맞는다.
+        syncMinimap();
     }
 
     /**
@@ -313,6 +333,150 @@
         zoomBtn.classList.toggle('zoomtoggle--suggest', suggestZoom);
         zoomHint.textContent = zoomed ? ZOOM_HINT : (tooSmallToTap ? FIT_SMALL_HINT : FIT_HINT);
     }
+
+    /* ---------- 확대 모드 미니맵 ---------- */
+
+    const MINI_MAX_W = 168;
+    const MINI_MAX_H = 120;
+    const minimap = document.getElementById('minimap');
+    const minimapInner = document.getElementById('minimapInner');
+    const minimapZones = document.getElementById('minimapZones');
+    const minimapView = document.getElementById('minimapView');
+    const GRADE_COLOR = { VIP: 'var(--grade-vip)', R: 'var(--grade-r)',
+                          S: 'var(--grade-s)', A: 'var(--grade-a)' };
+    /* 스크롤 좌표 → 미니맵 좌표 배율. 0 이면 아직 만들어지지 않은 상태다. */
+    let miniK = 0;
+    /* 구역별 대표 등급은 좌석이 바뀌지 않는 한 그대로다. 핀치를 놓을 때마다 다시 만드는데
+       매번 좌석 2,481개를 세지 않도록 구역 요소를 키로 기억해둔다. */
+    const dominantGrade = new WeakMap();
+
+    function gradeColorOf(zone) {
+        if (!dominantGrade.has(zone)) {
+            const counts = {};
+            zone.querySelectorAll('.seat').forEach(seat => {
+                const g = seat.dataset.grade;
+                if (g) counts[g] = (counts[g] || 0) + 1;
+            });
+            let best = null, most = -1;
+            Object.entries(counts).forEach(([g, c]) => { if (c > most) { most = c; best = g; } });
+            dominantGrade.set(zone, GRADE_COLOR[best] || 'var(--grade-a)');
+        }
+        return dominantGrade.get(zone);
+    }
+
+    /** 격자가 실제로 넘치는지. 다 보이면 미니맵은 알려줄 게 없다. */
+    function mapOverflows() {
+        return scroller.scrollWidth > scroller.clientWidth + 1
+                || scroller.scrollHeight > scroller.clientHeight + 1;
+    }
+
+    /*
+       구역 블록을 다시 만든다. 좌표는 전부 "스크롤 좌표"로 통일한다 —
+       (요소의 화면 위치 - 스크롤러의 화면 위치) + 현재 스크롤량. 이렇게 재면 스크롤러의
+       padding(--tooltip-bleed)이 자동으로 포함되어 scrollLeft/scrollTop 과 같은 원점을 쓴다.
+       요소별 offsetLeft 를 쓰면 offsetParent 가 제각각이라 이 원점이 안 맞는다.
+
+       핀치 도중에는 부르면 안 된다 — 그때는 houseContent 에 transform 이 걸려 있어서
+       getBoundingClientRect 가 변형된 크기를 돌려준다. 그래서 확정(commitPinch) 뒤에만 부른다.
+    */
+    function buildMinimap() {
+        const totalW = scroller.scrollWidth;
+        const totalH = scroller.scrollHeight;
+        if (!totalW || !totalH) return false;
+
+        miniK = Math.min(MINI_MAX_W / totalW, MINI_MAX_H / totalH);
+        minimapInner.style.width = Math.round(totalW * miniK) + 'px';
+        minimapInner.style.height = Math.round(totalH * miniK) + 'px';
+
+        const base = scroller.getBoundingClientRect();
+        const frag = document.createDocumentFragment();
+        const place = (el, className, background) => {
+            const r = el.getBoundingClientRect();
+            const box = document.createElement('div');
+            box.className = className;
+            box.style.left = ((r.left - base.left + scroller.scrollLeft) * miniK) + 'px';
+            box.style.top = ((r.top - base.top + scroller.scrollTop) * miniK) + 'px';
+            // 아주 얇은 구역이 0px 가 되어 사라지지 않게 하한을 둔다.
+            box.style.width = Math.max(2, r.width * miniK) + 'px';
+            box.style.height = Math.max(2, r.height * miniK) + 'px';
+            if (background) box.style.background = background;
+            frag.appendChild(box);
+        };
+
+        scroller.querySelectorAll('.zone').forEach(z => place(z, 'minimap-zone', gradeColorOf(z)));
+        const stage = scroller.querySelector('.stage');
+        if (stage) place(stage, 'minimap-stage', '');
+
+        minimapZones.replaceChildren(frag);
+        return true;
+    }
+
+    /** 보이는 범위 사각형만 갱신한다. 스크롤할 때마다 부르므로 구역은 건드리지 않는다. */
+    function syncMinimapView() {
+        if (minimap.hidden || !miniK) return;
+        minimapView.style.left = (scroller.scrollLeft * miniK) + 'px';
+        minimapView.style.top = (scroller.scrollTop * miniK) + 'px';
+        minimapView.style.width = (scroller.clientWidth * miniK) + 'px';
+        minimapView.style.height = (scroller.clientHeight * miniK) + 'px';
+    }
+
+    /*
+       미니맵을 다시 만든다. 실제 작업은 다음 프레임으로 미룬다.
+
+       이 함수는 좌석 크기를 바꾼 직후(확대 토글·핀치 확정)에 불린다. 그 시점에 레이아웃이
+       더러운 상태라, scrollWidth 나 getBoundingClientRect 를 읽는 순간 브라우저가 3,022석
+       전체를 그 자리에서 다시 배치한다(강제 리플로). 실측으로 확대 토글이 140ms → 250ms 로
+       늘었다. 다음 프레임에 읽으면 브라우저가 어차피 해야 하는 레이아웃 뒤에 읽는 것이라
+       같은 계산을 두 번 하지 않는다.
+
+       읽기를 전부(넘침 판정까지) 콜백 안에 두는 게 핵심이다 — 하나라도 밖에 남기면
+       거기서 리플로가 걸려 미루는 의미가 없어진다.
+    */
+    let miniBuildFrame = null;
+    function syncMinimap() {
+        if (!zoomed) { minimap.hidden = true; miniK = 0; return; }
+        if (miniBuildFrame !== null) return;
+        miniBuildFrame = requestAnimationFrame(() => {
+            miniBuildFrame = null;
+            if (!zoomed) { minimap.hidden = true; miniK = 0; return; }
+            const show = mapOverflows();
+            minimap.hidden = !show;
+            if (!show) { miniK = 0; return; }
+            if (buildMinimap()) syncMinimapView();
+        });
+    }
+
+    /* 스크롤도 pointermove 처럼 화면 주사율보다 자주 올 수 있으므로 프레임당 한 번만 반영한다. */
+    let miniFrame = null;
+    scroller.addEventListener('scroll', () => {
+        if (minimap.hidden || miniFrame !== null) return;
+        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncMinimapView(); });
+    }, { passive: true });
+
+    /* 미니맵을 누르거나 끌면 그 지점이 화면 가운데로 오게 지도를 옮긴다.
+       미니맵은 격자 바깥의 fixed 요소라 격자의 끌기 처리와 겹치지 않는다. */
+    let miniDrag = false;
+    function miniScrollTo(clientX, clientY) {
+        if (!miniK) return;
+        const r = minimapInner.getBoundingClientRect();
+        scroller.scrollLeft = (clientX - r.left) / miniK - scroller.clientWidth / 2;
+        scroller.scrollTop = (clientY - r.top) / miniK - scroller.clientHeight / 2;
+        syncMinimapView();
+    }
+    minimap.addEventListener('pointerdown', (e) => {
+        miniDrag = true;
+        try { minimap.setPointerCapture(e.pointerId); } catch (ignored) { /* 캡처 없이 진행 */ }
+        miniScrollTo(e.clientX, e.clientY);
+        e.preventDefault();
+    });
+    minimap.addEventListener('pointermove', (e) => { if (miniDrag) miniScrollTo(e.clientX, e.clientY); });
+    function endMiniDrag(e) {
+        if (!miniDrag) return;
+        miniDrag = false;
+        if (minimap.hasPointerCapture(e.pointerId)) minimap.releasePointerCapture(e.pointerId);
+    }
+    minimap.addEventListener('pointerup', endMiniDrag);
+    minimap.addEventListener('pointercancel', endMiniDrag);
 
     applySeatSize();
 
@@ -510,10 +674,16 @@
         zoomSize = next;
         if (!zoomed) setZoomed(true); else applySeatSize();
 
-        if (!anchor) return;
+        if (!anchor) {
+            // setZoomed 를 탄 경우엔 그 안에서 이미 만들었지만, 이미 확대 중이었다면 여기서 만든다.
+            syncMinimap();
+            return;
+        }
         const after = anchor.getBoundingClientRect();
         scroller.scrollLeft += (after.left + after.width / 2) - (before.left + before.width / 2);
         scroller.scrollTop += (after.top + after.height / 2) - (before.top + before.height / 2);
+        // 좌석 크기가 바뀌었으니 구역 블록까지 다시 만든다(보이는 범위만 갱신하면 배율이 어긋난다).
+        syncMinimap();
     }
 
     function cancelPinch() {
@@ -544,6 +714,7 @@
             }
             sizeMapViewport();
             syncZoomBtn();
+            syncMinimap();
         });
     });
 
@@ -562,6 +733,8 @@
         document.documentElement.style.setProperty('--footer-h', bookbar.offsetHeight + 'px');
         // 지도 모드의 격자 높이도 바 높이에서 빼고 있으므로 같이 맞춘다.
         sizeMapViewport();
+        // 격자 높이가 바뀌면 "보이는 범위"의 크기도 달라진다.
+        syncMinimapView();
     }
     syncFooterHeight();
     new ResizeObserver(syncFooterHeight).observe(bookbar);
