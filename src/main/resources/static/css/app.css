@@ -1,4 +1,22 @@
 @charset "UTF-8";
+/*
+   Pretendard 자체 호스팅. 이 줄이 없으면 아래 --body/--display 의 첫 후보가
+   아무 데서도 안 잡혀서 Windows 는 맑은 고딕으로 떨어진다 — 실제로 그 상태였다.
+
+   가변 폰트(font-weight: 45 920) 한 벌이라 이 파일이 쓰는 400/500/600/700/800 이
+   전부 정확한 굵기로 나온다. 정적 5벌(3.8MB)을 받는 것보다 작다.
+
+   동적 서브셋이라 @font-face 가 92 개고 각자 unicode-range 를 갖는다. 브라우저는
+   그 페이지에 실제로 쓰인 글자가 든 조각만 받는다(한글 폰트는 통짜로 받으면 700KB 대).
+   조각이 92 개라 규칙도 92 개 — app.css 에 인라인하면 900 줄이 늘어나므로 파일을 나눴다.
+
+   <link> 가 아니라 @import 인 이유: 템플릿 13 개가 전부 app.css 만 링크하고 있어서,
+   여기 한 줄이면 전 화면에 붙는다. 대신 app.css 를 받은 뒤에야 이 파일을 받으러 가는
+   왕복 한 번이 더 든다 — 동일 출처 정적 파일이고 font-display: swap 이라 그동안에도
+   글자는 폴백으로 보이므로 화면이 비지 않는다.
+*/
+@import url("/css/pretendard.css");
+
 /* ------------------------------------------------------------------
    공연 예매 - 공통 스타일
    컨셉: 어두운 객석 + 조명 받는 무대.
@@ -22,9 +40,11 @@
   --line:       rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
 
-  /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다. */
-  --display: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
-  --body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+  /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다.
+     첫 후보가 위에서 @import 로 실어온 자체 호스팅 가변 폰트다. 그 다음 'Pretendard' 는
+     방문자 PC 에 이미 깔려 있는 경우로, 웹폰트를 한 조각도 안 받고 끝난다. */
+  --display: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+  --body: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 
   --radius: 14px;
   --radius-sm: 10px;

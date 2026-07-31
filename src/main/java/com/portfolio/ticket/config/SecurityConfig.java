@@ -61,7 +61,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                         "/", "/performances/**", "/schedules/**",
-                        "/login", "/signup", "/css/**", "/img/**", "/images/**",
+                        // /fonts/** 를 빠뜨리면 자체 호스팅 웹폰트가 302 로 로그인 화면에 튕긴다.
+                        // 글자는 폴백으로 보여서 화면이 깨진 티가 안 나므로 눈치채기 어렵다.
+                        "/login", "/signup", "/css/**", "/img/**", "/images/**", "/fonts/**",
                         // 스프링 부트의 시큐리티 필터는 REQUEST 뿐 아니라 ERROR 디스패치에도 걸린다.
                         // "/error" 를 열어두지 않으면 401/500 응답이 에러 페이지로 넘어가는 순간
                         // 인증 대상이 되어 로그인 리다이렉트(302)로 바뀐다 — 실제 원인이 가려진다.
