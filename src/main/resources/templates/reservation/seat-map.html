@@ -25,11 +25,19 @@
         <button type="button" class="zoomtoggle" id="zoomBtn" aria-pressed="false">확대</button>
     </div>
 
-    <!-- 층이 여러 개인 홀에서만. 63줄짜리 콘서트홀은 스크롤만으로는 층을 못 찾는다. -->
-    <nav class="floornav" th:if="${arena.all().size() > 1}">
-        <a class="floorchip" th:each="floor : ${arena.all()}" th:href="'#' + ${floor.anchorId}">
-            <span th:text="${floor.name}">1층</span>
-            <b th:text="${floor.availableCount}">615</b><i th:text="'/' + ${floor.seatCount}">/615</i>
+    <!--
+        층이 여러 개인 홀에서만. 63줄짜리 콘서트홀은 스크롤만으로는 층을 못 찾는다.
+
+        구역이 아니라 **층** 단위로 묶는다. 종전엔 구역마다 칩을 하나씩 뒀는데 콘서트홀에서
+        20개가 두 줄로 깔려(73px) 지도 위 자리를 먹었다 — 층을 고르려는 사람에게 "1층 A"
+        부터 "3층 G"까지 스무 개를 읽게 하는 건 고르라는 게 아니라 훑으라는 것이다.
+        층은 넷(합창석·1·2·3층)뿐이라 한 줄에 들어가고, 구역별 잔여석은 층으로 이동한 뒤
+        구역 이름 아래에서 확인하면 된다.
+    -->
+    <nav class="floornav" th:if="${arena.bands().size() > 1}">
+        <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.anchorId}">
+            <span th:text="${band.displayName()}">1층</span>
+            <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
         </a>
     </nav>
 

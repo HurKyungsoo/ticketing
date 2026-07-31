@@ -70,8 +70,46 @@ public class SeatMapView {
      *
      * <p>세종문화회관 대극장 1층처럼 한 층이 A~E 다섯 구역으로 갈리는 홀을 표현한다.
      * 좌석도에 {@code tier} 를 적지 않은 구역들은 열이 하나뿐인 밴드로 묶여서 종전과 같다.
+     *
+     * @param name 층 이름("1층", "합창석"). 좌석도의 {@code tier} 값이거나 구역명에서
+     *             떼어낸 접두사다. 층 바로가기가 이 단위로 묶이므로 화면에 나간다.
      */
-    public record Band(List<List<Floor>> columns) {}
+    public record Band(String name, List<List<Floor>> columns) {
+
+        /** 열 구분 없이 이 층의 구역 전부. 층 단위 집계와 바로가기 목적지에 쓴다. */
+        public List<Floor> floors() {
+            return columns.stream().flatMap(List::stream).toList();
+        }
+
+        public int seatCount() {
+            return floors().stream().mapToInt(Floor::seatCount).sum();
+        }
+
+        public int availableCount() {
+            return floors().stream().mapToInt(Floor::availableCount).sum();
+        }
+
+        /**
+         * 층 바로가기 목적지. 층 자체에는 id 가 없고 구역에만 있으므로 첫 구역으로 보낸다.
+         * 구역은 화면에 그리는 순서대로 들어 있어서 첫 구역이 곧 그 층의 시작이다.
+         */
+        public String anchorId() {
+            List<Floor> floors = floors();
+            return floors.isEmpty() ? "" : floors.get(0).anchorId();
+        }
+
+        /**
+         * 화면에 쓸 이름. {@code tier} 를 못 얻은 홀(구역명이 "1층 A" 꼴이 아니어서 접두사를
+         * 떼지 못한 경우)은 이름이 빈 문자열이라, 그때는 첫 구역 이름을 그대로 쓴다.
+         */
+        public String displayName() {
+            if (!name.isBlank()) {
+                return name;
+            }
+            List<Floor> floors = floors();
+            return floors.isEmpty() ? "" : floors.get(0).name();
+        }
+    }
 
     /**
      * 무대를 기준으로 놓인 좌석도. 화면은 무대 뒤 밴드 → 무대 → 정면 밴드 순으로 그린다.
@@ -84,15 +122,6 @@ public class SeatMapView {
      * </pre>
      */
     public record Arena(List<Band> rear, List<Band> front) {
-
-        /** 층 바로가기(floornav)용 전체 목록. 화면에 그리는 순서와 같다. */
-        public List<Floor> all() {
-            List<Floor> all = new ArrayList<>();
-            for (Band band : bands()) {
-                band.columns().forEach(all::addAll);
-            }
-            return all;
-        }
 
         public List<Band> bands() {
             List<Band> bands = new ArrayList<>(rear);
@@ -186,8 +215,9 @@ public class SeatMapView {
     }
 
     private List<Band> bandsOf(Map<String, Map<Integer, List<Floor>>> byTier) {
-        return byTier.values().stream()
-                .map(byColumn -> new Band(List.copyOf(byColumn.values())))
+        // 키(tier)가 곧 층 이름이다. 종전엔 그룹핑에만 쓰고 버렸는데, 층 바로가기가 이 단위라 같이 넘긴다.
+        return byTier.entrySet().stream()
+                .map(entry -> new Band(entry.getKey(), List.copyOf(entry.getValue().values())))
                 .toList();
     }
 
