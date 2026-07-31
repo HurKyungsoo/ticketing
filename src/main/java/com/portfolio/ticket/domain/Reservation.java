@@ -101,15 +101,31 @@ public class Reservation {
     }
 
     /**
+     * 환불 수수료 한 단계. {@code minDaysBefore} 일 이상 남았으면 {@code feeRate}% 를 뗀다.
+     *
+     * <p>공연 상세의 "취소·환불 규정" 안내가 이 목록을 그대로 읽어서 그린다. 규정을 화면에
+     * 문자열로 다시 적으면 요율을 고칠 때 한쪽만 바뀌어 조용히 어긋난다 — 사용자에게 고지한
+     * 것과 실제로 청구되는 금액이 달라지는 건 단순 표기 오류가 아니다.
+     */
+    public record RefundTier(int minDaysBefore, int feeRate) {}
+
+    /** 남은 일수가 많은 순. {@link #refundFeeRate} 가 위에서부터 훑으므로 순서가 규칙의 일부다. */
+    public static final List<RefundTier> REFUND_TIERS = List.of(
+            new RefundTier(10, 0),
+            new RefundTier(7, 10),
+            new RefundTier(3, 20),
+            new RefundTier(1, 30)
+    );
+
+    /**
      * 관람일 기준 환불 수수료율.
      * 10일 전 0% / 7일 전 10% / 3일 전 20% / 1일 전 30% / 당일 취소 불가
      */
     public int refundFeeRate(LocalDateTime showAt, LocalDateTime now) {
         long days = Duration.between(now, showAt).toDays();
-        if (days >= 10) return 0;
-        if (days >= 7) return 10;
-        if (days >= 3) return 20;
-        if (days >= 1) return 30;
+        for (RefundTier tier : REFUND_TIERS) {
+            if (days >= tier.minDaysBefore()) return tier.feeRate();
+        }
         throw new IllegalStateException("공연 당일에는 취소할 수 없습니다.");
     }
 }

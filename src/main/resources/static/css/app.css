@@ -1124,6 +1124,31 @@ body.page-detail .poster {
 }
 body.page-detail .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+/* 포스터가 없을 때. 목록 카드의 폴백과 같은 발상이되, 320px 라 첫 글자만 크게 띄우면
+   의미 없는 큰 덩어리가 되므로 공연명을 같이 넣어 정보를 갖게 한다. */
+body.page-detail .poster.no-img {
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  padding: 28px;
+  text-align: center;
+  background: linear-gradient(160deg, #1B1B20 0%, #131316 100%);
+}
+body.page-detail .posterfallback { display: none; }
+body.page-detail .poster.no-img .posterfallback { display: grid; gap: 10px; }
+body.page-detail .pf-initial {
+  font-family: var(--display);
+  font-size: 76px; font-weight: 800; line-height: 1;
+  color: var(--brass-dim); opacity: .55;
+}
+body.page-detail .pf-title {
+  font-size: 14px; font-weight: 600; line-height: 1.5;
+  color: var(--mute);
+  /* 긴 공연명이 포스터 밖으로 넘치지 않게 세 줄에서 자른다. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 body.page-detail h2 {
   font-family: var(--display); font-size: 30px; font-weight: 800;
   letter-spacing: -0.02em; color: var(--paper); margin: 0 0 8px;
@@ -1163,24 +1188,72 @@ body.page-detail .description {
   margin: 0 0 36px;
 }
 
-body.page-detail .schedules { display: flex; flex-wrap: wrap; gap: 10px; }
-body.page-detail .schedules a {
+/* ---- 회차 선택 (날짜 한 줄 + 그 날의 시각들) ----
+   날짜를 왼쪽 고정폭 칸으로 빼서, 회차가 많은 공연에서도 세로로 훑으면 날짜만 읽힌다.
+   시각 쪽은 wrap 되므로 하루에 회차가 몇 개든 그 날 줄 안에서만 늘어난다. */
+body.page-detail .scheduledays {
+  border-top: 1px solid var(--line);
+}
+body.page-detail .scheduleday {
+  display: flex; align-items: baseline; gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+body.page-detail .sd-date {
+  width: 96px; flex: none;
+  font-size: 14px; font-weight: 700; color: var(--paper);
+}
+body.page-detail .sd-dow { margin-left: 4px; color: var(--mute); font-weight: 600; }
+/* 그 날 전 회차가 매진이면 날짜까지 같이 흐리게 — 훑을 때 건너뛸 날을 바로 알아본다. */
+body.page-detail .scheduleday.soldout .sd-date,
+body.page-detail .scheduleday.soldout .sd-dow { color: var(--mute); opacity: .6; }
+
+body.page-detail .sd-times { display: flex; flex-wrap: wrap; gap: 8px; }
+body.page-detail .sd-times a {
+  display: inline-flex; align-items: baseline; gap: 8px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   color: var(--paper);
-  padding: 12px 18px;
+  padding: 9px 14px;
   font-size: 14px; font-weight: 600;
   transition: border-color .12s, color .12s, background .12s;
 }
-body.page-detail .schedules a:hover {
+body.page-detail .sd-times a:hover {
   border-color: var(--brass); color: var(--brass);
   background: rgba(255, 201, 64, 0.08);
 }
-body.page-detail .schedules a.soldout {
+body.page-detail .sd-remain { font-size: 12px; font-weight: 500; color: var(--mute); }
+body.page-detail .sd-times a:hover .sd-remain { color: var(--brass-dim); }
+body.page-detail .sd-times a.soldout {
   border-color: var(--line); color: var(--mute); opacity: .5; pointer-events: none;
+}
+
+body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0; }
+
+/* ---- 취소 · 환불 규정 ---- */
+body.page-detail .refund-heading { margin-top: 40px; }
+body.page-detail .refundpolicy {
+  list-style: none; margin: 0; padding: 0;
+  border-top: 1px solid var(--line);
+}
+body.page-detail .refundpolicy li {
+  display: flex; justify-content: space-between; gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+body.page-detail .rp-when { color: var(--mute); }
+body.page-detail .rp-fee { color: var(--paper); font-weight: 600; }
+body.page-detail .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
+body.page-detail .refundnote {
+  margin: 14px 0 0;
+  font-size: 13px; line-height: 1.7; color: var(--mute);
 }
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
   body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
+  /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
+  body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
+  body.page-detail .sd-date { width: auto; }
 }

@@ -12,9 +12,23 @@
     <header th:replace="~{fragment/header :: masthead(tag='회차 선택', showAuthNav=true)}"></header>
 
     <div class="detail">
+        <!--
+            포스터가 없어도 이 칸은 그린다. 종전에는 안쪽 .poster 에만 th:if 가 걸려 있어서,
+            포스터 없는 공연(수집분에 꽤 있다)은 왼쪽 320px + gap 48px 이 통째로 빈 채 남고
+            본문만 오른쪽으로 밀려 화면이 깨진 것처럼 보였다.
+            목록 카드와 같은 폴백(그라데이션 + 첫 글자)을 써서, 카드를 누르고 들어온 사용자가
+            같은 공연이라는 걸 그대로 알아보게 한다.
+        -->
         <div>
-            <div class="poster" th:if="${performance.posterUrl != null}">
-                <img th:src="@{/img/poster(u=${performance.posterUrl})}" th:alt="${performance.title}">
+            <div class="poster" th:classappend="${performance.posterUrl == null} ? ' no-img'">
+                <img th:if="${performance.posterUrl != null}"
+                     th:src="@{/img/poster(u=${performance.posterUrl})}" th:alt="${performance.title}"
+                     onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                <!-- 이미지가 실제로 뜨면 .no-img 가 없어 CSS 가 이 블록을 숨긴다. -->
+                <div class="posterfallback" aria-hidden="true">
+                    <span class="pf-initial" th:text="${#strings.substring(performance.title, 0, 1)}">공</span>
+                    <span class="pf-title" th:text="${performance.title}">공연명</span>
+                </div>
             </div>
         </div>
 
@@ -92,14 +106,47 @@
             </th:block>
 
             <h3 class="detail-heading">회차 선택</h3>
-            <div class="schedules">
-                <a th:each="s : ${schedules}"
-                   th:href="@{/schedules/{id}/seats(id=${s.id})}"
-                   th:classappend="${s.remainingSeats == 0} ? 'soldout'">
-                    <span th:text="${#temporals.format(s.showAt, 'M/d(E) HH:mm')}">일시</span>
-                    <span th:text="${s.remainingSeats == 0} ? ' 매진' : ' · 잔여 ' + ${s.remainingSeats}"></span>
-                </a>
+            <!-- 날짜 한 줄 + 그 날의 시각들. 그룹핑은 ScheduleDayView 가 한다(정렬 보장). -->
+            <div class="scheduledays">
+                <div class="scheduleday" th:each="d : ${scheduleDays}"
+                     th:classappend="${d.soldOut()} ? ' soldout'">
+                    <div class="sd-date">
+                        <span class="sd-day" th:text="${#temporals.format(d.date, 'M/d')}">8/7</span>
+                        <span class="sd-dow" th:text="${#temporals.format(d.date, '(E)')}">(금)</span>
+                    </div>
+                    <div class="sd-times">
+                        <a th:each="s : ${d.schedules}"
+                           th:href="@{/schedules/{id}/seats(id=${s.id})}"
+                           th:classappend="${s.remainingSeats == 0} ? ' soldout'">
+                            <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
+                            <span class="sd-remain"
+                                  th:text="${s.remainingSeats == 0} ? '매진' : '잔여 ' + ${s.remainingSeats}">잔여 400</span>
+                        </a>
+                    </div>
+                </div>
             </div>
+            <p class="empty-inline" th:if="${scheduleDays.isEmpty()}">등록된 회차가 없습니다.</p>
+
+            <!--
+                취소·환불 규정. 요율을 여기에 문자열로 적지 않고 Reservation.REFUND_TIERS 를
+                그대로 읽는다 — 규정을 고칠 때 화면만 바뀌거나 계산만 바뀌면, 고지한 금액과
+                실제 청구액이 갈라진다. 표기와 계산이 같은 한 곳에서 나와야 한다.
+            -->
+            <h3 class="detail-heading refund-heading">취소 · 환불 규정</h3>
+            <ul class="refundpolicy">
+                <li th:each="t : ${T(com.portfolio.ticket.domain.Reservation).REFUND_TIERS}">
+                    <span class="rp-when" th:text="'관람일 ' + ${t.minDaysBefore()} + '일 전까지'">관람일 10일 전까지</span>
+                    <span class="rp-fee" th:text="${t.feeRate() == 0} ? '수수료 없음' : '수수료 ' + ${t.feeRate()} + '%'">수수료 없음</span>
+                </li>
+                <li class="rp-deny">
+                    <span class="rp-when">관람일 당일</span>
+                    <span class="rp-fee">취소 불가</span>
+                </li>
+            </ul>
+            <p class="refundnote">
+                결제 전 좌석 선점 상태에서는 수수료 없이 취소할 수 있습니다.
+                취소는 마이페이지 예매 내역에서 할 수 있습니다.
+            </p>
         </div>
     </div>
 </div>

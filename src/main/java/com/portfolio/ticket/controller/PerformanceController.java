@@ -10,6 +10,7 @@ import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.PerformanceListService;
+import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -117,7 +118,9 @@ public class PerformanceController {
                 : seatMapper.selectGradePrices(schedules.get(0).getId());
 
         model.addAttribute("performance", performance);
-        model.addAttribute("schedules", schedules);
+        // 회차는 날짜별로 묶어서 넘긴다. 요일별 여러 시각이 잡힌 공연은 그냥 나열하면
+        // 칩 수십 개가 한 덩어리로 쏟아져 어느 날 몇 시인지 읽어낼 수 없다.
+        model.addAttribute("scheduleDays", ScheduleDayView.groupByDay(schedules));
         model.addAttribute("gradePrices", gradePrices);
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
