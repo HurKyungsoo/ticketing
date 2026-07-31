@@ -963,8 +963,18 @@ body.page-list .fp-backdrop { display: none; }
 
 /* ---- 카드 그리드 ---- */
 body.page-list .grid { gap: 32px 24px; }
+/*
+   카드를 세로 플렉스로 두고 meta 를 바닥에 붙인다(.meta { margin-top: auto }).
+   그리드 항목은 기본이 stretch 라 한 행의 카드 높이가 이미 같으므로, 이렇게 하면
+   제목 줄 수가 달라도 <b>메타 줄이 행 안에서 가지런히 놓인다</b>. 제목에 2줄 높이를
+   못박는 방법과 결과는 같은데, 제목이 한 줄인 카드에 빈 줄이 생기지 않는다.
+   포스터는 flex: none 으로 고정한다 — 플렉스 항목은 기본적으로 줄어들 수 있어서
+   그냥 두면 aspect-ratio 로 잡은 높이가 눌린다.
+*/
+body.page-list .card { display: flex; flex-direction: column; }
 body.page-list .card .poster {
   position: relative;
+  flex: none;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
@@ -1017,18 +1027,46 @@ body.page-list .card-badge {
   font-size: 12px; font-weight: 500;
   border-radius: 999px; padding: 5px 12px;
 }
-body.page-list .card h3 { font-size: 16px; font-weight: 700; color: var(--paper); transition: color .12s; }
-/* 공연장명이 길어 meta 가 두 줄이 되는 카드만 제목이 한 줄만큼 내려가서, 같은 행의 제목
-   높이가 들쭉날쭉했다. 항상 두 줄 높이를 확보하고 두 줄로 잘라 제목 라인을 맞춘다. */
-body.page-list .card .meta {
-  color: var(--mute);
-  line-height: 1.5;
-  min-height: 3em;
+/*
+   제목이 포스터 바로 아래에 오므로 같은 행의 제목은 자동으로 같은 높이에서 시작한다.
+   (종전에는 meta 가 위에 있어서 공연장명이 긴 카드만 제목이 한 줄 내려앉았고, 그걸
+   meta 에 min-height: 3em 을 박아 막고 있었다 — 순서를 바로잡으니 그 보정이 필요 없어졌다.)
+
+   제목 줄 수가 카드마다 달라 아래 meta 가 어긋나는 건 높이를 못박아 맞추지 않는다.
+   그 방법은 대다수 카드에 빈 줄을 남긴다(실측 12개 중 10개가 한 줄). 대신 위 .card 의
+   세로 플렉스 + meta 의 margin-top: auto 로 meta 를 바닥에 붙여 정렬한다.
+*/
+body.page-list .card h3 {
+  font-size: 16px; font-weight: 700; color: var(--paper);
+  line-height: 1.4;
+  margin: 0 0 8px;
+  /* 아주 긴 제목만 두 줄에서 자른다. 높이를 2줄로 못박지는 않는다 —
+     실측 12개 중 10개가 한 줄이라, 못박으면 대다수 카드가 빈 줄을 떠안는다. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color .12s;
 }
+/* 공연장과 기간은 각각 한 줄씩. 한 줄에 이어 붙이면 공연장명이 긴 카드만 접혀서
+   높이가 어긋난다 — 줄을 나누면 어떤 이름이 와도 정확히 두 줄이다. */
+body.page-list .card .meta {
+  /* <p> 의 브라우저 기본 상하 여백(13px)이 그대로 남아 제목과 떨어져 보였다.
+     카드 안에서 간격은 이 규칙이 정하는 값이어야 하므로 명시적으로 0 으로 두고
+     제목과의 간격은 h3 의 margin-bottom 하나로만 만든다. */
+  margin: auto 0 0;   /* 위쪽 auto = 카드 바닥에 붙인다 (위 .card 플렉스 주석 참고) */
+  display: grid;
+  gap: 2px;
+  color: var(--mute);
+  line-height: 1.5;
+}
+/* 아주 긴 공연장명("대학로 자유극장 (자유문화발전소)")은 말줄임 — 줄바꿈시키면
+   다시 카드 높이가 갈린다. */
+body.page-list .card .m-venue {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 기간은 공연장보다 한 단계 뒤로 — 색을 새로 만들지 않고 같은 --mute 를 흐리게 쓴다. */
+body.page-list .card .m-date { font-size: 12px; opacity: .75; }
 
 /* ---- 결과 건수 · 필터 초기화 ---- */
 body.page-list .resultbar {
