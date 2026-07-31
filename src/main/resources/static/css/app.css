@@ -641,8 +641,31 @@ a { color: inherit; text-decoration: none; }
   touch-action: none;
 }
 .minimap-inner { position: relative; }
-/* 구역 블록. 그 구역에서 가장 많은 등급의 색을 옅게 깔아, 확대 중에도 어디가 어느 등급인지 보인다. */
-.minimap-zone { position: absolute; border-radius: 1px; opacity: .55; }
+/*
+   구역 블록. 그 구역에서 가장 많은 등급의 색을 깔아 확대 중에도 어디가 어느 등급인지 보이고,
+   블록 안에는 구역을 가르는 글자("1층 C" 의 C)를 넣어 어느 구역인지도 알 수 있게 한다.
+   전체 이름은 블록이 16~29px 라 안 들어가므로 title 로 넘긴다(마우스를 올리면 보인다).
+
+   글자색을 등급마다 나누는 이유: 등급 팔레트가 명도 단조 감소라 밝은 두 등급(VIP·R)에는
+   어두운 글자가, 어두운 두 등급(S·A)에는 밝은 글자가 맞는다. 그렇게 하면 네 등급 모두
+   글자 대비가 4.6 이상이 된다 — 한 색으로 통일하면 반대쪽 두 등급에서 4.5 미만으로 떨어진다.
+   (블록에 opacity 를 걸면 안 된다. 자식인 글자까지 같이 흐려져서 이 계산이 무너진다.)
+*/
+.minimap-zone {
+  position: absolute;
+  border-radius: 1px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+.minimap-zone.grade-VIP { background: var(--grade-vip); color: var(--ink); }
+.minimap-zone.grade-R   { background: var(--grade-r);   color: var(--ink); }
+.minimap-zone.grade-S   { background: var(--grade-s);   color: var(--paper); }
+.minimap-zone.grade-A   { background: var(--grade-a);   color: var(--paper); }
 /* 무대. 방향을 잡아주는 기준점이라 등급색보다 또렷하게 둔다. */
 .minimap-stage { position: absolute; border-radius: 1px; background: var(--brass); opacity: .9; }
 /* 지금 화면에 보이는 범위. */

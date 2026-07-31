@@ -342,26 +342,37 @@
     const minimapInner = document.getElementById('minimapInner');
     const minimapZones = document.getElementById('minimapZones');
     const minimapView = document.getElementById('minimapView');
-    const GRADE_COLOR = { VIP: 'var(--grade-vip)', R: 'var(--grade-r)',
-                          S: 'var(--grade-s)', A: 'var(--grade-a)' };
     /* 스크롤 좌표 → 미니맵 좌표 배율. 0 이면 아직 만들어지지 않은 상태다. */
     let miniK = 0;
     /* 구역별 대표 등급은 좌석이 바뀌지 않는 한 그대로다. 핀치를 놓을 때마다 다시 만드는데
        매번 좌석 2,481개를 세지 않도록 구역 요소를 키로 기억해둔다. */
     const dominantGrade = new WeakMap();
 
-    function gradeColorOf(zone) {
-        if (!dominantGrade.has(zone)) {
+    function gradeOf(floor) {
+        if (!dominantGrade.has(floor)) {
             const counts = {};
-            zone.querySelectorAll('.seat').forEach(seat => {
+            floor.querySelectorAll('.seat').forEach(seat => {
                 const g = seat.dataset.grade;
                 if (g) counts[g] = (counts[g] || 0) + 1;
             });
-            let best = null, most = -1;
+            let best = 'A', most = -1;
             Object.entries(counts).forEach(([g, c]) => { if (c > most) { most = c; best = g; } });
-            dominantGrade.set(zone, GRADE_COLOR[best] || 'var(--grade-a)');
+            dominantGrade.set(floor, best);
         }
-        return dominantGrade.get(zone);
+        return dominantGrade.get(floor);
+    }
+
+    /*
+       블록 안에 넣을 짧은 이름. 구역 이름의 마지막 토막만 쓴다 — 층은 블록의 세로 위치가
+       이미 말해주므로 같은 층 안에서 구역을 가르는 글자만 있으면 된다("1층 C" → "C").
+
+       두 글자를 넘으면 넣지 않는다. 예술의전당 리사이틀홀처럼 구역명이 알파벳이 아닌
+       홀("1층 왼쪽사이드")은 16px 짜리 블록에 넣을 방법이 없다 — 그런 홀은 색과 title 로만
+       안내하고 글자는 비운다. 억지로 줄이면 "왼쪽…" 같은 알아볼 수 없는 조각이 남는다.
+    */
+    function shortLabelOf(name) {
+        const last = name.trim().split(/\s+/).pop() || '';
+        return last.length <= 2 ? last : '';
     }
 
     /** 격자가 실제로 넘치는지. 다 보이면 미니맵은 알려줄 게 없다. */
@@ -390,20 +401,38 @@
 
         const base = scroller.getBoundingClientRect();
         const frag = document.createDocumentFragment();
-        const place = (el, className, background) => {
+        const place = (el, className, name) => {
             const r = el.getBoundingClientRect();
+            const w = Math.max(2, r.width * miniK);
+            const h = Math.max(2, r.height * miniK);
             const box = document.createElement('div');
             box.className = className;
             box.style.left = ((r.left - base.left + scroller.scrollLeft) * miniK) + 'px';
             box.style.top = ((r.top - base.top + scroller.scrollTop) * miniK) + 'px';
             // 아주 얇은 구역이 0px 가 되어 사라지지 않게 하한을 둔다.
-            box.style.width = Math.max(2, r.width * miniK) + 'px';
-            box.style.height = Math.max(2, r.height * miniK) + 'px';
-            if (background) box.style.background = background;
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+            if (name) {
+                box.title = name;
+                // 글자가 블록을 넘치면 안 읽히느니 안 넣는 게 낫다.
+                const short = shortLabelOf(name);
+                if (short && w >= 12 && h >= 10) box.textContent = short;
+            }
             frag.appendChild(box);
         };
 
-        scroller.querySelectorAll('.zone').forEach(z => place(z, 'minimap-zone', gradeColorOf(z)));
+        /*
+           블록은 .zone(열)이 아니라 .floor(구역) 단위로 그린다 — 이름이 붙는 단위가 구역이고,
+           한 열에 구역이 둘 이상 쌓인 홀에서는 열 단위로 그리면 둘이 한 블록으로 합쳐진다.
+           기하는 .floor 가 아니라 그 안의 .house(좌석 격자)에서 잰다. .floor 에는 구역 이름을
+           얹으려고 비워둔 padding-top(57px)이 있어서, 그대로 재면 블록 위에 빈 띠가 생긴다.
+        */
+        scroller.querySelectorAll('.floor').forEach(floor => {
+            const house = floor.querySelector('.house');
+            if (!house) return;
+            const name = (floor.querySelector('.floorname')?.textContent || '').trim();
+            place(house, 'minimap-zone grade-' + gradeOf(floor), name);
+        });
         const stage = scroller.querySelector('.stage');
         if (stage) place(stage, 'minimap-stage', '');
 
