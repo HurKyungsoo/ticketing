@@ -53,10 +53,11 @@ public class PerformanceListService {
             boolean libraryEmpty
     ) {}
 
-    public Result search(String category, Integer month, String timeSlot, String status,
+    public Result search(String category, Integer month, String dayOfWeek, String timeSlot, String status,
                           String venue, String region, String keyword, int page) {
         int safePage = Math.max(0, page);
-        PerformanceFilter filter = buildFilter(category, month, timeSlot, status, venue, region, keyword, safePage);
+        PerformanceFilter filter =
+                buildFilter(category, month, dayOfWeek, timeSlot, status, venue, region, keyword, safePage);
 
         List<PerformanceListRow> rows = performanceMapper.selectPerformances(filter);
         long total = performanceMapper.countPerformances(filter);
@@ -91,11 +92,12 @@ public class PerformanceListService {
         return window;
     }
 
-    private PerformanceFilter buildFilter(String category, Integer month, String timeSlot, String status,
-                                           String venue, String region, String keyword, int page) {
+    private PerformanceFilter buildFilter(String category, Integer month, String dayOfWeek, String timeSlot,
+                                           String status, String venue, String region, String keyword, int page) {
         PerformanceFilter filter = new PerformanceFilter();
         filter.setCategory(category);
         filter.setMonth(month);
+        applyDayOfWeek(filter, dayOfWeek);
         applyTimeSlot(filter, timeSlot);
         // 매퍼는 "ONGOING"/"ENDED" 대문자로만 비교한다. 쿼리 파라미터는 소문자("ongoing")로
         // 들어오므로 여기서 맞춰준다 — 안 맞추면 조건문이 통째로 빠져 필터가 무시된다.
@@ -107,6 +109,31 @@ public class PerformanceListService {
         filter.setOffset(page * PAGE_SIZE);
         filter.setLimit(PAGE_SIZE);
         return filter;
+    }
+
+    /**
+     * 요일 코드를 SQL {@code DAYOFWEEK()} 값(1=일 … 7=토) 목록으로 펼친다.
+     *
+     * <p>주중/주말을 따로 둔 건 실데이터 분포 때문이다 — 388건을 세어보니 주말에만 하는
+     * 공연이 48.5%, 평일에만 하는 공연이 33.8% 로 두 덩어리가 뚜렷했다. 개별 요일도
+     * 남겨둔다(월요일은 4.4% 라 오히려 개별 선택이 잘 걸린다).
+     */
+    private void applyDayOfWeek(PerformanceFilter filter, String dayOfWeek) {
+        if (dayOfWeek == null) return;
+        List<Integer> days = switch (dayOfWeek) {
+            case "weekday" -> List.of(2, 3, 4, 5, 6);   // 월~금
+            case "weekend" -> List.of(1, 7);            // 일, 토
+            case "sun" -> List.of(1);
+            case "mon" -> List.of(2);
+            case "tue" -> List.of(3);
+            case "wed" -> List.of(4);
+            case "thu" -> List.of(5);
+            case "fri" -> List.of(6);
+            case "sat" -> List.of(7);
+            // 알 수 없는 값은 무시(전체 취급) — 잘못된 쿼리 파라미터로 화면이 깨지면 안 된다.
+            default -> null;
+        };
+        filter.setDaysOfWeek(days);
     }
 
     /** 자정 상한은 23:59:59 로 넘긴다 — H2/MySQL 은 TIME 리터럴로 "24:00:00" 을 못 받는다. */
@@ -189,10 +216,16 @@ public class PerformanceListService {
         return options;
     }
 
+    /**
+     * 패싯 건수를 낼 때 자기 축만 빼고 나머지 조건을 그대로 복사한다.
+     * <b>새 필터 필드를 추가하면 여기에도 반드시 넣어야 한다</b> — 빠뜨리면 예외 없이
+     * 그 조건만 무시된 건수가 나와서, 화면 숫자와 실제 결과가 조용히 어긋난다.
+     */
     private PerformanceFilter copyWithout(PerformanceFilter source, Consumer<PerformanceFilter> mutator) {
         PerformanceFilter copy = new PerformanceFilter();
         copy.setCategory(source.getCategory());
         copy.setMonth(source.getMonth());
+        copy.setDaysOfWeek(source.getDaysOfWeek());
         copy.setTimeSlotFrom(source.getTimeSlotFrom());
         copy.setTimeSlotTo(source.getTimeSlotTo());
         copy.setStatus(source.getStatus());

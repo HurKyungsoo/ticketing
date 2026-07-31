@@ -941,13 +941,18 @@ body.page-list .fp-dropdowns select:hover { border-color: var(--paper); }
 /* 드롭다운을 펼쳤을 때의 목록은 OS 가 그리므로 배경/글자색을 따로 지정해야 한다. */
 body.page-list .fp-dropdowns select option { background: var(--ink-soft); color: var(--paper); }
 /* 선택값 텍스트 길이에 따라 각 드롭다운 폭이 들쭉날쭉해지지 않도록 고정폭을 준다. */
+/* 드롭다운이 5개(지역·공연장·월·요일·시간대)라 920px 컨테이너에 한 줄로 들어가려면
+   합이 빠듯하다. 요일을 추가하면서 공연장 240→200, 그룹 라벨 여백 32→20 으로 줄여
+   맞췄다 — 안 줄이면 시간대만 다음 줄로 밀려 "월 · 요일 · 시간대" 라벨과 떨어진다.
+   (더 좁은 화면에서는 flex-wrap 이 자연스럽게 접는다.) */
 body.page-list .fp-dropdowns select[name="area"] { width: 140px; }
-body.page-list .fp-dropdowns select[name="venue"] { width: 240px; }
+body.page-list .fp-dropdowns select[name="venue"] { width: 200px; }
 body.page-list .fp-dropdowns select[name="month"] { width: 120px; }
+body.page-list .fp-dropdowns select[name="dayOfWeek"] { width: 120px; }
 body.page-list .fp-dropdowns select[name="timeSlot"] { width: 140px; }
 /* 지역·장소 그룹과 분명히 구분되도록 간격을 주되, 행 맨 끝까지는 밀지 않는다.
    고정값이라 지역/공연장 값 길이와 상관없이 위치가 항상 동일하다. */
-body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: var(--mute); margin-left: 32px; }
+body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: var(--mute); margin-left: 20px; }
 body.page-list .fp-hint { font-size: 12px; color: var(--mute); opacity: .7; flex-basis: 100%; }
 /* 지역을 고르면 힌트 문구가 사라지면서 줄바꿈 위치가 바뀌어 패널 전체 높이가 들쭉날쭉했다.
    엘리먼트 자체(= flex-basis:100% 의 줄바꿈 효과)는 항상 유지하고 텍스트만 숨긴다. */

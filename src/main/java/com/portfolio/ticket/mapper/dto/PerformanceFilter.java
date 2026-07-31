@@ -5,16 +5,28 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * 공연 목록 필터 조건. 값이 null(또는 빈 문자열)이면 "전체"(필터 없음)를 뜻한다.
  * 쿼리 파라미터의 "all" 센티넬 -> null 변환은 컨트롤러 책임이고, 매퍼는 null 만 안다.
+ *
+ * <p><b>월 · 요일 · 시간대는 모두 "회차" 축이다.</b> 매퍼가 이 셋을 EXISTS 하나에 묶어
+ * <i>같은 회차 한 행</i>에 걸므로, "8월 + 주말 + 저녁" 은 8월의 주말 저녁 회차가 있는
+ * 공연만 걸러낸다. 축이 갈려 있으면(예전엔 month 가 performance.start_date 기준이었다)
+ * 8월에 개막했고 9월 주말 회차가 있는 공연이 "8월 주말" 로 걸리는 어긋남이 생긴다.
  */
 @Getter
 @Setter
 public class PerformanceFilter {
     private String category;       // PerformanceCategory.name()
-    private Integer month;         // 1~12
+    /** 1~12. 공연 시작월이 아니라 <b>회차가 열리는 달</b>이다. */
+    private Integer month;
+    /**
+     * SQL {@code DAYOFWEEK()} 값 목록 (1=일 … 7=토). null/빈 목록이면 요일 필터 없음.
+     * "주중"/"주말" 같은 묶음도 결국 이 숫자 목록으로 펼쳐져 들어온다.
+     */
+    private List<Integer> daysOfWeek;
     private LocalTime timeSlotFrom;
     /**
      * "저녁(18~24시)" 같은 자정 경계는 LocalTime.of(23,59,59) 로 넘길 것 — H2/MySQL 은

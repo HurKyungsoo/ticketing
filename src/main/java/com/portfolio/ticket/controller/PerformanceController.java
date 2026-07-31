@@ -45,6 +45,7 @@ public class PerformanceController {
     @GetMapping("/")
     public String list(@RequestParam(defaultValue = "all") String genre,
                         @RequestParam(defaultValue = "all") String month,
+                        @RequestParam(defaultValue = "all") String dayOfWeek,
                         @RequestParam(defaultValue = "all") String timeSlot,
                         @RequestParam(defaultValue = "ongoing") String status,
                         @RequestParam(defaultValue = "all") String venue,
@@ -53,7 +54,7 @@ public class PerformanceController {
                         @RequestParam(defaultValue = "0") int page,
                         Model model) {
         PerformanceListService.Result result = performanceListService.search(
-                sentinel(genre), parseMonth(month), sentinel(timeSlot), sentinel(status),
+                sentinel(genre), parseMonth(month), sentinel(dayOfWeek), sentinel(timeSlot), sentinel(status),
                 sentinel(venue), sentinel(area), blankToNull(keyword), page);
 
         model.addAttribute("result", result);
@@ -61,6 +62,7 @@ public class PerformanceController {
         // 필터 폼/링크가 현재 선택값을 그대로 다시 뿌릴 수 있도록 원본 파라미터 문자열도 넘긴다.
         model.addAttribute("genre", genre);
         model.addAttribute("month", month);
+        model.addAttribute("dayOfWeek", dayOfWeek);
         model.addAttribute("timeSlot", timeSlot);
         model.addAttribute("status", status);
         model.addAttribute("venue", venue);
@@ -68,15 +70,16 @@ public class PerformanceController {
         model.addAttribute("keyword", keyword);
         // "필터 초기화" 를 띄울지 판단용. 하나라도 기본값에서 벗어났을 때만 보여준다.
         model.addAttribute("filtersApplied",
-                filtersApplied(genre, month, timeSlot, status, venue, area, keyword));
+                filtersApplied(genre, month, dayOfWeek, timeSlot, status, venue, area, keyword));
         return "performance/list";
     }
 
-    /** 기본 상태(장르·월·시간대·공연장·지역 전체 + 진행·예정작 + 검색어 없음)에서 벗어났는지. */
-    private boolean filtersApplied(String genre, String month, String timeSlot,
+    /** 기본 상태(장르·월·요일·시간대·공연장·지역 전체 + 진행·예정작 + 검색어 없음)에서 벗어났는지. */
+    private boolean filtersApplied(String genre, String month, String dayOfWeek, String timeSlot,
                                     String status, String venue, String area, String keyword) {
         return sentinel(genre) != null
                 || parseMonth(month) != null
+                || sentinel(dayOfWeek) != null
                 || sentinel(timeSlot) != null
                 || !"ongoing".equalsIgnoreCase(status)
                 || sentinel(venue) != null

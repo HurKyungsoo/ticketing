@@ -4,26 +4,59 @@
 <mapper namespace="com.portfolio.ticket.mapper.PerformanceMapper">
 
     <!--
-        category/month/venue 를 제외한 공통 필터. selectPerformances/countPerformances 는
-        여기에 category/month/venue 조건을 전부 추가하고, select*Counts 는 자기 자신의
-        축(facet)만 빼고 나머지 둘을 추가한다.
+        회차(performance_schedule) 한 행에 거는 조건들 — 월 · 요일 · 시간대.
+
+        셋을 한 덩어리로 묶는 게 핵심이다. 따로 걸면 "8월 + 주말" 이 <i>8월에 회차가 있고,
+        (아무 달이든) 주말 회차도 있는</i> 공연을 뜻하게 되어, 9월 주말 공연이 8월에도
+        회차가 있다는 이유로 걸린다. 같은 ps 행에 걸어야 "8월의 주말 회차" 가 된다.
+
+        MONTH()/DAYOFWEEK() 는 컬럼을 감싸므로 idx_schedule_showat 를 타지 못한다.
+        회차 수가 공연당 8건 수준이라 지금 규모에서는 문제되지 않지만, 회차가 크게 늘면
+        show_at 에서 뽑은 월/요일 컬럼을 따로 두는 걸 고려할 것.
+
+        DAYOFWEEK 는 1=일 … 7=토. H2(MODE=MySQL)와 MariaDB 가 번호 체계까지 같은 걸
+        확인하고 골랐다 — EXTRACT(ISO_DAY_OF_WEEK) 는 1=월이라 값이 달라진다.
     -->
-    <sql id="commonFilters">
+    <sql id="scheduleConditions">
+        <if test="f.month != null">AND MONTH(ps.show_at) = #{f.month}</if>
+        <if test="f.daysOfWeek != null and f.daysOfWeek.size() &gt; 0">
+            AND DAYOFWEEK(ps.show_at) IN
+            <foreach item="d" collection="f.daysOfWeek" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+        <if test="f.timeSlotFrom != null and f.timeSlotTo != null">
+            AND CAST(ps.show_at AS TIME) &gt;= #{f.timeSlotFrom}
+            AND CAST(ps.show_at AS TIME) &lt;  #{f.timeSlotTo}
+        </if>
+    </sql>
+
+    <!-- 회차와 무관한 필터. selectMonthCounts 는 회차를 JOIN 해서 세므로 이 조각만 따로 쓴다. -->
+    <sql id="nonScheduleFilters">
         <if test="f.status == 'ONGOING'">AND p.end_date &gt;= #{f.today}</if>
         <if test="f.status == 'ENDED'">AND p.end_date &lt; #{f.today}</if>
-        <if test="f.timeSlotFrom != null and f.timeSlotTo != null">
-            AND EXISTS (
-                SELECT 1 FROM performance_schedule ps
-                 WHERE ps.performance_id = p.id
-                   AND CAST(ps.show_at AS TIME) &gt;= #{f.timeSlotFrom}
-                   AND CAST(ps.show_at AS TIME) &lt;  #{f.timeSlotTo}
-            )
-        </if>
         <if test="f.keyword != null and f.keyword != ''">
             AND p.title LIKE CONCAT('%', #{f.keyword}, '%')
         </if>
         <if test="f.region != null and f.region != ''">
             AND p.region = #{f.region}
+        </if>
+    </sql>
+
+    <!--
+        category/venue 를 제외한 공통 필터. selectPerformances/countPerformances 는
+        여기에 category/venue 조건을 추가하고, select*Counts 는 자기 자신의 축(facet)만
+        빼고 나머지를 추가한다. (월은 회차 조건이라 여기 EXISTS 안으로 들어갔다 —
+        예전처럼 각 select 마다 따로 붙이지 않는다.)
+    -->
+    <sql id="commonFilters">
+        <include refid="nonScheduleFilters"/>
+        <if test="f.month != null
+                  or (f.daysOfWeek != null and f.daysOfWeek.size() &gt; 0)
+                  or (f.timeSlotFrom != null and f.timeSlotTo != null)">
+            AND EXISTS (
+                SELECT 1 FROM performance_schedule ps
+                 WHERE ps.performance_id = p.id
+                <include refid="scheduleConditions"/>
+            )
         </if>
     </sql>
 
@@ -39,7 +72,6 @@
          WHERE 1 = 1
         <include refid="commonFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
-        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
          ORDER BY (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
                   p.start_date ASC
@@ -52,7 +84,6 @@
          WHERE 1 = 1
         <include refid="commonFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
-        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
     </select>
 
@@ -62,21 +93,32 @@
           FROM performance p
          WHERE 1 = 1
         <include refid="commonFilters"/>
-        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
          GROUP BY p.category
          ORDER BY count DESC
     </select>
 
-    <!-- month 필터는 무시, category/venue 는 반영 -->
+    <!--
+        month 필터는 무시(다른 달을 골랐을 때의 건수를 보여줘야 하니까), 나머지는 반영.
+
+        EXISTS 가 아니라 회차를 JOIN 해서 센다 — "몇 월에 회차가 있나" 를 세는 집계라
+        회차 행 자체가 필요하다. 대신 한 공연이 같은 달에 회차를 여러 개 가지므로
+        COUNT(DISTINCT p.id) 로 공연 단위로 접는다(COUNT(*) 면 회차 수가 세어진다).
+
+        요일/시간대 조건도 이 JOIN 에 같이 건다. 안 걸면 "주말" 을 고른 상태에서 8월 옆
+        건수가 <i>주말과 무관한</i> 8월 공연까지 세어, 8월을 눌렀을 때 실제로 나오는
+        건수와 달라진다.
+    -->
     <select id="selectMonthCounts" resultType="com.portfolio.ticket.mapper.dto.FacetCountRow">
-        SELECT MONTH(p.start_date) AS label, COUNT(*) AS count
+        SELECT MONTH(ps.show_at) AS label, COUNT(DISTINCT p.id) AS count
           FROM performance p
+          JOIN performance_schedule ps ON ps.performance_id = p.id
          WHERE 1 = 1
-        <include refid="commonFilters"/>
+        <include refid="scheduleConditions"/>
+        <include refid="nonScheduleFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
-         GROUP BY MONTH(p.start_date)
+         GROUP BY MONTH(ps.show_at)
          ORDER BY label ASC
     </select>
 
@@ -89,7 +131,6 @@
          WHERE p.venue IS NOT NULL AND p.venue &lt;&gt; ''
         <include refid="commonFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
-        <if test="f.month != null">AND MONTH(p.start_date) = #{f.month}</if>
          GROUP BY p.venue
          ORDER BY count DESC
     </select>
