@@ -66,4 +66,17 @@ public class PerformanceSchedule {
         this.totalSeats = actual;
         this.remainingSeats = actual;
     }
+
+    /**
+     * 이미 시작된(지난) 회차인지.
+     *
+     * <p>공연 기간이 여러 날인 공연은 앞쪽 회차가 지나 있는 게 정상이다. 그 회차들을 걸러내지
+     * 않으면 <b>이미 끝난 공연을 예매할 수 있다</b> — 실제로 화면에도 목록에 그대로 떴고,
+     * 좌석 선점부터 결제까지 어디에도 시각 검증이 없었다.
+     *
+     * <p>기준은 날짜가 아니라 시각이다. 오늘 09시 공연은 지났고 오늘 19시 공연은 아직 남았다.
+     */
+    public boolean isPast(LocalDateTime now) {
+        return !showAt.isAfter(now);
+    }
 }

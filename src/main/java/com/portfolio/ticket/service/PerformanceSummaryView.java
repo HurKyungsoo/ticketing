@@ -54,7 +54,7 @@ public record PerformanceSummaryView(Integer lowestPrice, PerformanceSchedule ne
      */
     private static PerformanceSchedule nextScheduleOf(List<PerformanceSchedule> schedules, LocalDateTime now) {
         return schedules.stream()
-                .filter(s -> s.getShowAt().isAfter(now))
+                .filter(s -> !s.isPast(now))
                 .findFirst()
                 .orElse(null);
     }

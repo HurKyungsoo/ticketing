@@ -150,7 +150,9 @@
                     </div>
                 </div>
             </div>
-            <p class="empty-inline" th:if="${scheduleDays.isEmpty()}">등록된 회차가 없습니다.</p>
+            <!-- 회차가 아예 없는 경우(수집 직후)와 전부 지난 경우를 한 문구로 덮는다.
+                 둘 다 사용자 입장에서는 "지금 예매할 수 있는 회차가 없다"로 같다. -->
+            <p class="empty-inline" th:if="${scheduleDays.isEmpty()}">예매 가능한 회차가 없습니다.</p>
 
             <!--
                 취소·환불 규정. 요율을 여기에 문자열로 적지 않고 Reservation.REFUND_TIERS 를

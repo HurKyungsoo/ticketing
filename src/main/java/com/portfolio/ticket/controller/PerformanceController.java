@@ -114,7 +114,14 @@ public class PerformanceController {
     public String detail(@PathVariable Long id, Model model) {
         Performance performance = performanceRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
-        List<PerformanceSchedule> schedules = scheduleRepository.findByPerformanceIdOrderByShowAtAsc(id);
+
+        LocalDateTime now = LocalDateTime.now();
+        // 지난 회차는 목록에서 뺀다. 종전에는 그대로 노출돼서, 기간이 시작된 공연은
+        // 이미 끝난 날짜를 누를 수 있었다(예매까지 됐다 — ReservationService 에서 막는다).
+        List<PerformanceSchedule> schedules = scheduleRepository.findByPerformanceIdOrderByShowAtAsc(id)
+                .stream()
+                .filter(s -> !s.isPast(now))
+                .toList();
 
         // 등급별 가격은 회차 아무거나 하나로 대표한다 — 같은 공연의 모든 회차는 SeatGenerator 가
         // 동일한 등급별 가격으로 좌석을 만든다. 회차가 하나도 없으면(수집 직후 등) 빈 목록.
@@ -139,6 +146,13 @@ public class PerformanceController {
     public String seatMap(@PathVariable Long scheduleId, Model model) {
         PerformanceSchedule schedule = scheduleRepository.findWithPerformanceById(scheduleId)
                 .orElseThrow(() -> new NotFoundException("회차를 찾을 수 없습니다."));
+
+        // 이미 시작된 회차의 좌석도는 고를 게 없는 화면이다. 404 로 두면 "없는 회차"라는
+        // 틀린 설명이 되므로(존재는 한다) 공연 상세로 되돌려 남은 회차를 고르게 한다.
+        // 예매 자체는 ReservationService 가 따로 막는다 — 여기 리다이렉트는 안내일 뿐이다.
+        if (schedule.isPast(LocalDateTime.now())) {
+            return "redirect:/performances/" + schedule.getPerformance().getId();
+        }
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);
         Performance performance = schedule.getPerformance();
 
