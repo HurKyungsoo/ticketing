@@ -108,11 +108,24 @@
 -->
 <div class="bookbar" id="bookbar">
     <div class="legend">
-        <div class="legend-row legend-grades">
-            <span><i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b></span>
-            <span><i class="legend-grade grade-R"></i> R석 <b class="legend-price" data-grade="R"></b></span>
-            <span><i class="legend-grade grade-S"></i> S석 <b class="legend-price" data-grade="S"></b></span>
-            <span><i class="legend-grade grade-A"></i> A석 <b class="legend-price" data-grade="A"></b></span>
+        <!--
+            가격표는 보기만 하는 정보가 아니라 필터다. 예산을 먼저 정하고 그 안에서 자리를
+            고르는 게 실제 구매 순서라, 등급을 누르면 그 등급만 남기고 나머지를 뒤로 물린다.
+            아무것도 안 누른 상태(= 전부 해제)가 곧 "전체 보기"라 초기화 버튼을 따로 두지 않는다.
+        -->
+        <div class="legend-row legend-grades" id="gradeFilter">
+            <button type="button" data-grade="VIP" aria-pressed="false">
+                <i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b>
+            </button>
+            <button type="button" data-grade="R" aria-pressed="false">
+                <i class="legend-grade grade-R"></i> R석 <b class="legend-price" data-grade="R"></b>
+            </button>
+            <button type="button" data-grade="S" aria-pressed="false">
+                <i class="legend-grade grade-S"></i> S석 <b class="legend-price" data-grade="S"></b>
+            </button>
+            <button type="button" data-grade="A" aria-pressed="false">
+                <i class="legend-grade grade-A"></i> A석 <b class="legend-price" data-grade="A"></b>
+            </button>
         </div>
     </div>
     <div class="inner">
@@ -747,11 +760,42 @@
         });
     });
 
-    // 각 등급의 대표 가격을 범례에 표시한다 (이번 회차에 실제로 만든 좌석에서 직접 읽어온다).
-    document.querySelectorAll('.legend-price').forEach(el => {
-        const sample = document.querySelector(`.seat[data-grade="${el.dataset.grade}"]`);
-        if (sample) el.textContent = Number(sample.dataset.price).toLocaleString() + '원';
+    /* ---------- 등급 필터 (가격표가 곧 필터) ----------
+       가격은 이번 회차에 실제로 만든 좌석에서 직접 읽어온다. 그 김에 좌석이 하나도 없는
+       등급은 버튼을 비활성화한다 — 눌러도 결과가 빈 화면이라 누를 수 있으면 안 된다. */
+    const gradeFilter = document.getElementById('gradeFilter');
+    /** 고른 등급들. 비어 있으면 필터 없음(= 전체 보기)이다. */
+    const activeGrades = new Set();
+
+    gradeFilter.querySelectorAll('button').forEach(btn => {
+        const grade = btn.dataset.grade;
+        const sample = document.querySelector(`.seat[data-grade="${grade}"]`);
+        if (!sample) {
+            btn.disabled = true;
+            return;
+        }
+        btn.querySelector('.legend-price').textContent =
+                Number(sample.dataset.price).toLocaleString() + '원';
+        btn.addEventListener('click', () => {
+            if (activeGrades.has(grade)) activeGrades.delete(grade);
+            else activeGrades.add(grade);
+            btn.setAttribute('aria-pressed', String(activeGrades.has(grade)));
+            applyGradeFilter();
+        });
     });
+
+    /*
+       고른 등급 목록을 컨테이너 속성 하나로 넘긴다. 좌석마다 클래스를 붙이지 않는 이유는
+       CSS 쪽 주석 참고 — 3,022석 홀에서 토글할 때마다 전체를 순회하지 않기 위해서다.
+       아무것도 안 골랐으면 속성 자체를 지워 "필터 없음"으로 되돌린다.
+    */
+    function applyGradeFilter() {
+        const value = [...activeGrades].join(' ');
+        [scroller, minimap].forEach(el => {
+            if (value) el.dataset.gradeFilter = value;
+            else delete el.dataset.gradeFilter;
+        });
+    }
 
     /* ---------- 고정 바에 가려지는 높이 ----------
        좌석 표시·가격표가 예매 바 안에 있고 바는 화면 아래에 고정이다. 그만큼 본문 끝이 가려지므로

@@ -697,8 +697,62 @@ a { color: inherit; text-decoration: none; }
 }
 .legend-row span { display: flex; align-items: center; gap: 7px; }
 .legend-row i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
-.legend-grades span { color: var(--paper); }
 .legend-price { color: var(--brass); font-weight: 700; margin-left: 2px; }
+
+/* ---------- 등급 필터 (가격표가 곧 필터) ----------
+   가격표 항목이 버튼이다. 예산을 먼저 정하고 그 안에서 자리를 고르는 게 실제 구매 순서라,
+   등급을 누르면 그 등급만 남기고 나머지 좌석을 뒤로 물린다. .legend-row 의 gap 이 22px 라
+   버튼 자체 padding 과 겹쳐 넓어 보이므로 이 줄만 간격을 좁힌다. */
+.legend-grades { gap: 6px; }
+.legend-grades button {
+  display: flex; align-items: center; gap: 7px;
+  font: inherit; font-size: 12px; color: var(--paper);
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: 5px 11px; cursor: pointer;
+  transition: background .12s, border-color .12s, opacity .12s;
+}
+.legend-grades button:hover:not(:disabled) { border-color: var(--line-strong); }
+.legend-grades button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, .10);
+  border-color: var(--line-strong);
+}
+/* 이번 회차에 그 등급 좌석이 아예 없으면 누를 게 없다. */
+.legend-grades button:disabled { opacity: .35; cursor: default; }
+
+/*
+   필터가 걸리면 고르지 않은 등급을 물린다.
+
+   좌석마다 클래스를 붙이지 않고 컨테이너 속성 하나로 제어한다 — 3,022석 홀에서 토글할
+   때마다 좌석 전부를 순회하며 classList 를 건드리면 그만큼 스타일을 다시 계산한다.
+   `~=` 는 공백으로 구분된 낱말 매칭이라 data-grade-filter="R S" 같은 값이 그대로 먹는다.
+   속성이 아예 없으면(= 아무것도 안 고른 상태) 어떤 규칙도 안 걸려 전체가 보인다.
+
+   pointer-events 까지 끄는 이유: 물린 좌석을 실수로 고르면 필터를 건 의미가 없다.
+
+   이미 고른 좌석은 예외여야 한다 — 안 그러면 필터를 건 뒤 그 좌석을 해제할 방법이 없어진다.
+   그 예외를 별도 규칙(`... .seat.selected { opacity: 1 }`)으로 덧씌우려다 실패했다.
+   무력화 쪽은 `:not([data-grade-filter~="…"])` 때문에 클래스 3 + 속성 2 = (0,5,0)인데
+   예외 쪽은 (0,4,0)이라 명시도에서 진다. **그래서 예외를 덧씌우지 않고 무력화 대상에서
+   아예 빼는 방식으로 적는다** — 규칙이 하나뿐이라 명시도를 따질 일이 없어진다.
+   (JS 의 .click() 은 pointer-events 를 무시하고 발생하므로 이 결함은 스크립트 조작으로는
+    드러나지 않는다. 계산된 스타일을 직접 읽어야 잡힌다.)
+*/
+.housescroll[data-grade-filter]:not([data-grade-filter~="VIP"]) .seat.grade-VIP:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="R"])   .seat.grade-R:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="S"])   .seat.grade-S:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="A"])   .seat.grade-A:not(.selected) {
+  opacity: .16;
+  pointer-events: none;
+}
+
+/* 미니맵도 같이 물린다. 필터를 걸었을 때 "그 등급이 홀 어디에 있나"가 바로 보이는 게
+   이 기능의 실제 값어치라, 지도만 바뀌고 미니맵이 그대로면 절반만 동작하는 셈이다. */
+.minimap[data-grade-filter]:not([data-grade-filter~="VIP"]) .minimap-zone.grade-VIP,
+.minimap[data-grade-filter]:not([data-grade-filter~="R"])   .minimap-zone.grade-R,
+.minimap[data-grade-filter]:not([data-grade-filter~="S"])   .minimap-zone.grade-S,
+.minimap[data-grade-filter]:not([data-grade-filter~="A"])   .minimap-zone.grade-A {
+  opacity: .22;
+}
 /* 범례 견본은 좌석과 같은 방식(채움)이어야 한다 — 견본과 좌석이 다른 규칙으로 그려지면
    범례를 보고 지도를 못 읽는다. 그래서 .seat 과 같은 --grade-* 토큰을 쓴다. */
 .legend-grade {
@@ -740,13 +794,19 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 .bookbar .pickedtotal { margin: 0; font-size: 13px; color: var(--mute); }
 .bookbar .pickedtotal strong { color: var(--brass); font-family: var(--display); font-weight: 700; }
-.bookbar button {
+/*
+   예매 CTA. `.bookbar button` 으로 두면 안 된다 — 바 안에 버튼이 하나뿐이라는 전제가 깔린
+   선택자인데, 가격표가 등급 필터 버튼이 되면서 그것들까지 브라스로 칠해버렸다. 게다가
+   가격 글자색도 브라스(--legend-price)라 같은 색끼리 겹쳐 가격이 아예 안 보였다.
+   이 규칙이 노리는 건 언제나 .inner 안의 「예매하기」 하나다.
+*/
+.bookbar .inner button {
   font-family: var(--body); font-size: 15px; font-weight: 600;
   background: var(--brass); color: var(--ink);
   border: 0; padding: 13px 30px; cursor: pointer;
   flex: none;
 }
-.bookbar button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
+.bookbar .inner button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
 
 .empty-state {
   text-align: center; padding: 80px 20px; color: var(--mute);
@@ -982,7 +1042,8 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   .resaction { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
   .bookbar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   .bookbar .inner { flex-direction: column; align-items: stretch; }
-  .bookbar button { width: 100%; }
+  /* 예매 CTA 만 전폭으로. 등급 필터 버튼까지 잡으면 가격표가 세로로 네 줄이 된다. */
+  .bookbar .inner button { width: 100%; }
 }
 
 /* 모션 최소화 설정에서는 전환뿐 아니라 애니메이션도 멈춘다.
