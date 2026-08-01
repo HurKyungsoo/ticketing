@@ -882,12 +882,20 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   border-color: var(--brass);
   box-shadow: 0 0 0 3px rgba(255, 201, 64, .16);
 }
-/* 제출 버튼만 브라스로 채운다 — 비밀번호 표시 토글도 button 이라 타입으로 구분해야 한다. */
+/*
+   제출 버튼만 브라스로 채운다 — 비밀번호 표시 토글도 button 이라 타입으로 구분해야 한다.
+
+   크기를 소셜 버튼보다 키우는 게 핵심이다. 브라스(43°)와 카카오 노랑(54°)은 색상차가
+   11도뿐이고 명암비도 1.2 라 색으로는 절대 안 갈린다. 게다가 종전엔 소셜 버튼이 아이콘
+   때문에 더 커서(52 vs 45px) **주요 액션이 보조 액션보다 작고 어두운** 상태였다 —
+   위계가 뒤집혀 있었다. 브랜드 색은 가이드가 정한 값이라 못 건드리므로, 우리 쪽이 가진
+   유일한 지렛대인 크기·굵기로 되잡는다.
+*/
 .authform button[type="submit"] {
-  font-family: var(--body); font-size: 15px; font-weight: 700;
+  font-family: var(--body); font-size: 16px; font-weight: 700;
   background: var(--brass); color: #0B0B0C;
   border: 0; border-radius: var(--radius-sm);
-  padding: 14px; cursor: pointer;
+  padding: 16px; cursor: pointer;
   margin-top: 4px;
   transition: filter .12s;
 }
@@ -943,11 +951,20 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   content: ""; flex: 1; height: 1px; background: var(--line);
 }
 .oauthbuttons { display: flex; flex-direction: column; gap: 10px; }
+/*
+   소셜 로그인은 보조 경로다. 브랜드 색·심볼·문구는 각 사 가이드가 정한 값이라 그대로 두고,
+   가이드가 규정하지 않는 크기·굵기만 낮춰 주요 액션과 위계를 만든다.
+
+   line-height 를 고정하는 이유: 아이콘(16px)이 글자 줄 높이보다 커서 버튼 높이를 밀어올려,
+   종전에는 소셜 버튼이 로그인 버튼보다 7px 더 컸다. 줄 높이를 아이콘 이상으로 못박으면
+   아이콘이 높이에 관여하지 않아 padding 만으로 크기가 결정된다.
+*/
 .oauthbtn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--body); font-size: 15px; font-weight: 700;
+  font-family: var(--body); font-size: 14px; font-weight: 600;
+  line-height: 18px;
   border: 0; border-radius: var(--radius-sm);
-  padding: 14px; cursor: pointer; text-align: center;
+  padding: 12px; cursor: pointer; text-align: center;
   transition: filter .12s;
 }
 .oauthbtn:hover { filter: brightness(1.06); }
