@@ -70,8 +70,24 @@
   --seat-held: #3A3A42;
   --seat-sold: #212125;
 
+  /*
+     모서리 반경 스케일. 종전엔 값이 10종류로 흩어져 있었고, 더 문제는 화면별로 갈렸다는
+     것이다 — 목록·상세·로그인·결제는 둥근데 관리자 대시보드·마이페이지·예매 CTA·배지는
+     각진 채로 남아 같은 앱 안에 세대가 둘 섞여 보였다. 아래 넷 안에서만 고른다.
+
+       --radius     카드·패널 (통계 카드, 차트 상자, 예매 내역 줄, 필터 패널)
+       --radius-sm  버튼·입력 (결제 버튼, 관리자 필터, 취소 버튼)
+       --radius-xs  작은 컨트롤 (비밀번호 표시 토글, 인라인 코드, 지도)
+       999px        알약 — 칩·필터·배지처럼 "고르는 것"
+
+     예외는 셋뿐이고 이유가 분명하다. ① 좌석·범례 견본(3px)과 미니맵 블록(1~2px)은 요소
+     자체가 10~13px 이라 위 값을 쓰면 모서리가 면적을 다 먹는다(견본은 좌석과 같아야 하므로
+     같은 값을 쓴다). ② 카카오 로그인 버튼(12px)은 공식 디자인 가이드 수치라 우리 스케일에
+     맞추면 안 된다. ③ 무대는 반원 곡선이라 반경이 아니라 형태다.
+  */
   --radius: 14px;
   --radius-sm: 10px;
+  --radius-xs: 6px;
 }
 
 * { box-sizing: border-box; }
@@ -173,19 +189,6 @@ a { color: inherit; text-decoration: none; }
 .spec div { display: flex; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .spec dt { width: 84px; color: var(--mute); flex: none; margin: 0; }
 
-.schedules { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.schedules a {
-  border: 1px solid var(--brass-dim);
-  color: var(--brass);
-  padding: 9px 16px;
-  font-size: 14px;
-  transition: background .15s, color .15s;
-}
-.schedules a:hover { background: var(--brass); color: var(--ink); }
-.schedules a.soldout {
-  border-color: var(--line); color: var(--mute); pointer-events: none;
-}
-
 /* ---------- 좌석 배치도 (시그니처) ---------- */
 /*
    인원수 선택과 확대 버튼은 상단 헤더(.masthead) 바로 아래에 고정한다. 63줄짜리 콘서트홀에서
@@ -212,7 +215,7 @@ a { color: inherit; text-decoration: none; }
 .partysize label { color: var(--paper); font-weight: 600; }
 .partysize select {
   background: var(--ink-soft); color: var(--paper);
-  border: 1px solid var(--line); border-radius: 4px;
+  border: 1px solid var(--line); border-radius: 999px;
   padding: 5px 10px; font: inherit;
 }
 .partysize .hint { color: var(--mute); font-size: 12px; }
@@ -803,7 +806,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .bookbar .inner button {
   font-family: var(--body); font-size: 15px; font-weight: 600;
   background: var(--brass); color: var(--ink);
-  border: 0; padding: 13px 30px; cursor: pointer;
+  border: 0; border-radius: var(--radius-sm); padding: 13px 30px; cursor: pointer;
   flex: none;
 }
 .bookbar .inner button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
@@ -895,7 +898,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .pwfield input { padding-right: 62px; }
 .pwtoggle {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  background: none; border: 0; border-radius: 6px;
+  background: none; border: 0; border-radius: var(--radius-xs);
   color: var(--mute); font-family: var(--body); font-size: 12px;
   padding: 6px 8px; cursor: pointer;
   transition: color .12s;
@@ -963,13 +966,13 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .dashfilter input {
   font-family: var(--body); font-size: 14px;
   background: var(--ink-soft); color: var(--paper);
-  border: 1px solid var(--line); padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px;
 }
 .dashfilter input:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
 .dashfilter button {
   font-family: var(--body); font-size: 14px; font-weight: 600;
   background: var(--brass); color: var(--ink);
-  border: 0; padding: 9px 20px; cursor: pointer;
+  border: 0; border-radius: var(--radius-sm); padding: 9px 20px; cursor: pointer;
 }
 
 .cards {
@@ -980,6 +983,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 .card-stat {
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--ink-soft);
   padding: 20px;
   display: flex; flex-direction: column; gap: 8px;
@@ -994,7 +998,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 
 .chartgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-.chartbox { border: 1px solid var(--line); padding: 20px; }
+.chartbox { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
 .chartbox h3 {
   font-family: var(--display); font-size: 15px; font-weight: 600;
   margin: 0 0 16px; color: var(--paper);
@@ -1007,6 +1011,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   display: flex; justify-content: space-between; align-items: center;
   gap: 24px;
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--ink-soft);
   padding: 20px 24px;
 }
@@ -1018,7 +1023,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .resaction { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
 .badge {
   font-size: 12px; letter-spacing: 0.05em;
-  padding: 4px 10px; border: 1px solid var(--line);
+  padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
   color: var(--mute); white-space: nowrap;
 }
 .badge-CONFIRMED { color: var(--brass); border-color: var(--brass-dim); }
@@ -1026,7 +1031,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 
 .btn-pay, .btn-cancel {
   font-family: var(--body); font-size: 13px; font-weight: 600;
-  border: 0; padding: 8px 16px; cursor: pointer; white-space: nowrap;
+  border: 0; border-radius: var(--radius-sm); padding: 8px 16px; cursor: pointer; white-space: nowrap;
 }
 .btn-pay { background: var(--brass); color: var(--ink); }
 .btn-cancel { background: transparent; border: 1px solid var(--line); color: var(--mute); }
@@ -1096,7 +1101,7 @@ body.page-list .mobile-filter-btn em { font-style: normal; color: var(--mute); }
 body.page-list .filterpanel {
   background: var(--ink-soft);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 24px 28px;
   margin-bottom: 32px;
 }
@@ -1331,7 +1336,7 @@ body.page-list .pager-num.active {
 }
 
 body.page-list .empty-state { color: var(--mute); }
-body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px; border-radius: 4px; }
+body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px; border-radius: var(--radius-xs); }
 
 @media (max-width: 860px) {
   /* "객석" 로고+태그는 한 줄 유지, authnav("로그인 · 회원가입")는 폭이 좁으면
@@ -1466,7 +1471,7 @@ body.page-detail .spec dd { margin: 0; color: var(--paper); }
   width: 100%;
   height: 220px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
