@@ -53,11 +53,12 @@ public class PerformanceController {
                         @RequestParam(defaultValue = "all") String venue,
                         @RequestParam(defaultValue = "all") String area,
                         @RequestParam(required = false) String keyword,
+                        @RequestParam(defaultValue = "recommended") String sort,
                         @RequestParam(defaultValue = "0") int page,
                         Model model) {
         PerformanceListService.Result result = performanceListService.search(
                 sentinel(genre), parseMonth(month), sentinel(dayOfWeek), sentinel(timeSlot), sentinel(status),
-                sentinel(venue), sentinel(area), blankToNull(keyword), page);
+                sentinel(venue), sentinel(area), blankToNull(keyword), sort, page);
 
         model.addAttribute("result", result);
         model.addAttribute("regions", REGIONS);
@@ -70,6 +71,13 @@ public class PerformanceController {
         model.addAttribute("venue", venue);
         model.addAttribute("area", area);
         model.addAttribute("keyword", keyword);
+        // 알 수 없는 값이 들어와도 화면 드롭다운은 실제 적용된 정렬을 가리켜야 하므로
+        // 원본이 아니라 서비스가 확정한 값을 넘긴다.
+        model.addAttribute("sort", result.sorts().stream()
+                .filter(PerformanceListService.Option::selected)
+                .findFirst()
+                .map(PerformanceListService.Option::value)
+                .orElse("recommended"));
         // "필터 초기화" 를 띄울지 판단용. 하나라도 기본값에서 벗어났을 때만 보여준다.
         model.addAttribute("filtersApplied",
                 filtersApplied(genre, month, dayOfWeek, timeSlot, status, venue, area, keyword));

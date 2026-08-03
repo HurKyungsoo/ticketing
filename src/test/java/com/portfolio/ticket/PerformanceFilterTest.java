@@ -113,7 +113,15 @@ class PerformanceFilterTest {
     }
 
     private List<String> titlesOf(Integer month, String dayOfWeek, String status) {
-        return listService.search(null, month, dayOfWeek, null, status, null, null, null, 0)
+        return listService.search(null, month, dayOfWeek, null, status, null, null, null, null, 0)
+                .performances().stream()
+                .map(r -> r.getTitle())
+                .toList();
+    }
+
+    /** 정렬만 바꿔가며 제목 순서를 본다. status 는 "전체" — 종료작도 정렬 대상이다. */
+    private List<String> titlesSortedBy(String sort) {
+        return listService.search(null, null, null, null, "ALL", null, null, null, sort, 0)
                 .performances().stream()
                 .map(r -> r.getTitle())
                 .toList();
@@ -226,13 +234,114 @@ class PerformanceFilterTest {
                 .isEmpty();
     }
 
+    /* ------------------------------------------------------------------
+     *  정렬(sort)
+     *
+     *  정렬은 건수가 안 바뀌어서 화면만 봐서는 걸린 건지 무시된 건지 알 수 없다.
+     *  필터가 조용히 무시되던 것과 같은 종류의 결함이라 여기서 순서를 못 박는다.
+     * ------------------------------------------------------------------ */
+
+    /** 종료일·가격을 직접 정해야 하는 정렬 테스트용. 회차는 만들지 않는다(정렬 축이 공연 컬럼이라 불필요). */
+    private void createPerformanceForSort(String title, LocalDate endDate, Integer basePrice) {
+        performanceRepository.save(Performance.builder()
+                .externalId("SORT-" + title + "-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title(title)
+                .category(PerformanceCategory.MUSICAL)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(endDate.minusDays(10))
+                .endDate(endDate)
+                .totalSeatCount(100)
+                .basePrice(basePrice)
+                .build());
+    }
+
+    @DisplayName("마감 임박순 — 종료일이 가까운 공연이 먼저 온다")
+    @Test
+    void sortsByClosingSoon() {
+        LocalDate today = LocalDate.now();
+        createPerformanceForSort("늦게끝남", today.plusDays(30), 50_000);
+        createPerformanceForSort("곧끝남", today.plusDays(2), 50_000);
+        createPerformanceForSort("중간", today.plusDays(10), 50_000);
+
+        assertThat(titlesSortedBy("closing")).containsExactly("곧끝남", "중간", "늦게끝남");
+    }
+
+    @DisplayName("낮은 가격순 — 가격 미상(null)은 맨 뒤로 간다")
+    @Test
+    void sortsByPriceWithNullsLast() {
+        LocalDate end = LocalDate.now().plusDays(30);
+        createPerformanceForSort("비쌈", end, 90_000);
+        createPerformanceForSort("가격미상", end, null);
+        createPerformanceForSort("쌈", end, 10_000);
+
+        // NULL 순서는 H2 와 MariaDB 의 기본 동작이 서로 달라서(MariaDB 는 ASC 에서 NULL 이 앞)
+        // 매퍼가 CASE 로 직접 뒤로 보낸다. 그게 빠지면 DB 를 바꾸는 순간 순서가 뒤집힌다.
+        assertThat(titlesSortedBy("priceAsc")).containsExactly("쌈", "비쌈", "가격미상");
+    }
+
+    @DisplayName("최신 등록순 — 나중에 수집된 공연이 먼저 온다")
+    @Test
+    void sortsByNewest() {
+        LocalDate end = LocalDate.now().plusDays(30);
+        createPerformanceForSort("먼저등록", end, 50_000);
+        createPerformanceForSort("나중등록", end, 50_000);
+
+        assertThat(titlesSortedBy("newest")).containsExactly("나중등록", "먼저등록");
+    }
+
+    /**
+     * 정렬 코드는 매퍼에서 {@code <choose>} 로만 비교되고 SQL 에 이어붙지 않는다.
+     * {@code ${}} 로 바꾸면 이 입력이 그대로 ORDER BY 에 들어가 쿼리가 깨지거나 주입이 뚫린다.
+     */
+    @DisplayName("알 수 없는 정렬값은 기본 정렬로 떨어진다 (SQL 로 새어나가지 않는다)")
+    @Test
+    void unknownSortFallsBackToDefault() {
+        LocalDate end = LocalDate.now().plusDays(30);
+        createPerformanceForSort("가", end, 50_000);
+        createPerformanceForSort("나", end, 50_000);
+
+        List<String> injected = titlesSortedBy("p.id; DROP TABLE performance");
+        assertThat(injected).containsExactlyElementsOf(titlesSortedBy("recommended"));
+        assertThat(performanceRepository.count()).as("테이블이 살아 있어야 한다").isEqualTo(2);
+    }
+
+    /**
+     * 정렬 키가 같은 행들의 순서가 쿼리마다 흔들리면 LIMIT/OFFSET 페이징이 어긋나
+     * 같은 공연이 두 페이지에 나오거나 아예 빠진다. 매퍼가 모든 갈래 끝에 p.id 를
+     * 붙여 순서를 고정하는데, 그걸 빼면 이 테스트가 (DB 기분에 따라) 깨진다.
+     */
+    @DisplayName("정렬 키가 전부 같아도 페이징에 중복·누락이 없다")
+    @Test
+    void paginationIsStableWhenSortKeysTie() {
+        LocalDate end = LocalDate.now().plusDays(30);
+        int total = 15;   // PAGE_SIZE(12) 를 넘겨 2페이지가 되도록
+        for (int i = 0; i < total; i++) {
+            createPerformanceForSort("동점" + i, end, 50_000);   // 종료일·가격이 전부 같다
+        }
+
+        List<String> merged = new java.util.ArrayList<>();
+        merged.addAll(pageTitles("closing", 0));
+        merged.addAll(pageTitles("closing", 1));
+
+        assertThat(merged).as("중복 없이 전부 한 번씩").doesNotHaveDuplicates().hasSize(total);
+    }
+
+    private List<String> pageTitles(String sort, int page) {
+        return listService.search(null, null, null, null, "ALL", null, null, null, sort, page)
+                .performances().stream()
+                .map(r -> r.getTitle())
+                .toList();
+    }
+
     @DisplayName("월별 건수도 회차 기준 — 요일을 걸면 그 요일 회차가 있는 달만 세어진다")
     @Test
     void monthFacetCountsFollowScheduleAxis() {
         createPerformance("8월주말있음", AUG_SAT, SEP_SAT);
         createPerformance("9월주말만", AUG_MON, SEP_SAT);
 
-        var months = listService.search(null, null, "weekend", null, "ALL", null, null, null, 0).months();
+        var months = listService.search(null, null, "weekend", null, "ALL", null, null, null, null, 0).months();
 
         long aug = months.stream().filter(o -> "8".equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();
         long sep = months.stream().filter(o -> "9".equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();

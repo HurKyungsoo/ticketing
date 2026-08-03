@@ -60,6 +60,39 @@
         </if>
     </sql>
 
+    <!--
+        정렬. 값은 반드시 <choose> 로 비교해서 고른다 — ${f.sort} 로 ORDER BY 에 이어붙이면
+        쿼리 파라미터가 그대로 SQL 이 되어 주입이 뚫린다(#{} 는 ORDER BY 에 못 쓴다).
+        여기 없는 값은 서비스가 이미 기본 정렬로 바꿔서 넘긴다.
+
+        어느 갈래든 마지막에 p.id 를 붙이는 게 중요하다. 정렬 키가 같은 행들의 순서가
+        쿼리마다 달라지면 LIMIT/OFFSET 페이징이 흔들려서, 같은 공연이 2페이지에 또 나오거나
+        아예 안 나온다. 종전 기본 정렬(start_date 만)에 실제로 있던 문제다 —
+        수집 데이터는 개막일이 겹치는 공연이 흔하다.
+
+        NULL 은 CASE 로 직접 뒤로 보낸다. NULLS LAST 는 H2 와 MariaDB 의 기본 동작이
+        서로 달라서(MariaDB 는 ASC 에서 NULL 이 앞) 그대로 두면 DB 마다 순서가 갈린다.
+    -->
+    <sql id="orderBy">
+        <choose>
+            <when test="f.sort == 'closing'">
+                ORDER BY (CASE WHEN p.end_date IS NULL THEN 1 ELSE 0 END) ASC,
+                         p.end_date ASC, p.id ASC
+            </when>
+            <when test="f.sort == 'newest'">
+                ORDER BY p.id DESC
+            </when>
+            <when test="f.sort == 'priceAsc'">
+                ORDER BY (CASE WHEN p.base_price IS NULL THEN 1 ELSE 0 END) ASC,
+                         p.base_price ASC, p.id ASC
+            </when>
+            <otherwise>
+                ORDER BY (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
+                         p.start_date ASC, p.id ASC
+            </otherwise>
+        </choose>
+    </sql>
+
     <select id="selectPerformances" resultType="com.portfolio.ticket.mapper.dto.PerformanceListRow">
         SELECT p.id          AS id,
                p.title        AS title,
@@ -73,8 +106,7 @@
         <include refid="commonFilters"/>
         <if test="f.category != null and f.category != ''">AND p.category = #{f.category}</if>
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
-         ORDER BY (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
-                  p.start_date ASC
+        <include refid="orderBy"/>
          LIMIT #{f.limit} OFFSET #{f.offset}
     </select>
 

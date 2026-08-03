@@ -40,6 +40,46 @@ public class PerformanceListService {
     /** 필터 탭/칩/드롭다운 한 항목. value 가 null 이면 그 자체로는 필터링할 수 없는 항목("기타" 등). */
     public record Option(String value, String label, long count, boolean selected) {}
 
+    /**
+     * 목록 정렬 갈래. 실제 ORDER BY 는 매퍼의 {@code orderBy} 조각이 이 코드값을
+     * {@code <choose>} 로 비교해서 고른다 — 코드값을 SQL 에 이어붙이지 않는다.
+     *
+     * <p>정렬 축을 <b>공연 테이블 컬럼으로만</b> 잡았다. "인기순"은 넣지 않았는데,
+     * 예매 수를 세는 집계라 실사용 데이터가 있어야 의미가 생기고 지금은 대부분 0이라
+     * 전부 동점이 되어 2차 정렬로 무너진다 — 고를 수는 있는데 결과가 안 바뀌는
+     * 정렬은 없는 것보다 나쁘다. 실제 예매가 쌓이면 그때 추가한다.
+     */
+    public enum Sort {
+        RECOMMENDED("recommended", "추천순"),
+        CLOSING("closing", "마감 임박순"),
+        NEWEST("newest", "최신 등록순"),
+        PRICE_ASC("priceAsc", "낮은 가격순");
+
+        private final String code;
+        private final String label;
+
+        Sort(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        /** 알 수 없는 값(사용자가 URL 을 고쳤거나 링크가 낡았을 때)은 조용히 기본 정렬로 떨어뜨린다. */
+        public static Sort from(String code) {
+            for (Sort s : values()) {
+                if (s.code.equals(code)) return s;
+            }
+            return RECOMMENDED;
+        }
+    }
+
     public record Result(
             List<PerformanceListRow> performances,
             long total,
@@ -49,15 +89,19 @@ public class PerformanceListService {
             List<Option> categories,
             List<Option> months,
             List<Option> venues,
+            /** 정렬 드롭다운. 현재 고른 갈래는 {@code selected} 로 표시된다. */
+            List<Option> sorts,
             /** 결과 0건이 필터 탓이 아니라 DB 자체가 비어서인지. 관리자용 수집 안내를 띄울지 판단하는 데만 쓴다. */
             boolean libraryEmpty
     ) {}
 
     public Result search(String category, Integer month, String dayOfWeek, String timeSlot, String status,
-                          String venue, String region, String keyword, int page) {
+                          String venue, String region, String keyword, String sort, int page) {
         int safePage = Math.max(0, page);
+        Sort resolvedSort = Sort.from(sort);
         PerformanceFilter filter =
-                buildFilter(category, month, dayOfWeek, timeSlot, status, venue, region, keyword, safePage);
+                buildFilter(category, month, dayOfWeek, timeSlot, status, venue, region, keyword,
+                        resolvedSort, safePage);
 
         List<PerformanceListRow> rows = performanceMapper.selectPerformances(filter);
         long total = performanceMapper.countPerformances(filter);
@@ -69,7 +113,16 @@ public class PerformanceListService {
         List<Integer> pageWindow = buildPageWindow(safePage, totalPages);
 
         return new Result(rows, total, safePage, totalPages, pageWindow, categories, months, venues,
-                isLibraryEmpty(total));
+                buildSortOptions(resolvedSort), isLibraryEmpty(total));
+    }
+
+    /** 정렬은 결과를 거르지 않으므로 건수는 의미가 없다. Option 을 재사용하되 count 는 0 으로 둔다. */
+    private List<Option> buildSortOptions(Sort selected) {
+        List<Option> options = new ArrayList<>();
+        for (Sort s : Sort.values()) {
+            options.add(new Option(s.code(), s.label(), 0, s == selected));
+        }
+        return options;
     }
 
     /**
@@ -93,8 +146,10 @@ public class PerformanceListService {
     }
 
     private PerformanceFilter buildFilter(String category, Integer month, String dayOfWeek, String timeSlot,
-                                           String status, String venue, String region, String keyword, int page) {
+                                           String status, String venue, String region, String keyword,
+                                           Sort sort, int page) {
         PerformanceFilter filter = new PerformanceFilter();
+        filter.setSort(sort.code());
         filter.setCategory(category);
         filter.setMonth(month);
         applyDayOfWeek(filter, dayOfWeek);
@@ -220,6 +275,9 @@ public class PerformanceListService {
      * 패싯 건수를 낼 때 자기 축만 빼고 나머지 조건을 그대로 복사한다.
      * <b>새 필터 필드를 추가하면 여기에도 반드시 넣어야 한다</b> — 빠뜨리면 예외 없이
      * 그 조건만 무시된 건수가 나와서, 화면 숫자와 실제 결과가 조용히 어긋난다.
+     *
+     * <p>{@code sort} 는 일부러 뺐다. 정렬은 행을 거르지 않아 건수에 영향이 없고,
+     * 패싯 쿼리들은 {@code orderBy} 조각을 아예 포함하지 않는다.
      */
     private PerformanceFilter copyWithout(PerformanceFilter source, Consumer<PerformanceFilter> mutator) {
         PerformanceFilter copy = new PerformanceFilter();

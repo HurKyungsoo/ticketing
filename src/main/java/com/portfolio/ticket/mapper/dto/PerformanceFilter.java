@@ -38,6 +38,12 @@ public class PerformanceFilter {
     private String venue;
     private String region;
     private String keyword;
+    /**
+     * 정렬 키. {@code PerformanceListService.Sort} 의 코드 문자열이며, 매퍼는 이 값을
+     * {@code <choose>} 로만 비교한다 — {@code ${}} 로 ORDER BY 에 그대로 이어붙이면
+     * SQL 주입이 된다. 알 수 없는 값은 서비스에서 기본 정렬로 바뀐 뒤 들어온다.
+     */
+    private String sort;
     private Integer offset;
     private Integer limit;
 }
