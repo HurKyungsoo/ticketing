@@ -1,4 +1,22 @@
 @charset "UTF-8";
+/*
+   Pretendard 자체 호스팅. 이 줄이 없으면 아래 --body/--display 의 첫 후보가
+   아무 데서도 안 잡혀서 Windows 는 맑은 고딕으로 떨어진다 — 실제로 그 상태였다.
+
+   가변 폰트(font-weight: 45 920) 한 벌이라 이 파일이 쓰는 400/500/600/700/800 이
+   전부 정확한 굵기로 나온다. 정적 5벌(3.8MB)을 받는 것보다 작다.
+
+   동적 서브셋이라 @font-face 가 92 개고 각자 unicode-range 를 갖는다. 브라우저는
+   그 페이지에 실제로 쓰인 글자가 든 조각만 받는다(한글 폰트는 통짜로 받으면 700KB 대).
+   조각이 92 개라 규칙도 92 개 — app.css 에 인라인하면 900 줄이 늘어나므로 파일을 나눴다.
+
+   <link> 가 아니라 @import 인 이유: 템플릿 13 개가 전부 app.css 만 링크하고 있어서,
+   여기 한 줄이면 전 화면에 붙는다. 대신 app.css 를 받은 뒤에야 이 파일을 받으러 가는
+   왕복 한 번이 더 든다 — 동일 출처 정적 파일이고 font-display: swap 이라 그동안에도
+   글자는 폴백으로 보이므로 화면이 비지 않는다.
+*/
+@import url("/css/pretendard.css");
+
 /* ------------------------------------------------------------------
    공연 예매 - 공통 스타일
    컨셉: 어두운 객석 + 조명 받는 무대.
@@ -22,12 +40,54 @@
   --line:       rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
 
-  /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다. */
-  --display: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
-  --body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+  /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다.
+     첫 후보가 위에서 @import 로 실어온 자체 호스팅 가변 폰트다. 그 다음 'Pretendard' 는
+     방문자 PC 에 이미 깔려 있는 경우로, 웹폰트를 한 조각도 안 받고 끝난다. */
+  --display: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+  --body: 'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 
+  /*
+     좌석 등급 색. 이 화면에는 포스터가 없어서 "배경에서 색을 빼 포스터를 유일한 색으로
+     둔다"는 위 원칙이 적용되지 않는다 — 여기서는 등급이 곧 콘텐츠다.
+
+     종전에는 등급을 앰버 한 색의 투명도 + 테두리 굵기로만 구분했는데 둘 다 무너져 있었다.
+     측정값: 좌석 대비 명암비가 VIP 11.88 / R 6.03 / S 2.28 / A 1.23 로 S·A 가 WCAG
+     1.4.11(비텍스트 3.0) 미달이었고, 굵기도 맞춤 배율에서 R·S·A 가 전부 0.67px,
+     확대해도 R 과 S 가 똑같이 1.33px 라 4단계가 실제로는 3단계로 접혀 있었다.
+     콘서트홀 기준 2,481석 중 1,619석(65%)이 서로 구별되지 않는 상태였다.
+
+     그래서 색상(hue)으로 가르되 **명도도 같이 단조 감소**시킨다. 색상만으로 가르면
+     색각 이상이나 흑백 출력에서 등급 순서가 사라진다. 네 색 모두 배경 대비 3.0 을 넘는다
+     (VIP 9.08 / R 5.33 / S 4.06 / A 3.37). 더 선명한 팔레트도 검토했지만
+     (#FFC940/#F0835A/#4E8FBF/#5F5F69) 무대 조명 연출과 부딪혀 이쪽으로 낮췄다.
+  */
+  --grade-vip: #D9A93F;
+  --grade-r:   #BF7150;
+  --grade-s:   #4A7791;
+  --grade-a:   #646470;
+  /* 예매 불가 좌석은 무채색으로 뒤로 물린다. 종전엔 판매 완료가 --rose 였는데,
+     살 수 없는 좌석이 가장 눈에 띄는 색을 갖는 건 시선 유도가 거꾸로 된 것이다. */
+  --seat-held: #3A3A42;
+  --seat-sold: #212125;
+
+  /*
+     모서리 반경 스케일. 종전엔 값이 10종류로 흩어져 있었고, 더 문제는 화면별로 갈렸다는
+     것이다 — 목록·상세·로그인·결제는 둥근데 관리자 대시보드·마이페이지·예매 CTA·배지는
+     각진 채로 남아 같은 앱 안에 세대가 둘 섞여 보였다. 아래 넷 안에서만 고른다.
+
+       --radius     카드·패널 (통계 카드, 차트 상자, 예매 내역 줄, 필터 패널)
+       --radius-sm  버튼·입력 (결제 버튼, 관리자 필터, 취소 버튼)
+       --radius-xs  작은 컨트롤 (비밀번호 표시 토글, 인라인 코드, 지도)
+       999px        알약 — 칩·필터·배지처럼 "고르는 것"
+
+     예외는 셋뿐이고 이유가 분명하다. ① 좌석·범례 견본(3px)과 미니맵 블록(1~2px)은 요소
+     자체가 10~13px 이라 위 값을 쓰면 모서리가 면적을 다 먹는다(견본은 좌석과 같아야 하므로
+     같은 값을 쓴다). ② 카카오 로그인 버튼(12px)은 공식 디자인 가이드 수치라 우리 스케일에
+     맞추면 안 된다. ③ 무대는 반원 곡선이라 반경이 아니라 형태다.
+  */
   --radius: 14px;
   --radius-sm: 10px;
+  --radius-xs: 6px;
 }
 
 * { box-sizing: border-box; }
@@ -129,19 +189,6 @@ a { color: inherit; text-decoration: none; }
 .spec div { display: flex; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .spec dt { width: 84px; color: var(--mute); flex: none; margin: 0; }
 
-.schedules { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.schedules a {
-  border: 1px solid var(--brass-dim);
-  color: var(--brass);
-  padding: 9px 16px;
-  font-size: 14px;
-  transition: background .15s, color .15s;
-}
-.schedules a:hover { background: var(--brass); color: var(--ink); }
-.schedules a.soldout {
-  border-color: var(--line); color: var(--mute); pointer-events: none;
-}
-
 /* ---------- 좌석 배치도 (시그니처) ---------- */
 /*
    인원수 선택과 확대 버튼은 상단 헤더(.masthead) 바로 아래에 고정한다. 63줄짜리 콘서트홀에서
@@ -168,7 +215,7 @@ a { color: inherit; text-decoration: none; }
 .partysize label { color: var(--paper); font-weight: 600; }
 .partysize select {
   background: var(--ink-soft); color: var(--paper);
-  border: 1px solid var(--line); border-radius: 4px;
+  border: 1px solid var(--line); border-radius: 999px;
   padding: 5px 10px; font: inherit;
 }
 .partysize .hint { color: var(--mute); font-size: 12px; }
@@ -363,22 +410,35 @@ a { color: inherit; text-decoration: none; }
   color: var(--brass-dim);
 }
 
-/* 층 바로가기. 층별 잔여석을 같이 보여줘서 어느 층을 볼지 먼저 정할 수 있게 한다. */
+/*
+   층 바로가기. 층별 잔여석을 같이 보여줘서 어느 층을 볼지 먼저 정할 수 있게 한다.
+
+   항목이 구역(20개)에서 층(넷)으로 줄면서 낱개 칩을 늘어놓는 대신 한 덩어리(세그먼트
+   컨트롤)로 묶었다 — 개수가 적고 서로 배타적인 선택지라 하나의 컨트롤로 읽히는 게 맞다.
+   테두리와 배경을 바깥 컨테이너가 한 번만 갖고 안쪽 항목은 배경만 바뀐다.
+
+   width: fit-content + margin-inline auto 로 가운데 정렬한다. justify-content 로는
+   안 된다 — 컨테이너가 블록이라 폭이 100% 여서 테두리가 화면 전체로 늘어난다.
+*/
 .floornav {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  justify-content: center;
-  margin: 0 0 28px;
-}
-.floorchip {
-  display: inline-flex; align-items: baseline; gap: 5px;
-  padding: 6px 13px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 24px;
+  padding: 4px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--ink-soft);
-  font-size: 12px;
-  color: var(--paper);
 }
-.floorchip:hover { border-color: var(--brass-dim); }
+.floorchip {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--paper);
+  transition: background .12s;
+}
+.floorchip:hover { background: rgba(255, 255, 255, .07); }
 .floorchip b { color: var(--brass); font-weight: 700; }
 .floorchip i { color: var(--mute); font-style: normal; }
 
@@ -481,18 +541,27 @@ a { color: inherit; text-decoration: none; }
   width: var(--seat-size);
   height: var(--seat-size);
   aspect-ratio: 1 / 1;
-  border: 1px solid var(--line);
-  background: var(--ink-soft);
+  /*
+     테두리를 아예 쓰지 않고 채움으로만 등급을 나타낸다. 좌석 사이는 --seat-gap 이
+     이미 벌려주므로 칸 경계를 그릴 테두리가 필요 없고, 10px 좌석에서 1px 테두리는
+     면적의 36% 를 먹어 채움색을 못 알아보게 만든다.
+  */
+  border: 0;
+  background: var(--seat-fill, var(--ink-soft));
   border-radius: 3px;
   cursor: pointer;
   padding: 0;
   position: relative;
   touch-action: manipulation;
-  transition: transform .1s, background .1s, border-color .1s;
+  transition: transform .1s, background .1s, box-shadow .1s;
 }
 /* 호 오프셋을 유지한 채로 살짝 더 들어올린다. --arc-y 를 빼먹으면 hover 때 좌석이 평평한
-   자리로 튀어 내려간다. */
-.seat:hover:not(:disabled) { transform: translateY(calc(var(--arc-y) - 2px)); border-color: var(--brass); }
+   자리로 튀어 내려간다. 테두리를 없앴으므로 강조는 바깥 링(box-shadow)으로 준다 —
+   링은 레이아웃을 차지하지 않아서 좌석 크기 자동 맞춤 계산에 영향을 주지 않는다. */
+.seat:hover:not(:disabled) {
+  transform: translateY(calc(var(--arc-y) - 2px));
+  box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.12)) var(--paper);
+}
 .seat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 /* 등급·가격 툴팁 */
@@ -521,20 +590,28 @@ a { color: inherit; text-decoration: none; }
 }
 .seat:hover::after, .seat:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
 .seat:hover::before, .seat:focus-visible::before { opacity: 1; }
-/*
-   등급: 색이 아닌 테두리 강도로 구분.
+/* 등급은 채움 색으로 구분한다. 근거와 측정값은 :root 의 --grade-* 주석 참고. */
+.seat.grade-VIP { --seat-fill: var(--grade-vip); }
+.seat.grade-R   { --seat-fill: var(--grade-r); }
+.seat.grade-S   { --seat-fill: var(--grade-s); }
+.seat.grade-A   { --seat-fill: var(--grade-a); }
 
-   두께를 좌석 크기에 비례시킨다. 고정 3px 로 두면 맞춤 모드에서 좌석이 10px 까지 작아지는
-   대형 홀에서 VIP 좌석이 테두리로 거의 다 채워져, 브래스로 칠하는 「선택함」 상태와 구별되지
-   않는다. max() 로 하한을 둬서 커도 작아도 등급 순서(VIP > R > S > A)는 유지된다.
+/*
+   예매 불가 좌석. 등급색을 무채색으로 덮어 화면 뒤로 물린다 — 어느 등급이었는지는
+   살 수 없는 이상 결정에 쓰이지 않는 정보다. 둘은 서로 다른 명도로 구분한다
+   (결제 대기는 풀릴 수 있고, 판매 완료는 끝난 좌석이라 가장 어둡다).
 */
-.seat.grade-VIP { border-width: max(1.5px, calc(var(--seat-size) * 0.115)); border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
-.seat.grade-R   { border-width: max(1.2px, calc(var(--seat-size) * 0.077)); border-color: rgba(255,201,64,.68); }
-.seat.grade-S   { border-width: max(1px,   calc(var(--seat-size) * 0.058)); border-color: rgba(255,201,64,.32); }
-.seat.grade-A   { border-width: 1px;   border-color: var(--line); }
-.seat[data-status="HELD"] { background: var(--brass-dim); border-color: transparent; cursor: not-allowed; }
-.seat[data-status="SOLD"] { background: var(--rose); border-color: transparent; cursor: not-allowed; opacity: .55; }
-.seat.selected { background: var(--brass); border-color: var(--brass); }
+.seat[data-status="HELD"] { --seat-fill: var(--seat-held); cursor: not-allowed; }
+.seat[data-status="SOLD"] { --seat-fill: var(--seat-sold); cursor: not-allowed; }
+/*
+   고른 좌석. 등급색 넷 중 무엇과도 겹치지 않아야 해서 흰 채움 + 브라스 링으로 둔다.
+   종전처럼 브라스로 칠하면 VIP 등급색과 같아져 "고른 좌석"과 "VIP 좌석"이 구별되지 않는다
+   — 링 두께를 좌석 크기에 비례시켜 10px 맞춤 배율에서도 링이 보인다.
+*/
+.seat.selected {
+  --seat-fill: var(--paper);
+  box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.14)) var(--brass);
+}
 /*
    통로. 실제 극장처럼 블록 사이에 여백을 준다. 어느 좌석 뒤에 통로가 오는지는
    좌석 생성 시점에 seat.aisle_after 로 기록되므로 화면은 그 값만 따른다.
@@ -545,6 +622,68 @@ a { color: inherit; text-decoration: none; }
    여백만으로도 통로는 충분히 읽히므로 점선을 뺐다.
 */
 .seat.aisle { margin-right: var(--aisle-gap); }
+
+/* ---------- 확대 모드 미니맵 ----------
+   예매 바 위에 떠 있어야 하므로 --footer-h(바 실측 높이)를 기준으로 띄운다. 고정값을 쓰면
+   범례가 여러 줄로 접히거나 고른 좌석 칩이 늘어날 때 바에 가린다 — 좌석 격자와 같은 이유다.
+   z-index 는 예매 바(10)보다 위, 그래야 지도를 보면서 바를 넘겨다볼 수 있다. */
+.minimap {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--footer-h, 150px) + 16px);
+  z-index: 11;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: rgba(11, 11, 12, .86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  cursor: pointer;
+  /* 미니맵 위 끌기는 브라우저 스크롤이 아니라 우리가 처리한다. */
+  touch-action: none;
+}
+.minimap-inner { position: relative; }
+/*
+   구역 블록. 그 구역에서 가장 많은 등급의 색을 깔아 확대 중에도 어디가 어느 등급인지 보이고,
+   블록 안에는 구역을 가르는 글자("1층 C" 의 C)를 넣어 어느 구역인지도 알 수 있게 한다.
+   전체 이름은 블록이 16~29px 라 안 들어가므로 title 로 넘긴다(마우스를 올리면 보인다).
+
+   글자색을 등급마다 나누는 이유: 등급 팔레트가 명도 단조 감소라 밝은 두 등급(VIP·R)에는
+   어두운 글자가, 어두운 두 등급(S·A)에는 밝은 글자가 맞는다. 그렇게 하면 네 등급 모두
+   글자 대비가 4.6 이상이 된다 — 한 색으로 통일하면 반대쪽 두 등급에서 4.5 미만으로 떨어진다.
+   (블록에 opacity 를 걸면 안 된다. 자식인 글자까지 같이 흐려져서 이 계산이 무너진다.)
+*/
+.minimap-zone {
+  position: absolute;
+  border-radius: 1px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+.minimap-zone.grade-VIP { background: var(--grade-vip); color: var(--ink); }
+.minimap-zone.grade-R   { background: var(--grade-r);   color: var(--ink); }
+.minimap-zone.grade-S   { background: var(--grade-s);   color: var(--paper); }
+.minimap-zone.grade-A   { background: var(--grade-a);   color: var(--paper); }
+/* 무대. 방향을 잡아주는 기준점이라 등급색보다 또렷하게 둔다. */
+.minimap-stage { position: absolute; border-radius: 1px; background: var(--brass); opacity: .9; }
+/* 지금 화면에 보이는 범위. */
+.minimap-view {
+  position: absolute;
+  border: 1.5px solid var(--paper);
+  border-radius: 2px;
+  background: rgba(250, 250, 250, .14);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  /* 좁은 화면에서는 지도 자체가 좁으니 미니맵도 자리를 덜 차지하게 줄인다. */
+  .minimap { right: 12px; bottom: calc(var(--footer-h, 150px) + 10px); padding: 6px; }
+}
 
 /* 가격표. 예매 바 안에 고정으로 들어간다. 바깥 여백은 바가 갖고 있다. */
 .legend {
@@ -561,16 +700,72 @@ a { color: inherit; text-decoration: none; }
 }
 .legend-row span { display: flex; align-items: center; gap: 7px; }
 .legend-row i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
-.legend-grades span { color: var(--paper); }
 .legend-price { color: var(--brass); font-weight: 700; margin-left: 2px; }
+
+/* ---------- 등급 필터 (가격표가 곧 필터) ----------
+   가격표 항목이 버튼이다. 예산을 먼저 정하고 그 안에서 자리를 고르는 게 실제 구매 순서라,
+   등급을 누르면 그 등급만 남기고 나머지 좌석을 뒤로 물린다. .legend-row 의 gap 이 22px 라
+   버튼 자체 padding 과 겹쳐 넓어 보이므로 이 줄만 간격을 좁힌다. */
+.legend-grades { gap: 6px; }
+.legend-grades button {
+  display: flex; align-items: center; gap: 7px;
+  font: inherit; font-size: 12px; color: var(--paper);
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: 5px 11px; cursor: pointer;
+  transition: background .12s, border-color .12s, opacity .12s;
+}
+.legend-grades button:hover:not(:disabled) { border-color: var(--line-strong); }
+.legend-grades button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, .10);
+  border-color: var(--line-strong);
+}
+/* 이번 회차에 그 등급 좌석이 아예 없으면 누를 게 없다. */
+.legend-grades button:disabled { opacity: .35; cursor: default; }
+
+/*
+   필터가 걸리면 고르지 않은 등급을 물린다.
+
+   좌석마다 클래스를 붙이지 않고 컨테이너 속성 하나로 제어한다 — 3,022석 홀에서 토글할
+   때마다 좌석 전부를 순회하며 classList 를 건드리면 그만큼 스타일을 다시 계산한다.
+   `~=` 는 공백으로 구분된 낱말 매칭이라 data-grade-filter="R S" 같은 값이 그대로 먹는다.
+   속성이 아예 없으면(= 아무것도 안 고른 상태) 어떤 규칙도 안 걸려 전체가 보인다.
+
+   pointer-events 까지 끄는 이유: 물린 좌석을 실수로 고르면 필터를 건 의미가 없다.
+
+   이미 고른 좌석은 예외여야 한다 — 안 그러면 필터를 건 뒤 그 좌석을 해제할 방법이 없어진다.
+   그 예외를 별도 규칙(`... .seat.selected { opacity: 1 }`)으로 덧씌우려다 실패했다.
+   무력화 쪽은 `:not([data-grade-filter~="…"])` 때문에 클래스 3 + 속성 2 = (0,5,0)인데
+   예외 쪽은 (0,4,0)이라 명시도에서 진다. **그래서 예외를 덧씌우지 않고 무력화 대상에서
+   아예 빼는 방식으로 적는다** — 규칙이 하나뿐이라 명시도를 따질 일이 없어진다.
+   (JS 의 .click() 은 pointer-events 를 무시하고 발생하므로 이 결함은 스크립트 조작으로는
+    드러나지 않는다. 계산된 스타일을 직접 읽어야 잡힌다.)
+*/
+.housescroll[data-grade-filter]:not([data-grade-filter~="VIP"]) .seat.grade-VIP:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="R"])   .seat.grade-R:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="S"])   .seat.grade-S:not(.selected),
+.housescroll[data-grade-filter]:not([data-grade-filter~="A"])   .seat.grade-A:not(.selected) {
+  opacity: .16;
+  pointer-events: none;
+}
+
+/* 미니맵도 같이 물린다. 필터를 걸었을 때 "그 등급이 홀 어디에 있나"가 바로 보이는 게
+   이 기능의 실제 값어치라, 지도만 바뀌고 미니맵이 그대로면 절반만 동작하는 셈이다. */
+.minimap[data-grade-filter]:not([data-grade-filter~="VIP"]) .minimap-zone.grade-VIP,
+.minimap[data-grade-filter]:not([data-grade-filter~="R"])   .minimap-zone.grade-R,
+.minimap[data-grade-filter]:not([data-grade-filter~="S"])   .minimap-zone.grade-S,
+.minimap[data-grade-filter]:not([data-grade-filter~="A"])   .minimap-zone.grade-A {
+  opacity: .22;
+}
+/* 범례 견본은 좌석과 같은 방식(채움)이어야 한다 — 견본과 좌석이 다른 규칙으로 그려지면
+   범례를 보고 지도를 못 읽는다. 그래서 .seat 과 같은 --grade-* 토큰을 쓴다. */
 .legend-grade {
   width: 13px; height: 13px; border-radius: 3px; display: inline-block;
-  background: var(--ink-soft);
+  border: 0;
 }
-.legend-grade.grade-VIP { border-width: 3px;   border-style: solid; border-color: var(--brass); box-shadow: 0 0 0 1px rgba(255,201,64,.28); }
-.legend-grade.grade-R   { border-width: 2px;   border-style: solid; border-color: rgba(255,201,64,.68); }
-.legend-grade.grade-S   { border-width: 1.5px; border-style: solid; border-color: rgba(255,201,64,.32); }
-.legend-grade.grade-A   { border-width: 1px;   border-style: solid; border-color: var(--line); }
+.legend-grade.grade-VIP { background: var(--grade-vip); }
+.legend-grade.grade-R   { background: var(--grade-r); }
+.legend-grade.grade-S   { background: var(--grade-s); }
+.legend-grade.grade-A   { background: var(--grade-a); }
 
 /* ---------- 예매 바 (좌석 표시·가격표 + 고른 좌석 + 예매 버튼) ---------- */
 .bookbar {
@@ -602,13 +797,19 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 .bookbar .pickedtotal { margin: 0; font-size: 13px; color: var(--mute); }
 .bookbar .pickedtotal strong { color: var(--brass); font-family: var(--display); font-weight: 700; }
-.bookbar button {
+/*
+   예매 CTA. `.bookbar button` 으로 두면 안 된다 — 바 안에 버튼이 하나뿐이라는 전제가 깔린
+   선택자인데, 가격표가 등급 필터 버튼이 되면서 그것들까지 브라스로 칠해버렸다. 게다가
+   가격 글자색도 브라스(--legend-price)라 같은 색끼리 겹쳐 가격이 아예 안 보였다.
+   이 규칙이 노리는 건 언제나 .inner 안의 「예매하기」 하나다.
+*/
+.bookbar .inner button {
   font-family: var(--body); font-size: 15px; font-weight: 600;
   background: var(--brass); color: var(--ink);
-  border: 0; padding: 13px 30px; cursor: pointer;
+  border: 0; border-radius: var(--radius-sm); padding: 13px 30px; cursor: pointer;
   flex: none;
 }
-.bookbar button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
+.bookbar .inner button:disabled { background: var(--ink-soft); color: var(--mute); cursor: not-allowed; }
 
 .empty-state {
   text-align: center; padding: 80px 20px; color: var(--mute);
@@ -681,12 +882,20 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   border-color: var(--brass);
   box-shadow: 0 0 0 3px rgba(255, 201, 64, .16);
 }
-/* 제출 버튼만 브라스로 채운다 — 비밀번호 표시 토글도 button 이라 타입으로 구분해야 한다. */
+/*
+   제출 버튼만 브라스로 채운다 — 비밀번호 표시 토글도 button 이라 타입으로 구분해야 한다.
+
+   크기를 소셜 버튼보다 키우는 게 핵심이다. 브라스(43°)와 카카오 노랑(54°)은 색상차가
+   11도뿐이고 명암비도 1.2 라 색으로는 절대 안 갈린다. 게다가 종전엔 소셜 버튼이 아이콘
+   때문에 더 커서(52 vs 45px) **주요 액션이 보조 액션보다 작고 어두운** 상태였다 —
+   위계가 뒤집혀 있었다. 브랜드 색은 가이드가 정한 값이라 못 건드리므로, 우리 쪽이 가진
+   유일한 지렛대인 크기·굵기로 되잡는다.
+*/
 .authform button[type="submit"] {
-  font-family: var(--body); font-size: 15px; font-weight: 700;
+  font-family: var(--body); font-size: 16px; font-weight: 700;
   background: var(--brass); color: #0B0B0C;
   border: 0; border-radius: var(--radius-sm);
-  padding: 14px; cursor: pointer;
+  padding: 16px; cursor: pointer;
   margin-top: 4px;
   transition: filter .12s;
 }
@@ -697,7 +906,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .pwfield input { padding-right: 62px; }
 .pwtoggle {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  background: none; border: 0; border-radius: 6px;
+  background: none; border: 0; border-radius: var(--radius-xs);
   color: var(--mute); font-family: var(--body); font-size: 12px;
   padding: 6px 8px; cursor: pointer;
   transition: color .12s;
@@ -742,11 +951,20 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   content: ""; flex: 1; height: 1px; background: var(--line);
 }
 .oauthbuttons { display: flex; flex-direction: column; gap: 10px; }
+/*
+   소셜 로그인은 보조 경로다. 브랜드 색·심볼·문구는 각 사 가이드가 정한 값이라 그대로 두고,
+   가이드가 규정하지 않는 크기·굵기만 낮춰 주요 액션과 위계를 만든다.
+
+   line-height 를 고정하는 이유: 아이콘(16px)이 글자 줄 높이보다 커서 버튼 높이를 밀어올려,
+   종전에는 소셜 버튼이 로그인 버튼보다 7px 더 컸다. 줄 높이를 아이콘 이상으로 못박으면
+   아이콘이 높이에 관여하지 않아 padding 만으로 크기가 결정된다.
+*/
 .oauthbtn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--body); font-size: 15px; font-weight: 700;
+  font-family: var(--body); font-size: 14px; font-weight: 600;
+  line-height: 18px;
   border: 0; border-radius: var(--radius-sm);
-  padding: 14px; cursor: pointer; text-align: center;
+  padding: 12px; cursor: pointer; text-align: center;
   transition: filter .12s;
 }
 .oauthbtn:hover { filter: brightness(1.06); }
@@ -765,13 +983,13 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .dashfilter input {
   font-family: var(--body); font-size: 14px;
   background: var(--ink-soft); color: var(--paper);
-  border: 1px solid var(--line); padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px;
 }
 .dashfilter input:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
 .dashfilter button {
   font-family: var(--body); font-size: 14px; font-weight: 600;
   background: var(--brass); color: var(--ink);
-  border: 0; padding: 9px 20px; cursor: pointer;
+  border: 0; border-radius: var(--radius-sm); padding: 9px 20px; cursor: pointer;
 }
 
 .cards {
@@ -782,6 +1000,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 .card-stat {
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--ink-soft);
   padding: 20px;
   display: flex; flex-direction: column; gap: 8px;
@@ -796,7 +1015,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 }
 
 .chartgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-.chartbox { border: 1px solid var(--line); padding: 20px; }
+.chartbox { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
 .chartbox h3 {
   font-family: var(--display); font-size: 15px; font-weight: 600;
   margin: 0 0 16px; color: var(--paper);
@@ -809,6 +1028,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   display: flex; justify-content: space-between; align-items: center;
   gap: 24px;
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--ink-soft);
   padding: 20px 24px;
 }
@@ -820,7 +1040,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .resaction { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
 .badge {
   font-size: 12px; letter-spacing: 0.05em;
-  padding: 4px 10px; border: 1px solid var(--line);
+  padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
   color: var(--mute); white-space: nowrap;
 }
 .badge-CONFIRMED { color: var(--brass); border-color: var(--brass-dim); }
@@ -828,7 +1048,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 
 .btn-pay, .btn-cancel {
   font-family: var(--body); font-size: 13px; font-weight: 600;
-  border: 0; padding: 8px 16px; cursor: pointer; white-space: nowrap;
+  border: 0; border-radius: var(--radius-sm); padding: 8px 16px; cursor: pointer; white-space: nowrap;
 }
 .btn-pay { background: var(--brass); color: var(--ink); }
 .btn-cancel { background: transparent; border: 1px solid var(--line); color: var(--mute); }
@@ -844,7 +1064,8 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   .resaction { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
   .bookbar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   .bookbar .inner { flex-direction: column; align-items: stretch; }
-  .bookbar button { width: 100%; }
+  /* 예매 CTA 만 전폭으로. 등급 필터 버튼까지 잡으면 가격표가 세로로 네 줄이 된다. */
+  .bookbar .inner button { width: 100%; }
 }
 
 /* 모션 최소화 설정에서는 전환뿐 아니라 애니메이션도 멈춘다.
@@ -897,7 +1118,7 @@ body.page-list .mobile-filter-btn em { font-style: normal; color: var(--mute); }
 body.page-list .filterpanel {
   background: var(--ink-soft);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--radius);
   padding: 24px 28px;
   margin-bottom: 32px;
 }
@@ -1132,7 +1353,7 @@ body.page-list .pager-num.active {
 }
 
 body.page-list .empty-state { color: var(--mute); }
-body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px; border-radius: 4px; }
+body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px; border-radius: var(--radius-xs); }
 
 @media (max-width: 860px) {
   /* "객석" 로고+태그는 한 줄 유지, authnav("로그인 · 회원가입")는 폭이 좁으면
@@ -1267,7 +1488,7 @@ body.page-detail .spec dd { margin: 0; color: var(--paper); }
   width: 100%;
   height: 220px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 

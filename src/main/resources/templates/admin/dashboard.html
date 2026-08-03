@@ -72,7 +72,8 @@
     const line = 'rgba(242, 237, 228, 0.14)';
 
     Chart.defaults.color = mute;
-    Chart.defaults.font.family = "'Pretendard', -apple-system, 'Malgun Gothic', sans-serif";
+    // 차트는 캔버스라 CSS 변수를 못 읽어 스택을 문자열로 다시 적는다. app.css 의 --body 와 같아야 한다.
+    Chart.defaults.font.family = "'Pretendard Variable', 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif";
     Chart.defaults.borderColor = line;
 
     new Chart(document.getElementById('dailySalesChart'), {
