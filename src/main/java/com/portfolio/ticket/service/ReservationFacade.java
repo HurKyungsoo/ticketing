@@ -31,8 +31,10 @@ public class ReservationFacade {
 
     private final ReservationService reservationService;
     private final RedisSeatLock seatLock;
+    private final HoldRateLimiter rateLimiter;
 
     public Reservation hold(HoldStrategy strategy, Long seatId, Long memberId) {
+        rateLimiter.checkAndRecord(memberId);
         return switch (strategy) {
             case NONE -> reservationService.holdWithoutLock(seatId, memberId);
             case PESSIMISTIC -> reservationService.holdWithPessimisticLock(seatId, memberId);
@@ -92,6 +94,7 @@ public class ReservationFacade {
 
     /** 좌석 여러 개를 한 번에 선점한다. 전략별 분기는 단일 좌석과 동일하다. */
     public Reservation holdMultiple(HoldStrategy strategy, List<Long> seatIds, Long memberId) {
+        rateLimiter.checkAndRecord(memberId);
         return switch (strategy) {
             case NONE -> reservationService.holdMultipleWithoutLock(seatIds, memberId);
             case PESSIMISTIC -> reservationService.holdMultipleWithPessimisticLock(seatIds, memberId);

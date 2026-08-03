@@ -9,6 +9,8 @@ import com.portfolio.ticket.service.ReservationFacade;
 import com.portfolio.ticket.service.ReservationService;
 import com.portfolio.ticket.service.SeatRegenerationService;
 import com.portfolio.ticket.service.SeatAlreadyTakenException;
+import com.portfolio.ticket.service.PurchaseLimitExceededException;
+import com.portfolio.ticket.service.TooManyHoldAttemptsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -119,6 +121,18 @@ public class ReservationApiController {
     public ResponseEntity<?> handlePartialTaken(PartialSeatHoldException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", e.getMessage(), "failedSeatIds", e.getFailedSeatIds()));
+    }
+
+    @ExceptionHandler(PurchaseLimitExceededException.class)
+    public ResponseEntity<?> handlePurchaseLimit(PurchaseLimitExceededException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", e.getMessage()));
+    }
+
+    @ExceptionHandler(TooManyHoldAttemptsException.class)
+    public ResponseEntity<?> handleTooManyAttempts(TooManyHoldAttemptsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("message", e.getMessage()));
     }
 
     @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})

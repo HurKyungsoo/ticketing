@@ -31,6 +31,9 @@ public class ReservationService {
     /** 결제 대기 시간 */
     private static final int HOLD_MINUTES = 10;
 
+    /** 1인당 매수 제한 (같은 회차 기준, 결제대기 + 확정 합산). 국내 티켓 플랫폼 표준 관례. */
+    private static final int MAX_SEATS_PER_MEMBER_PER_SCHEDULE = 4;
+
     private final SeatRepository seatRepository;
     private final SeatHoldRepository seatHoldRepository;
     private final ReservationRepository reservationRepository;
@@ -323,6 +326,16 @@ public class ReservationService {
         // 두 hold 경로가 모두 지나가는 이 지점에서 막아야 한다.
         if (schedule.isPast(now)) {
             throw new IllegalStateException("이미 시작된 공연은 예매할 수 없습니다.");
+        }
+
+        // 매수 제한 체크. 위에서 잡은 schedule 락(findByIdForUpdate)이 이 회차에 대한 모든
+        // createReservation 호출을 이미 직렬화하고 있으므로, 같은 회원이 동시에 여러 요청을
+        // 보내도(다른 좌석이라 Seat 락으로는 안 걸러진다) 여기서는 경쟁 없이 정확한 카운트를 본다.
+        long alreadyHeld = seatRepository.countByScheduleIdAndReservationMemberIdAndStatusIn(
+                scheduleId, memberId, List.of(SeatStatus.HELD, SeatStatus.SOLD));
+        if (alreadyHeld + seats.size() > MAX_SEATS_PER_MEMBER_PER_SCHEDULE) {
+            throw new PurchaseLimitExceededException(
+                    "1인당 최대 " + MAX_SEATS_PER_MEMBER_PER_SCHEDULE + "매까지 예매할 수 있습니다.");
         }
 
         for (int i = 0; i < seats.size(); i++) {
