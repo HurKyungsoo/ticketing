@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>마이페이지 - 찜한 공연</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<!-- 목록·홈과 같은 카드를 쓰므로 page-list 스코프를 함께 단다. -->
+<body class="page-list">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='마이페이지 · 찜한 공연', showAuthNav=false)}"></header>
+
+    <nav class="mypagetabs">
+        <a th:href="@{/mypage/reservations}">예매 내역</a>
+        <a th:href="@{/mypage/wishlist}" class="active">찜한 공연</a>
+    </nav>
+
+    <div class="grid" th:if="${!wishes.isEmpty()}">
+        <!--
+            찜을 푸는 건 여기가 아니라 공연 상세에서 한다. 카드 전체가 링크(<a>)라 그 안에
+            버튼을 넣으면 링크 안의 버튼이 되어, 어느 쪽이 눌린 건지 브라우저·스크린리더마다
+            해석이 갈린다. 카드는 "들어가기"만 하게 두는 편이 낫다.
+        -->
+        <a class="card" th:each="w : ${wishes}" th:href="@{/performances/{id}(id=${w.performance.id})}">
+            <div class="poster" th:classappend="'gel-' + ${w.performance.id % 6} + (${w.performance.posterUrl == null} ? ' no-img' : '')">
+                <span class="card-badge" th:text="${w.performance.category != null}
+                        ? ${w.performance.category.label()} : '기타'">장르</span>
+                <img th:if="${w.performance.posterUrl != null}"
+                     th:src="@{/img/poster(u=${w.performance.posterUrl})}" th:alt="${w.performance.title}" loading="lazy"
+                     onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                <div class="posterfallback" th:text="${#strings.substring(w.performance.title, 0, 1)}">공</div>
+            </div>
+            <h3 th:text="${w.performance.title}">공연명</h3>
+            <p class="meta">
+                <span class="m-venue" th:text="${w.performance.venue}">공연장</span>
+                <span class="m-date"
+                      th:text="|${#temporals.format(w.performance.startDate, 'yyyy.MM.dd')} – ${#temporals.format(w.performance.endDate, 'yyyy.MM.dd')}|">2026.07.08 – 2026.08.30</span>
+            </p>
+        </a>
+    </div>
+
+    <div class="empty-state" th:if="${wishes.isEmpty()}">
+        <p>찜한 공연이 없습니다.</p>
+        <p>공연 상세에서 <strong>찜하기</strong>를 누르면 여기에 모입니다.</p>
+        <a class="emptyreset" th:href="@{/}">공연 보러 가기</a>
+    </div>
+</div>
+</body>
+</html>

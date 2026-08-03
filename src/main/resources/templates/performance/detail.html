@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- 찜 토글은 상태를 바꾸는 POST 라 CSRF 토큰이 필요하다. -->
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title th:text="|${performance.title} - 객석|">공연 상세</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
@@ -60,6 +63,37 @@
         <div>
             <h2 th:text="${performance.title}">공연명</h2>
             <p class="meta" th:text="${performance.genre}">장르</p>
+
+            <!-- 이 공연에 대한 액션 줄. 예매(회차 선택)와 달리 결정을 미루거나 남에게 넘기는
+                 동작들이라 본문 위, 회차 목록보다 앞에 둔다. -->
+            <div class="pf-actions">
+                <!--
+                    찜. aria-pressed 로 눌림 상태를 나타내고 화면 표시도 그 속성에 물려 둔다 —
+                    상태를 클래스와 속성 두 곳에 두면 한쪽만 갱신되는 순간 보이는 것과
+                    읽히는 것이 갈린다.
+                -->
+                <button type="button" class="pf-wish" id="wishBtn"
+                        th:attr="data-performance-id=${performance.id}, aria-pressed=${wishlisted}">
+                    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
+                              fill="currentColor" class="wish-fill"/>
+                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
+                              fill="none" stroke="currentColor" stroke-width="1.4" class="wish-outline"/>
+                    </svg>
+                    <span class="wish-label" th:text="${wishlisted} ? '찜함' : '찜하기'">찜하기</span>
+                </button>
+
+                <!-- 공유 주소는 SEO 의 canonical 을 그대로 쓴다. 화면에서 주소를 다시 조립하면
+                     쿼리스트링이 붙은 현재 URL 이 퍼져나가, 공유받은 사람마다 다른 주소를 보게 된다. -->
+                <button type="button" class="pf-share" id="shareBtn"
+                        th:attr="data-url=${seo.canonicalUrl}, data-title=${performance.title}">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
+                              fill="currentColor"/>
+                    </svg>
+                    공유
+                </button>
+            </div>
 
             <h3 class="detail-heading">공연 정보</h3>
             <dl class="spec">
@@ -178,6 +212,117 @@
         </div>
     </div>
 </div>
+
+<!-- 짧은 안내. 공유·찜 결과를 alert 로 띄우면 확인을 눌러야 해서, 알려주자고 흐름을 끊는 꼴이 된다. -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+    var toastEl = document.getElementById('toast');
+    var toastTimer;
+
+    function toast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+    }
+    window.__toast = toast;
+
+    var shareBtn = document.getElementById('shareBtn');
+    if (!shareBtn) return;
+
+    /**
+     * 마지막 폴백. clipboard API 는 보안 컨텍스트(https·localhost)에서만 동작해서,
+     * 사내망이나 IP 접속 같은 http 환경에서는 없는 것과 같다. 그때도 최소한
+     * "주소를 직접 복사할 수 있는 상태"까지는 만들어 준다.
+     */
+    function legacyCopy(url) {
+        var input = document.createElement('input');
+        input.value = url;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(input);
+        return ok;
+    }
+
+    shareBtn.addEventListener('click', async function () {
+        var url = shareBtn.dataset.url;
+        var title = shareBtn.dataset.title;
+
+        // 모바일이면 OS 공유 시트가 뜬다. 카톡·메시지 등 사용자가 쓰는 앱으로 바로 넘어간다.
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: title, url: url });
+                return;
+            } catch (e) {
+                // 사용자가 공유 시트를 닫은 것뿐이면 실패가 아니다. 여기서 오류 문구를 띄우면
+                // "취소했는데 뭔가 잘못됐다"는 인상만 남는다.
+                if (e && e.name === 'AbortError') return;
+                // 그 외(권한 등)는 복사로 넘어간다.
+            }
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(url);
+                toast('링크를 복사했습니다');
+                return;
+            } catch (e) { /* 아래 폴백으로 */ }
+        }
+
+        toast(legacyCopy(url) ? '링크를 복사했습니다' : '복사에 실패했습니다. 주소창의 주소를 사용해 주세요.');
+    });
+})();
+
+(function () {
+    var wishBtn = document.getElementById('wishBtn');
+    if (!wishBtn) return;
+
+    var csrfToken = document.querySelector('meta[name="_csrf"]').content;
+    var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+    function render(wishlisted) {
+        wishBtn.setAttribute('aria-pressed', String(wishlisted));
+        wishBtn.querySelector('.wish-label').textContent = wishlisted ? '찜함' : '찜하기';
+    }
+
+    wishBtn.addEventListener('click', async function () {
+        wishBtn.disabled = true;
+        try {
+            var res = await fetch('/api/performances/' + wishBtn.dataset.performanceId + '/wishlist', {
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
+            });
+
+            // 미인증이면 폼 로그인으로 302 된다. 돌아왔을 때 이 공연을 다시 보도록 returnTo 를 싣는다.
+            if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
+                location.href = '/login?returnTo=' + encodeURIComponent(location.pathname);
+                return;
+            }
+            if (!res.ok) {
+                window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                return;
+            }
+
+            // 서버가 알려준 "호출 후 상태"를 그대로 반영한다. 화면에서 토글을 스스로 뒤집으면
+            // 요청이 엇갈렸을 때 버튼 모양과 실제 저장 상태가 갈린다.
+            var data = await res.json();
+            render(data.wishlisted);
+            window.__toast(data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
+        } catch (e) {
+            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            wishBtn.disabled = false;
+        }
+    });
+})();
+</script>
 
 <!-- 지도를 그리는 경우에만 스크립트를 내려받는다. 325KB 라 필요 없는 페이지에서 받을 이유가 없다. -->
 <th:block th:if="${naverMapScriptUrl != null and performance.latitude != null and performance.longitude != null}">

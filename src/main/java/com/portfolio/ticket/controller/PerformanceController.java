@@ -14,7 +14,10 @@ import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
 import com.portfolio.ticket.service.SeoView;
+import com.portfolio.ticket.service.WishlistService;
+import com.portfolio.ticket.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +49,7 @@ public class PerformanceController {
     private final NaverMapProperties naverMapProperties;
     private final SeatMapView seatMapView;
     private final SeoView seoView;
+    private final WishlistService wishlistService;
 
     /**
      * 공유 카드용 절대주소의 기준. Thymeleaf 3.1 부터 템플릿에서 {@code #request} 를 못 쓰므로
@@ -166,7 +170,9 @@ public class PerformanceController {
     }
 
     @GetMapping("/performances/{id}")
-    public String detail(@PathVariable Long id, Model model) {
+    public String detail(@PathVariable Long id,
+                          @AuthenticationPrincipal CustomUserDetails principal,
+                          Model model) {
         Performance performance = performanceRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
 
@@ -196,6 +202,10 @@ public class PerformanceController {
         // 공유 카드 + schema.org/Event. 요약과 같은 값(최저가·가장 빠른 회차)을 쓰므로
         // 화면에 보이는 것과 공유 카드에 뜨는 것이 어긋나지 않는다.
         model.addAttribute("seo", seoView.forPerformance(performance, summary, baseUrl()));
+        // 상세는 비로그인도 볼 수 있는 화면이라 principal 이 null 일 수 있다.
+        // 그때는 찜 상태를 물을 대상이 없으므로 항상 해제 상태로 그린다.
+        model.addAttribute("wishlisted",
+                principal != null && wishlistService.isWishlisted(principal.getMemberId(), id));
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         return "performance/detail";

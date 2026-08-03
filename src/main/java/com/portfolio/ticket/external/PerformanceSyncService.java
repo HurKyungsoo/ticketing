@@ -6,6 +6,7 @@ import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatRepository;
+import com.portfolio.ticket.repository.WishlistRepository;
 import com.portfolio.ticket.service.SeatGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +63,7 @@ public class PerformanceSyncService {
     private final PerformanceScheduleRepository scheduleRepository;
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
+    private final WishlistRepository wishlistRepository;
     private final SeatGenerator seatGenerator;
     private final PerformanceCategoryResolver categoryResolver;
     private final ShowTimeDistributionProperties showTimes;
@@ -139,6 +141,10 @@ public class PerformanceSyncService {
                         performance.getId(), performance.getTitle());
                 continue;
             }
+            // 찜도 공연을 FK 로 참조한다. 찜은 사용자가 만든 기록이지만 공연 자체가 사라지면
+            // 가리킬 대상이 없다 — 금전·입장 권리가 걸린 예매와 달라서 함께 지운다.
+            wishlistRepository.deleteByPerformanceId(performance.getId());
+
             // 좌석은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지 않는다.
             // 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로 함께 지워진다).
             for (PerformanceSchedule schedule : scheduleRepository.findByPerformanceIdOrderByShowAtAsc(performance.getId())) {

@@ -5,6 +5,7 @@ import com.portfolio.ticket.domain.PerformanceCategory;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.domain.SourceType;
 import com.portfolio.ticket.repository.PerformanceRepository;
+import com.portfolio.ticket.repository.WishlistRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatHoldRepository;
@@ -36,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PerformanceFilterTest {
 
     @Autowired PerformanceListService listService;
+    @Autowired WishlistRepository wishlistRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -55,6 +57,8 @@ class PerformanceFilterTest {
      */
     @BeforeEach
     void setUp() {
+        // 찜은 공연을 FK 로 참조하므로 공연보다 먼저 지워야 한다.
+        wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();
         reservationRepository.deleteAll();

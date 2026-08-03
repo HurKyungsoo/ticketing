@@ -13,6 +13,11 @@
 <div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='마이페이지 · 예매 내역', showAuthNav=false)}"></header>
 
+    <nav class="mypagetabs">
+        <a th:href="@{/mypage/reservations}" class="active">예매 내역</a>
+        <a th:href="@{/mypage/wishlist}">찜한 공연</a>
+    </nav>
+
     <div class="reslist" th:if="${!reservations.isEmpty()}">
         <div class="resrow" th:each="r : ${reservations}">
             <div class="resinfo">

@@ -1790,3 +1790,78 @@ body.page-home .allmore a:hover { border-color: var(--brass); background: rgba(2
   body.page-home .hero-search button { padding: 11px 16px; }
   body.page-home .homesec { margin-bottom: 40px; }
 }
+
+/* ==================================================================
+   공연 상세 액션 (공유 · 찜)
+
+   예매(회차 선택)와 성격이 다르다 — 결정을 미루거나 남에게 넘기는 동작이라
+   brass 를 쓰지 않는다. 화면의 주요 액션은 어디까지나 예매 하나여야 한다.
+   ================================================================== */
+body.page-detail .pf-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 16px 0 4px;
+}
+body.page-detail .pf-actions button {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px;
+  background: none; color: var(--mute);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+body.page-detail .pf-actions button:hover { border-color: var(--paper); color: var(--paper); }
+body.page-detail .pf-actions button svg { flex: none; }
+
+/* 찜한 상태. 눌렸다는 걸 색 하나로만 알리면 색각 이상에서 구분이 안 되므로
+   하트를 속이 빈 것에서 채운 것으로 바꾸고(아이콘 모양) 글자도 함께 바꾼다. */
+body.page-detail .pf-wish[aria-pressed="true"] {
+  color: var(--brass);
+  border-color: var(--brass);
+  background: rgba(255, 201, 64, .08);
+}
+
+/* 짧은 안내. alert 는 확인을 눌러야 사라져서, 알려주자고 흐름을 끊는 꼴이 된다. */
+.toast {
+  position: fixed; left: 50%; bottom: 32px;
+  transform: translate(-50%, 12px);
+  z-index: 60;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 20px;
+  background: var(--ink-soft); color: var(--paper);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* 움직임을 줄이도록 설정한 사용자에게는 위치 이동 없이 밝기만 바꾼다. */
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: opacity .16s ease; transform: translate(-50%, 0); }
+}
+
+/* 하트는 채움/외곽선 두 겹으로 그려 두고 상태에 따라 하나만 보인다.
+   색만 바꾸면 색각 이상에서 구분이 안 되므로 모양 자체를 바꾼다. */
+body.page-detail .pf-wish .wish-fill { display: none; }
+body.page-detail .pf-wish[aria-pressed="true"] .wish-fill { display: inline; }
+body.page-detail .pf-wish[aria-pressed="true"] .wish-outline { display: none; }
+body.page-detail .pf-wish:disabled { opacity: .6; cursor: default; }
+
+/* ---- 마이페이지 상단 탭 (예매 내역 · 찜한 공연) ---- */
+.mypagetabs {
+  display: flex; gap: 8px;
+  margin: 0 0 24px;
+}
+.mypagetabs a {
+  padding: 9px 18px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: var(--mute);
+  transition: border-color .12s, color .12s, background .12s;
+}
+.mypagetabs a:hover { border-color: var(--paper); color: var(--paper); }
+.mypagetabs a.active {
+  color: var(--brass); border-color: var(--brass);
+  background: rgba(255, 201, 64, .08);
+}

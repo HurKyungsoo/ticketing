@@ -36,6 +36,7 @@ class PaymentPageTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired MemberRepository memberRepository;
+    @Autowired WishlistRepository wishlistRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -47,6 +48,8 @@ class PaymentPageTest {
 
     @BeforeEach
     void setUp() {
+        // 찜은 공연을 FK 로 참조하므로 공연보다 먼저 지워야 한다.
+        wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();
         reservationRepository.deleteAll();

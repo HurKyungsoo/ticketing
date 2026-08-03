@@ -88,6 +88,7 @@ class ReservationConcurrencyTest {
     }
 
     @Autowired ReservationFacade reservationFacade;
+    @Autowired WishlistRepository wishlistRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -102,6 +103,8 @@ class ReservationConcurrencyTest {
         // 삭제 순서는 FK 방향을 따라야 한다. 예매 1건이 좌석 여러 개를 갖게 되면서
         // FK 가 seat.reservation_id 로 옮겨졌으므로, 좌석을 먼저 지우지 않고 예매를 지우면
         // 좌석이 아직 예매를 참조하고 있어 제약 위반이 난다.
+        // 찜은 공연을 FK 로 참조하므로 공연보다 먼저 지워야 한다.
+        wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();
         reservationRepository.deleteAll();
