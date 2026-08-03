@@ -1686,3 +1686,107 @@ body.page-payment .payspec-total dd {
   font-family: var(--display); font-size: 20px; font-weight: 800;
   color: var(--brass);
 }
+
+/* ==================================================================
+   홈 (섹션형 둘러보기)
+
+   목록(/performances)이 조건을 걸어 찾는 화면이라면, 홈은 뭐가 있나 훑는 화면이다.
+   카드·그리드는 목록과 같은 규칙을 그대로 쓰므로(body.page-list 스코프를 공유한다)
+   여기에는 홈에만 있는 것 — 히어로, 장르 바, 섹션 머리 — 만 적는다.
+   ================================================================== */
+
+/* 히어로. 배경 이미지나 캐러셀 없이 여백과 타이포만으로 세운다 —
+   포스터가 바로 아래 줄줄이 오는데 위에도 이미지를 깔면 시선 둘 곳이 없어진다. */
+body.page-home .hero { padding: 44px 0 36px; text-align: center; }
+body.page-home .hero h2 {
+  font-family: var(--display);
+  font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+body.page-home .hero-sub { margin: 0 0 26px; font-size: 14px; color: var(--mute); }
+body.page-home .hero-sub strong { color: var(--brass); font-weight: 700; }
+
+/* 검색창. 목록 필터 패널의 .fp-keyword 와 같은 모양이되 홈에서는 주요 액션이라 더 크다. */
+body.page-home .hero-search {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 520px; margin: 0 auto;
+  padding: 6px 6px 6px 18px;
+  background: var(--ink-soft);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  transition: border-color .12s;
+}
+body.page-home .hero-search:focus-within { border-color: var(--brass); }
+body.page-home .hero-search svg { flex: none; }
+body.page-home .hero-search input {
+  flex: 1; min-width: 0;
+  background: none; border: 0; outline: none;
+  font: inherit; font-size: 15px; color: var(--paper);
+}
+body.page-home .hero-search button {
+  flex: none;
+  padding: 11px 24px;
+  background: var(--brass); color: #0B0B0C;
+  border: 0; border-radius: 999px;
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: filter .12s;
+}
+body.page-home .hero-search button:hover { filter: brightness(1.08); }
+
+/* 장르 바로가기. 목록의 필터 칩(.cattab)과 같은 알약 모양을 쓰되, 여기서는 라디오가
+   아니라 링크라 건수를 붙여 어디로 가는지 미리 보여준다. */
+body.page-home .genrenav {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 4px 0 36px;
+  justify-content: center;
+}
+body.page-home .genrenav a {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 13px; color: var(--mute);
+  transition: border-color .12s, color .12s;
+}
+body.page-home .genrenav a:hover { border-color: var(--brass); color: var(--paper); }
+body.page-home .genrenav em { font-style: normal; font-size: 12px; opacity: .7; }
+
+/* 섹션. 제목 줄과 카드 사이 간격이 섹션 사이 간격보다 뚜렷하게 좁아야
+   "이 카드들이 이 제목에 속한다"가 읽힌다. */
+body.page-home .homesec { margin-bottom: 56px; }
+body.page-home .hs-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin-bottom: 20px;
+}
+body.page-home .hs-title h2 {
+  font-family: var(--display);
+  font-size: 20px; font-weight: 700; letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+body.page-home .hs-title p { margin: 0; font-size: 13px; color: var(--mute); }
+body.page-home .hs-more {
+  flex: none;
+  font-size: 13px; color: var(--mute);
+  border-bottom: 1px solid var(--line-strong);
+  transition: color .12s, border-color .12s;
+}
+body.page-home .hs-more:hover { color: var(--brass); border-color: var(--brass); }
+
+body.page-home .allmore { text-align: center; margin: 0; }
+body.page-home .allmore a {
+  display: inline-block;
+  padding: 12px 28px;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 14px; color: var(--paper);
+  transition: border-color .12s, background .12s;
+}
+body.page-home .allmore a:hover { border-color: var(--brass); background: rgba(255, 201, 64, .08); }
+
+@media (max-width: 860px) {
+  body.page-home .hero { padding: 28px 0 24px; }
+  body.page-home .hero h2 { font-size: 23px; }
+  /* 좁은 화면에서 버튼까지 한 줄에 넣으면 입력 칸이 글자 몇 개 폭으로 눌린다.
+     돋보기 아이콘이 이미 검색창임을 알려주므로 버튼 글자를 줄인다. */
+  body.page-home .hero-search { padding-left: 14px; }
+  body.page-home .hero-search button { padding: 11px 16px; }
+  body.page-home .homesec { margin-bottom: 40px; }
+}

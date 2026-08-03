@@ -21,7 +21,7 @@
         이유는, 링크마다 다른 필터값을 URL 에 일일이 다시 실어주다가 하나라도 빠뜨리면 조건이
         유실되기 때문 (LIBRE 에서 겪은 버그). 폼 하나면 제출 시 모든 필드가 자동으로 같이 실려간다.
     -->
-    <form class="filterpanel" id="filterPanel" th:action="@{/}" method="get">
+    <form class="filterpanel" id="filterPanel" th:action="@{/performances}" method="get">
         <div class="fp-head">
             <span class="fp-title">필터</span>
             <button type="button" class="fp-close" id="mobileFilterClose" aria-label="닫기">×</button>
@@ -133,7 +133,7 @@
 
         <!-- 결과가 0건일 때는 빈 화면 쪽에 더 눈에 띄는 초기화 버튼이 있으므로 여기서는 뺀다. -->
         <a class="resultreset" th:if="${filtersApplied and !result.performances.isEmpty()}"
-           th:href="@{/}">필터 초기화</a>
+           th:href="@{/performances}">필터 초기화</a>
 
         <!--
             정렬은 필터 폼과 따로 둔다 — 위치가 결과바라 같은 폼에 넣을 수 없어서, 현재
@@ -142,7 +142,7 @@
             page 를 0 으로 되돌리는 건, 정렬이 바뀌면 3페이지의 내용이 완전히 달라져서
             원래 보던 위치를 유지할 이유가 없기 때문이다.
         -->
-        <form class="sortform" th:action="@{/}" method="get">
+        <form class="sortform" th:action="@{/performances}" method="get">
             <input type="hidden" name="genre" th:value="${genre}">
             <input type="hidden" name="month" th:value="${month}">
             <input type="hidden" name="dayOfWeek" th:value="${dayOfWeek}">
@@ -196,7 +196,7 @@
         <th:block th:unless="${result.libraryEmpty}">
             <p>조건에 맞는 공연이 없습니다.</p>
             <p>검색어나 필터를 바꿔 다시 찾아보세요.</p>
-            <a class="emptyreset" th:if="${filtersApplied}" th:href="@{/}">필터 초기화</a>
+            <a class="emptyreset" th:if="${filtersApplied}" th:href="@{/performances}">필터 초기화</a>
         </th:block>
     </div>
 
@@ -210,19 +210,19 @@
         <!-- 처음/마지막 이동 버튼은 첫/마지막 페이지에서 자기 자신으로 가는 링크가 되므로,
              이전/다음 버튼과 같은 조건으로 숨긴다. -->
         <a class="pager-nav" th:if="${result.page > 0}"
-           th:href="@{/(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=0)}">«</a>
+           th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=0)}">«</a>
         <a class="pager-nav" th:if="${result.page > 0}"
-           th:href="@{/(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.page - 1})}">‹</a>
+           th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.page - 1})}">‹</a>
 
         <a class="pager-num" th:each="p : ${result.pageWindow}"
-           th:href="@{/(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${p})}"
+           th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${p})}"
            th:text="${p + 1}"
            th:classappend="${p == result.page} ? ' active'">1</a>
 
         <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
-           th:href="@{/(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.page + 1})}">›</a>
+           th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.page + 1})}">›</a>
         <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
-           th:href="@{/(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.totalPages - 1})}">»</a>
+           th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.totalPages - 1})}">»</a>
     </nav>
 </div>
 

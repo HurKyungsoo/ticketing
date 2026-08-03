@@ -20,8 +20,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -41,10 +45,35 @@ public class PerformanceController {
     private final SeatMapView seatMapView;
 
     /**
+     * 홈. 조건을 걸어 찾는 화면(목록)과 뭐가 있나 훑는 화면(홈)을 나눴다 — 종전에는 "/" 가
+     * 곧 검색결과 그리드라서, 처음 들어온 사람이 필터부터 마주하고 무엇을 고를지에 대한
+     * 실마리가 없었다.
+     *
+     * <p>필터 파라미터가 하나라도 붙어 오면 목록으로 넘긴다. "/" 가 목록이던 시절의
+     * 북마크·외부 링크(예: {@code /?genre=MUSICAL})가 조건을 잃고 홈으로 떨어지면 안 된다.
+     */
+    @GetMapping("/")
+    public String home(@RequestParam Map<String, String> params, Model model) {
+        if (!params.isEmpty()) {
+            return "redirect:/performances" + queryStringOf(params);
+        }
+        model.addAttribute("home", performanceListService.home());
+        return "performance/home";
+    }
+
+    /** 넘겨받은 파라미터를 그대로 다시 붙인다. 값 검증은 목록 쪽이 어차피 다시 한다. */
+    private String queryStringOf(Map<String, String> params) {
+        return params.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&", "?", ""));
+    }
+
+    /**
      * 필터는 전부 쿼리 파라미터로 관리하고 "all" 을 기본 센티넬로 쓴다 — 파라미터가 항상
      * 존재해야 필터를 바꾸거나 페이지를 넘길 때 다른 조건이 URL 에서 유실되지 않는다.
      */
-    @GetMapping("/")
+    @GetMapping("/performances")
     public String list(@RequestParam(defaultValue = "all") String genre,
                         @RequestParam(defaultValue = "all") String month,
                         @RequestParam(defaultValue = "all") String dayOfWeek,

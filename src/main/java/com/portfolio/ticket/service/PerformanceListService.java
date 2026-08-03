@@ -95,6 +95,63 @@ public class PerformanceListService {
             boolean libraryEmpty
     ) {}
 
+    /* ------------------------------------------------------------------
+     *  홈 (섹션형 둘러보기)
+     *
+     *  목록(/performances)이 "조건을 걸어 찾는" 화면이라면 홈은 "뭐가 있나 훑는" 화면이다.
+     *  섹션 축은 전부 실데이터로 계산되는 것만 쓴다 — 예매 수 기반 "랭킹"은 실사용 데이터가
+     *  있어야 의미가 생기므로(인기순 정렬을 뺀 것과 같은 이유) 넣지 않았다.
+     * ------------------------------------------------------------------ */
+
+    /**
+     * 홈 섹션 한 덩어리. moreUrl 은 "전체 보기"가 갈 목록 화면 주소로, <b>그 섹션을 만든 조건과
+     * 같은 조건</b>이어야 한다 — 어긋나면 6개를 보고 눌렀는데 다른 목록이 나온다.
+     */
+    public record HomeSection(String title, String subtitle, String moreUrl, List<PerformanceListRow> items) {}
+
+    public record Home(List<HomeSection> sections, List<Option> categories, long total) {}
+
+    private static final int HOME_SECTION_SIZE = 6;
+
+    public Home home() {
+        LocalDate today = LocalDate.now();
+        int month = today.getMonthValue();
+
+        List<HomeSection> sections = new ArrayList<>();
+        sections.add(section("곧 막을 내려요", "예매할 수 있는 날이 얼마 남지 않았습니다",
+                "/performances?status=ongoing&sort=closing",
+                f -> f.setSort(Sort.CLOSING.code())));
+        sections.add(section(month + "월 공연", "이번 달에 열리는 회차가 있는 공연",
+                "/performances?status=ongoing&month=" + month,
+                f -> f.setMonth(month)));
+        sections.add(section("새로 들어온 공연", "가장 최근에 등록된 순서",
+                "/performances?status=ongoing&sort=newest",
+                f -> f.setSort(Sort.NEWEST.code())));
+
+        // 장르 칩 건수도 진행·예정작 기준으로 센다 — 홈에서 장르를 누르면 그 상태로 넘어가므로
+        // 여기 숫자와 넘어간 화면의 건수가 같아야 한다.
+        PerformanceFilter ongoing = ongoingBase(today);
+        return new Home(sections, buildCategoryOptions(ongoing, null),
+                performanceMapper.countPerformances(ongoing));
+    }
+
+    /** 홈 섹션은 전부 "진행·예정작"만 본다. 이미 끝난 공연을 홈에 띄울 이유가 없다. */
+    private PerformanceFilter ongoingBase(LocalDate today) {
+        PerformanceFilter filter = new PerformanceFilter();
+        filter.setStatus("ONGOING");
+        filter.setToday(today);
+        return filter;
+    }
+
+    private HomeSection section(String title, String subtitle, String moreUrl,
+                                 Consumer<PerformanceFilter> tune) {
+        PerformanceFilter filter = ongoingBase(LocalDate.now());
+        filter.setOffset(0);
+        filter.setLimit(HOME_SECTION_SIZE);
+        tune.accept(filter);
+        return new HomeSection(title, subtitle, moreUrl, performanceMapper.selectPerformances(filter));
+    }
+
     public Result search(String category, Integer month, String dayOfWeek, String timeSlot, String status,
                           String venue, String region, String keyword, String sort, int page) {
         int safePage = Math.max(0, page);

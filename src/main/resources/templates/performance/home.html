@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>객석 - 공연 예매</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<!--
+    page-list 스코프를 함께 단다. 카드·그리드·포스터 폴백 스타일이 전부 body.page-list 로
+    묶여 있는데 홈도 같은 카드를 쓰기 때문이다 — 60여 줄을 복제하느니 스코프를 공유한다.
+    page-home 은 홈에만 있는 것(히어로·장르 바·섹션 머리)에 쓴다.
+-->
+<body class="page-list page-home">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='공공데이터 기반 공연 예매', showAuthNav=true)}"></header>
+
+    <!-- 검색은 홈의 주요 동선이라 히어로 안에 둔다. 목록 화면의 필터 패널에도 같은 입력이
+         있지만, 홈에 들어온 사람은 아직 필터를 열 이유를 모른다. -->
+    <section class="hero">
+        <h2>오늘, 어떤 무대를 보고 싶으세요?</h2>
+        <p class="hero-sub">
+            전국 진행·예정작
+            <strong th:text="${#numbers.formatInteger(home.total,0,'COMMA')}">878</strong>건을
+            공공데이터로 모았습니다
+        </p>
+        <form class="hero-search" th:action="@{/performances}" method="get">
+            <!-- 검색으로 넘어갈 때도 홈과 같은 범위(진행·예정작)를 유지한다. 이게 없으면
+                 목록의 기본값에 기대게 되는데, 기본값이 바뀌면 홈 숫자와 조용히 어긋난다. -->
+            <input type="hidden" name="status" value="ongoing">
+            <label class="sr-only" for="heroKeyword">공연 검색</label>
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="#6B6480" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="#6B6480" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="heroKeyword" name="keyword" placeholder="공연명, 아티스트로 검색">
+            <button type="submit">검색</button>
+        </form>
+    </section>
+
+    <!-- 장르 바로가기. 건수는 홈 상단의 총계와 같은 기준(진행·예정작)으로 세어져 있어
+         눌러서 넘어간 목록의 건수와 일치한다. -->
+    <nav class="genrenav" aria-label="장르별 바로가기">
+        <a th:each="c : ${home.categories}"
+           th:href="@{/performances(genre=${c.value},status='ongoing')}">
+            <span th:text="${c.label}">뮤지컬</span>
+            <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">123</em>
+        </a>
+    </nav>
+
+    <!-- 섹션이 비면(수집 직후 등) 제목만 남아 빈 칸이 되므로 통째로 감춘다. -->
+    <section class="homesec" th:each="s : ${home.sections}" th:if="${!s.items.isEmpty()}">
+        <div class="hs-head">
+            <div class="hs-title">
+                <h2 th:text="${s.title}">곧 막을 내려요</h2>
+                <p th:text="${s.subtitle}">예매할 수 있는 날이 얼마 남지 않았습니다</p>
+            </div>
+            <a class="hs-more" th:href="@{${s.moreUrl}}">전체 보기</a>
+        </div>
+
+        <!-- 카드 마크업은 목록(list.html)과 같다. 제목이 메타보다 먼저 오는 순서도 같은
+             이유로 지킨다 — 스크린리더가 어느 공연인지 모른 채 공연장부터 읽으면 안 된다. -->
+        <div class="grid">
+            <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
+                <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
+                    <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                    <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
+                         onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                    <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
+                </div>
+                <h3 th:text="${p.title}">공연명</h3>
+                <p class="meta">
+                    <span class="m-venue" th:text="${p.venue}">공연장</span>
+                    <span class="m-date"
+                          th:text="|${#temporals.format(p.startDate, 'yyyy.MM.dd')} – ${#temporals.format(p.endDate, 'yyyy.MM.dd')}|">2026.07.08 – 2026.08.30</span>
+                </p>
+            </a>
+        </div>
+    </section>
+
+    <!-- 수집 전이라 섹션이 전부 비었을 때. 목록 화면의 같은 안내와 문구를 맞춘다. -->
+    <div class="empty-state" th:if="${home.total == 0}">
+        <p>아직 불러온 공연이 없습니다.</p>
+        <p><code>POST /api/admin/sync</code> 로 공공데이터를 불러오세요.</p>
+    </div>
+
+    <!-- 조건을 직접 걸고 싶은 사람을 위한 출구. 홈에는 필터 패널이 없으므로 이 링크가
+         목록 화면으로 가는 유일한 일반 경로다. -->
+    <p class="allmore">
+        <a th:href="@{/performances(status='ongoing')}">조건 걸어 전체 공연 찾아보기 →</a>
+    </p>
+</div>
+</body>
+</html>
