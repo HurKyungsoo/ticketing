@@ -200,3 +200,12 @@ spring:
     # 빈 DB 에 처음부터 올리는 게 정상 경로다. baseline 을 켜면 이미 뭔가 들어 있는 DB 에서
     # V1 을 건너뛰고 시작해버려, 스키마가 반쪽인 채로 돌 수 있다.
     baseline-on-migrate: false
+
+# 리버스 프록시(ALB/nginx) 뒤에서 X-Forwarded-* 를 반영한다. 이게 없으면 공유 카드의
+# og:url·og:image 가 내부 주소(http://172.x:8080)로 나가서, 크롤러가 못 가져와 카드가 빈다 —
+# 정작 브라우저 화면은 멀쩡해서 눈치채기 어렵다.
+#
+# prod 에만 켜는 이유: 이 설정은 요청 헤더를 신뢰하겠다는 뜻이라, 프록시 없이 켜면
+# 아무나 Host 를 위조해 우리 페이지가 남의 도메인을 가리키게 만들 수 있다.
+server:
+  forward-headers-strategy: framework

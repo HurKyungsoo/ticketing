@@ -13,12 +13,14 @@ import com.portfolio.ticket.service.PerformanceListService;
 import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
+import com.portfolio.ticket.service.SeoView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +45,16 @@ public class PerformanceController {
     private final PerformanceListService performanceListService;
     private final NaverMapProperties naverMapProperties;
     private final SeatMapView seatMapView;
+    private final SeoView seoView;
+
+    /**
+     * 공유 카드용 절대주소의 기준. Thymeleaf 3.1 부터 템플릿에서 {@code #request} 를 못 쓰므로
+     * 여기서 만들어 넘긴다. 리버스 프록시 뒤에 두면 {@code X-Forwarded-*} 를 반영하도록
+     * {@code server.forward-headers-strategy} 를 켜야 원래 도메인이 나온다.
+     */
+    private String baseUrl() {
+        return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+    }
 
     /**
      * 홈. 조건을 걸어 찾는 화면(목록)과 뭐가 있나 훑는 화면(홈)을 나눴다 — 종전에는 "/" 가
@@ -58,6 +70,8 @@ public class PerformanceController {
             return "redirect:/performances" + queryStringOf(params);
         }
         model.addAttribute("home", performanceListService.home());
+        model.addAttribute("seo", seoView.forSite(baseUrl(), "/", "객석 - 공연 예매",
+                "공공데이터로 모은 전국 공연을 한곳에서. 실제 좌석 배치도로 자리를 고르고 바로 예매하세요."));
         return "performance/home";
     }
 
@@ -110,6 +124,10 @@ public class PerformanceController {
         // "필터 초기화" 를 띄울지 판단용. 하나라도 기본값에서 벗어났을 때만 보여준다.
         model.addAttribute("filtersApplied",
                 filtersApplied(genre, month, dayOfWeek, timeSlot, status, venue, area, keyword));
+        // canonical 은 필터가 붙지 않은 목록 주소로 고정한다. 필터 조합마다 주소가 달라지는데
+        // 내용은 같은 목록이라, 그대로 두면 검색엔진이 사실상 같은 문서를 수십 개로 본다.
+        model.addAttribute("seo", seoView.forSite(baseUrl(), "/performances", "공연 목록 - 객석",
+                "장르 · 지역 · 날짜로 전국 공연을 찾아보세요."));
         return "performance/list";
     }
 
@@ -172,8 +190,12 @@ public class PerformanceController {
         model.addAttribute("scheduleDays", ScheduleDayView.groupByDay(schedules));
         model.addAttribute("gradePrices", gradePrices);
         // 포스터 아래 sticky 요약(최저가 · 가장 빠른 회차).
-        model.addAttribute("summary",
-                PerformanceSummaryView.of(performance, schedules, gradePrices, LocalDateTime.now()));
+        PerformanceSummaryView summary =
+                PerformanceSummaryView.of(performance, schedules, gradePrices, LocalDateTime.now());
+        model.addAttribute("summary", summary);
+        // 공유 카드 + schema.org/Event. 요약과 같은 값(최저가·가장 빠른 회차)을 쓰므로
+        // 화면에 보이는 것과 공유 카드에 뜨는 것이 어긋나지 않는다.
+        model.addAttribute("seo", seoView.forPerformance(performance, summary, baseUrl()));
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         return "performance/detail";

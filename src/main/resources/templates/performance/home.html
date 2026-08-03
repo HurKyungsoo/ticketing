@@ -6,6 +6,7 @@
     <title>객석 - 공연 예매</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+    <th:block th:replace="~{fragment/head :: meta(${seo})}"></th:block>
 </head>
 <!--
     page-list 스코프를 함께 단다. 카드·그리드·포스터 폴백 스타일이 전부 body.page-list 로

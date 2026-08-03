@@ -6,6 +6,40 @@
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/favicon-180.png">
 </th:block>
+
+<!--/*
+    공유 카드(Open Graph)와 검색 노출용 메타. seo 는 SeoView.Meta 다.
+
+    og:image 와 og:url 은 크롤러가 바깥에서 가져가므로 반드시 절대주소여야 한다 —
+    상대경로를 넣으면 카드에 이미지가 안 뜨는데 우리 화면에서는 멀쩡히 보이므로
+    눈치채기 어렵다. 절대주소 조립은 SeoView 가 컨트롤러에서 받은 baseUrl 로 한다.
+*/-->
+<th:block th:fragment="meta(seo)">
+    <meta name="description" th:content="${seo.description}">
+    <link rel="canonical" th:href="${seo.canonicalUrl}">
+
+    <meta property="og:site_name" content="객석">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:title" th:content="${seo.title}">
+    <meta property="og:description" th:content="${seo.description}">
+    <meta property="og:url" th:content="${seo.canonicalUrl}">
+    <!-- 포스터가 없는 공연은 태그를 아예 뺀다. 파비콘 같은 걸 억지로 채우면
+         공유 카드에 로고만 덩그러니 남아 오히려 안 좋다. -->
+    <meta th:if="${seo.imageUrl != null}" property="og:image" th:content="${seo.imageUrl}">
+
+    <meta name="twitter:card" th:content="${seo.imageUrl != null} ? 'summary_large_image' : 'summary'">
+    <meta name="twitter:title" th:content="${seo.title}">
+    <meta name="twitter:description" th:content="${seo.description}">
+    <meta th:if="${seo.imageUrl != null}" name="twitter:image" th:content="${seo.imageUrl}">
+
+    <!--/*
+        구조화 데이터. SeoView 가 직렬화하면서 '<' 를 < 로 바꿔두므로 여기서
+        th:utext 로 그대로 내보내도 스크립트 블록이 조기 종료되지 않는다.
+        (th:text 를 쓰면 따옴표가 &quot; 로 이스케이프되어 JSON 이 깨진다)
+    */-->
+    <script th:if="${seo.jsonLd != null}" type="application/ld+json" th:utext="${seo.jsonLd}"></script>
+</th:block>
 </head>
 <body></body>
 </html>
