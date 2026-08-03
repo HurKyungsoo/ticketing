@@ -2,6 +2,7 @@ package com.portfolio.ticket.controller;
 
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.external.PerformanceSyncScheduler;
+import com.portfolio.ticket.external.PerformanceSyncService;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.HoldStrategy;
 import com.portfolio.ticket.service.PartialSeatHoldException;
@@ -28,6 +29,7 @@ public class ReservationApiController {
     private final ReservationFacade reservationFacade;
     private final ReservationService reservationService;
     private final PerformanceSyncScheduler syncScheduler;
+    private final PerformanceSyncService syncService;
     private final SeatRegenerationService seatRegenerationService;
 
     /** 좌석 선점. strategy 파라미터로 동시성 전략을 바꿔가며 측정할 수 있다. */
@@ -80,7 +82,18 @@ public class ReservationApiController {
         body.put("totalCreated", summary.totalCreated());
         body.put("kopisMode", summary.kopisIncremental() ? "INCREMENTAL" : "FULL");
         body.put("kopisAfterDate", summary.kopisAfterDate());
+        body.put("purged", summary.purged());
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * 공연이 아닌 항목(모집 공고 등)을 현재 규칙으로 걷어낸다. 좌석 재생성과 같은 이유로
+     * 따로 열어둔다 — 규칙을 바꿔도 이미 쌓인 데이터에는 반영되지 않는데, 그것만 하자고
+     * 수 분짜리 수집 배치를 다 돌릴 이유는 없다. 예매가 있는 항목은 남긴다.
+     */
+    @PostMapping("/admin/performances/purge")
+    public ResponseEntity<?> purgeNonPerformances() {
+        return ResponseEntity.ok(Map.of("purged", syncService.purgeNonPerformances()));
     }
 
     /**

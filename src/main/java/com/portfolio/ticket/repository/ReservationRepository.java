@@ -54,4 +54,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findWithScheduleByMemberIdOrderByCreatedAtDesc(@Param("memberId") Long memberId);
 
     List<Reservation> findByStatusAndHoldExpiresAtBefore(ReservationStatus status, LocalDateTime now);
+
+    /**
+     * 이 공연에 예매가 하나라도 걸려 있는지. 수집 대상이 아닌 항목을 지울 때, 이미 표를 산
+     * 사람이 있으면 지우지 않기 위해 쓴다 — 예매는 지난 내역으로 남아야 한다.
+     */
+    @Query("select count(r) > 0 from Reservation r where r.schedule.performance.id = :performanceId")
+    boolean existsByPerformanceId(@Param("performanceId") Long performanceId);
 }

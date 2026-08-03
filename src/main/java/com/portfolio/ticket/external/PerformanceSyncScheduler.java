@@ -55,7 +55,7 @@ public class PerformanceSyncScheduler {
     }
 
     public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture, SourceSyncResult kopis,
-                              LocalDate kopisAfterDate) {
+                              LocalDate kopisAfterDate, int purged) {
 
         public int totalCreated() {
             return standard.created() + culture.created() + kopis.created();
@@ -87,9 +87,13 @@ public class PerformanceSyncScheduler {
             markKopisSynced(startedOn);
         }
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건",
-                standard.created(), culture.created(), kopis.created());
-        return new SyncSummary(standard, culture, kopis, afterDate);
+        // 수집 루프의 skip 은 "다시 내려온" 항목만 막는다. 규칙이 생기기 전에 들어와 이미
+        // DB 에 있는 건은 여기서 걷어낸다 (멱등이라 매번 돌려도 안전하다).
+        int purged = syncService.purgeNonPerformances();
+
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건",
+                standard.created(), culture.created(), kopis.created(), purged);
+        return new SyncSummary(standard, culture, kopis, afterDate, purged);
     }
 
     /** 이력이 없으면(최초 수집, DB 초기화 직후) null 을 반환해 전체 수집으로 떨어뜨린다. */
