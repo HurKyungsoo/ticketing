@@ -191,6 +191,10 @@ public class PerformanceController {
                 : seatMapper.selectGradePrices(schedules.get(0).getId());
 
         model.addAttribute("performance", performance);
+        // 회차가 하나도 안 남았을 때(scheduleDays 가 비어 화면에 "예매 가능한 회차가 없습니다"만
+        // 뜨는 경우) 그게 "공연이 끝났다"인지 "아직 진행 중인데 뭔가 비정상"인지를 구분해서
+        // 보여준다. 후자는 사실상 발생하지 않아야 하는 상태라 화면에서 바로 드러나야 한다.
+        model.addAttribute("performanceEnded", performance.getEndDate().isBefore(now.toLocalDate()));
         // 회차는 날짜별로 묶어서 넘긴다. 요일별 여러 시각이 잡힌 공연은 그냥 나열하면
         // 칩 수십 개가 한 덩어리로 쏟아져 어느 날 몇 시인지 읽어낼 수 없다.
         model.addAttribute("scheduleDays", ScheduleDayView.groupByDay(schedules));

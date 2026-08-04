@@ -185,9 +185,17 @@
                     </div>
                 </div>
             </div>
-            <!-- 회차가 아예 없는 경우(수집 직후)와 전부 지난 경우를 한 문구로 덮는다.
-                 둘 다 사용자 입장에서는 "지금 예매할 수 있는 회차가 없다"로 같다. -->
-            <p class="empty-inline" th:if="${scheduleDays.isEmpty()}">예매 가능한 회차가 없습니다.</p>
+            <!--
+                회차가 비었을 때 "왜"를 말해준다. 예전엔 두 경우(공연이 끝남 / 그 외)를
+                구분 없이 "예매 가능한 회차가 없습니다" 한 줄로 덮었는데, 안 끝난 공연에서
+                이 문구를 보면 오류인지 매진인지 알 길이 없었다. 종료일이 지났으면 그게
+                이유다. 안 지났는데도 회차가 비면(정상 흐름에서는 나오지 않아야 하는 상태다 —
+                동기화가 항상 종료일까지 회차를 채워 두므로) 오류로 짚어서 문의하게 한다.
+            -->
+            <p class="empty-inline" th:if="${scheduleDays.isEmpty() and performanceEnded}">공연이 종료되었습니다.</p>
+            <p class="empty-inline" th:if="${scheduleDays.isEmpty() and !performanceEnded}">
+                예매 가능한 회차를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
+            </p>
 
             <!--
                 취소·환불 규정. 요율을 여기에 문자열로 적지 않고 Reservation.REFUND_TIERS 를
