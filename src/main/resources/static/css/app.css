@@ -179,6 +179,16 @@ a { color: inherit; text-decoration: none; }
   gap: 28px;
 }
 .card { display: block; }
+/* 카드 진입 리빌. JS(IntersectionObserver)가 지원되고 모션을 끄지 않았을 때만
+   .grid 에 .reveal 을 붙이므로, JS 가 없거나 실패해도 카드는 기본값(불투명)으로
+   항상 보인다 — 애니메이션이 "안 보이면 정상, 보이면 보너스"가 아니라 거꾸로
+   "JS 없으면 카드가 영영 안 보임"이 되면 안 된다. */
+.grid.reveal .card {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+.grid.reveal .card.is-visible { opacity: 1; transform: none; }
 .card .poster {
   aspect-ratio: 3 / 4;
   background: var(--ink-soft);
@@ -1329,6 +1339,19 @@ body.page-list .card .poster::before {
   to   { background-position: -80% 0; }
 }
 body.page-list .card .poster img { position: relative; z-index: 1; }
+/*
+   포스터에 살짝 깊이를 준다 — "배경에서 색을 빼 포스터를 유일한 색으로 둔다"는
+   원칙은 그대로 두고(듀오톤·블러로 포스터 자체를 죽이지 않는다), 가장자리만
+   은은하게 눌러 액자 같은 인상을 준다. 이미지(z-index:1)보다 위에 와야 해서
+   z-index:2 를 준다 — inset box-shadow 를 .poster 자체에 걸면 자식 요소가
+   그 위에 그려져(포스터 shimmer 와 같은 함정) 안 보인다.
+*/
+body.page-list .card .poster::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 2;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08), inset 0 -48px 48px -24px rgba(0, 0, 0, .28);
+  pointer-events: none;
+}
 body.page-list .card .poster.no-img {
   display: grid; place-items: center;
   background: var(--ink-soft);
@@ -1396,6 +1419,30 @@ body.page-list .card .m-venue {
 }
 /* 기간은 공연장보다 한 단계 뒤로 — 색을 새로 만들지 않고 같은 --mute 를 흐리게 쓴다. */
 body.page-list .card .m-date { font-size: 12px; opacity: .75; }
+
+/*
+   공연장·기간 앞에 작은 아이콘. 카드 수가 많아 <svg> 를 카드마다 마크업에 넣으면
+   DOM 이 그만큼 불어나므로, 배경 이미지(data URI) 로 한 번만 선언해 모든 카드가
+   같은 리소스를 쓴다. 색은 --mute 를 CSS 변수로 못 넣어서(data URI 는 정적 문자열이라
+   커스텀 프로퍼티를 못 읽는다) 그 값(#B6B0A7)을 직접 적었다 — --mute 를 바꾸면 같이
+   맞춰야 한다. .m-venue 는 display 를 안 건드린다 — inline-flex 로 바꾸면 긴 공연장명의
+   말줄임(text-overflow: ellipsis)이 깨진다.
+*/
+body.page-list .card .m-venue::before,
+body.page-list .card .m-date::before {
+  content: '';
+  display: inline-block;
+  width: 11px; height: 11px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  background: no-repeat center / contain;
+}
+body.page-list .card .m-venue::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23B6B0A7' stroke-width='1.4' stroke-linejoin='round'%3E%3Cpath d='M8 14.2s5-4.3 5-8.2a5 5 0 1 0-10 0c0 3.9 5 8.2 5 8.2z'/%3E%3Ccircle cx='8' cy='6' r='1.6'/%3E%3C/svg%3E");
+}
+body.page-list .card .m-date::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23B6B0A7' stroke-width='1.4' stroke-linecap='round'%3E%3Crect x='2' y='3.5' width='12' height='10.5' rx='1.5'/%3E%3Cpath d='M2 6.5h12M5.3 2v3M10.7 2v3'/%3E%3C/svg%3E");
+}
 
 /* ---- 결과 건수 · 필터 초기화 ---- */
 body.page-list .resultbar {
@@ -1509,6 +1556,7 @@ body.page-detail .detail {
 body.page-detail .detail > div:first-child { position: sticky; top: 96px; }
 
 body.page-detail .poster {
+  position: relative;
   aspect-ratio: 3 / 4;
   border-radius: var(--radius);
   overflow: hidden;
@@ -1517,6 +1565,15 @@ body.page-detail .poster {
   box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
 }
 body.page-detail .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 목록 카드와 같은 이유의 같은 처리(위 body.page-list .card .poster::after 참고).
+   여기 img 는 z-index 를 안 줬으니 ::after 도 z-index 없이 자연히 위에 온다 —
+   position:absolute 인 pseudo-element 가 static 자식보다 나중 페인트 단계라서다. */
+body.page-detail .poster::after {
+  content: '';
+  position: absolute; inset: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .10), inset 0 -64px 64px -32px rgba(0, 0, 0, .30);
+  pointer-events: none;
+}
 
 /* 포스터가 없을 때. 목록 카드의 폴백과 같은 발상이되, 320px 라 첫 글자만 크게 띄우면
    의미 없는 큰 덩어리가 되므로 공연명을 같이 넣어 정보를 갖게 한다. */
@@ -1835,6 +1892,21 @@ body.page-home .hero-sub {
   color: var(--mute);
 }
 body.page-home .hero-sub strong { color: var(--brass); font-weight: 700; }
+
+/* 히어로 진입 애니메이션. prefers-reduced-motion 은 위쪽의 전역 규칙
+   (* { transition: none !important; animation: none !important; })이 이미
+   무력화하므로 여기서 따로 분기하지 않아도 된다. */
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+body.page-home .hero h2,
+body.page-home .hero-sub,
+body.page-home .hero-search {
+  animation: hero-fade-up .5s ease both;
+}
+body.page-home .hero-sub { animation-delay: .08s; }
+body.page-home .hero-search { animation-delay: .16s; }
 
 /* 검색창. 목록 필터 패널의 .fp-keyword 와 같은 모양이되 홈에서는 주요 액션이라 더 크다. */
 body.page-home .hero-search {
