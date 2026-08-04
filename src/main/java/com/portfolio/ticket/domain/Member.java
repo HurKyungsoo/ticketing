@@ -29,6 +29,13 @@ public class Member {
     @Column(nullable = false, length = 20)
     private String nickname;
 
+    /**
+     * 로컬 계정 비밀번호 재설정·예매 알림에 쓴다. 카카오/네이버는 지금 요청 scope 에
+     * 이메일이 없어(profile_nickname / name) OAuth 계정은 계속 null 이다.
+     */
+    @Column(length = 190)
+    private String email;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     @Builder.Default
@@ -51,4 +58,9 @@ public class Member {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    /** 비밀번호 재설정에서만 쓴다. 인자는 항상 인코딩된 값이어야 한다. */
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

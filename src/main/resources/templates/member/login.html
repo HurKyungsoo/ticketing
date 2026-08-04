@@ -23,6 +23,10 @@
                 로그인하면 선택하신 좌석으로 바로 이어집니다.
             </p>
 
+            <p class="authnotice" th:if="${param.resetDone}">
+                비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.
+            </p>
+
             <p class="autherror" th:if="${param.error}">아이디 또는 비밀번호가 올바르지 않습니다.</p>
 
             <form class="authform" th:action="@{/login}" method="post">
@@ -43,6 +47,8 @@
 
                 <button type="submit">로그인</button>
             </form>
+
+            <p class="authlink authlink--tight"><a th:href="@{/password-reset}">비밀번호를 잊으셨나요?</a></p>
 
             <div class="oauthdivider"><span>또는</span></div>
 

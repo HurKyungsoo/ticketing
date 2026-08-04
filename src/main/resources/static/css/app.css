@@ -29,16 +29,22 @@
    새 값을 따라오므로 화면별 수정이 필요 없다.
    ------------------------------------------------------------------ */
 :root {
-  --ink:        #0B0B0C;   /* 객석 어둠 (중성) */
-  --ink-soft:   #151517;   /* 카드/표면 */
-  --ink-raised: #1C1C1F;   /* 한 단계 더 뜬 표면 (입력창 등) */
-  --paper:      #FAFAFA;   /* 본문 */
-  --brass:      #FFC940;   /* 무대 조명 (채도만 올린 앰버) */
-  --brass-dim:  #A8842B;
-  --rose:       #FF5C7A;   /* 매진 */
-  --mute:       #A1A1AA;   /* 보조 텍스트 */
-  --line:       rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  /* "로고개선: UI 디자인 및 색감 개선" 커밋이 이 값들을 아래(옛 --radius 뒤)에
+     새 :root 블록으로 다시 선언해서, 여기 있던 원래 값(#0B0B0C/#FFC940 등)은
+     화면에 전혀 안 쓰이는 죽은 선언이었다 — CSS 커스텀 프로퍼티는 나중 선언이
+     그냥 덮어쓰므로 문법 오류 없이 조용히 무효화된다. 두 블록을 하나로 합쳤다. */
+  --ink:        #111214;   /* 객석 어둠 (중성, 살짝 웜톤) */
+  --ink-soft:   #1A1B1E;   /* 카드/표면 */
+  --ink-raised: #232428;   /* 한 단계 더 뜬 표면 (입력창 등) */
+  --paper:      #F8F4EC;   /* 본문 (아이보리) */
+  --brass:      #E9B44C;   /* 무대 조명 (웜 골드) */
+  --brass-dim:  #B58A38;
+  --rose:       #F26D6D;   /* 매진 */
+  --teal:       #63B7AF;
+  --plum:       #8D7AAE;
+  --mute:       #B6B0A7;   /* 보조 텍스트 */
+  --line:       rgba(248, 244, 236, 0.09);
+  --line-strong: rgba(248, 244, 236, 0.18);
 
   /* 명조체를 버리고 Pretendard 하나로 통일. 한글은 자간을 벌리면 즉시 올드해진다.
      첫 후보가 위에서 @import 로 실어온 자체 호스팅 가변 폰트다. 그 다음 'Pretendard' 는
@@ -88,19 +94,6 @@
   --radius: 14px;
   --radius-sm: 10px;
   --radius-xs: 6px;
-
-  --ink: #111214;
-  --ink-soft: #1A1B1E;
-  --ink-raised: #232428;
-  --paper: #F8F4EC;
-  --brass: #E9B44C;
-  --brass-dim: #B58A38;
-  --rose: #F26D6D;
-  --teal: #63B7AF;
-  --plum: #8D7AAE;
-  --mute: #B6B0A7;
-  --line: rgba(248, 244, 236, 0.09);
-  --line-strong: rgba(248, 244, 236, 0.18);
 }
 
 * { box-sizing: border-box; }
@@ -199,7 +192,9 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- 상세 ---------- */
 .detail { display: grid; grid-template-columns: 280px 1fr; gap: 40px; }
-.detail h2 { font-family: var(--display); font-size: 30px; margin: 0 0 8px; }
+/* 이 h2(공연명)의 실제 타이포는 아래 body.page-detail h2 가 정한다 — 타입 선택자가
+   하나 더 붙어(body.page-detail h2) 명시도가 이 규칙보다 높아서 항상 이겼다.
+   같은 값(30px)을 겹쳐 써서 문제가 안 드러났을 뿐, 죽은 규칙이라 지웠다. */
 .spec { border-top: 1px solid var(--line); margin-top: 24px; }
 .spec div { display: flex; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .spec dt { width: 84px; color: var(--mute); flex: none; margin: 0; }
@@ -983,6 +978,9 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   margin: 20px 0 0;
 }
 .authlink a { color: var(--brass); font-weight: 700; }
+/* 로그인 버튼 바로 아래에 붙는 "비밀번호를 잊으셨나요?" 처럼, 카드 하단이 아니라
+   폼 안에서 다음 요소와 이어질 때는 위 여백을 좁힌다. */
+.authlink--tight { margin: 12px 0 0; }
 
 /* 결제 화면의 단일 주요 액션. 예전엔 .authform 의 카드 스타일을 빌려 쓰고 있었는데,
    .authform 이 폼 레이아웃 전용으로 정리되면서 전용 클래스로 분리했다. */
@@ -1015,21 +1013,28 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .oauthdivider::before, .oauthdivider::after {
   content: ""; flex: 1; height: 1px; background: var(--line);
 }
-.oauthbuttons { display: flex; flex-direction: column; gap: 10px; }
 /*
-   소셜 로그인은 보조 경로다. 브랜드 색·심볼·문구는 각 사 가이드가 정한 값이라 그대로 두고,
-   가이드가 규정하지 않는 크기·굵기만 낮춰 주요 액션과 위계를 만든다.
-
-   line-height 를 고정하는 이유: 아이콘(16px)이 글자 줄 높이보다 커서 버튼 높이를 밀어올려,
+   소셜 로그인은 보조 경로인데, 실측하면 여전히 주요 액션(로그인 버튼)을 이긴다 —
+   상대휘도가 로그인 브라스(rgb(233,180,76)) 0.505 인데 카카오 옐로(#FEE500) 는 0.771 로
+   1.53배 밝다. 브랜드 색은 가이드가 정한 값이라 못 바꾸고, 종전엔 폭을 똑같이 100% 로
+   맞춰서 두 버튼의 면적도 같았다 — 밝기와 면적이 둘 다 같으면 더 밝은 색이 이긴다.
+   가로로 나란히 놓아 버튼 하나당 폭을 절반으로 줄이면 면적×밝기 값이 로그인 버튼보다
+   작아져서(0.505×전체폭 > 0.771×반폭) 위계가 실측으로도 뒤집힌다.
+*/
+.oauthbuttons { display: flex; flex-direction: row; gap: 10px; }
+/*
+   line-height 를 고정하는 이유: 아이콘(15px)이 글자 줄 높이보다 커서 버튼 높이를 밀어올려,
    종전에는 소셜 버튼이 로그인 버튼보다 7px 더 컸다. 줄 높이를 아이콘 이상으로 못박으면
    아이콘이 높이에 관여하지 않아 padding 만으로 크기가 결정된다.
 */
 .oauthbtn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--body); font-size: 14px; font-weight: 600;
-  line-height: 18px;
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--body); font-size: 13px; font-weight: 600;
+  line-height: 17px;
   border: 0; border-radius: var(--radius-sm);
-  padding: 12px; cursor: pointer; text-align: center;
+  padding: 11px 8px; cursor: pointer; text-align: center;
+  white-space: nowrap;
   transition: filter .12s;
 }
 .oauthbtn:hover { filter: brightness(1.06); }
@@ -1037,7 +1042,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
    https://developers.kakao.com/docs/ko/kakaologin/design-guide */
 .oauthbtn-kakao { background: #FEE500; color: rgba(0, 0, 0, 0.85); border-radius: 12px; }
 .oauthbtn-naver { background: #03C75A; color: #FAFAFA; }
-.oauthicon { width: 16px; height: 16px; flex-shrink: 0; }
+.oauthicon { width: 15px; height: 15px; flex-shrink: 0; }
 
 /* ---------- 관리자 대시보드 ---------- */
 .dashfilter { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 32px; }
@@ -1572,8 +1577,8 @@ body.page-detail .sc-cta:hover {
 body.page-detail #schedule-pick { scroll-margin-top: 88px; }
 
 body.page-detail h2 {
-  font-family: var(--display); font-size: 30px; font-weight: 800;
-  letter-spacing: -0.02em; color: var(--paper); margin: 0 0 8px;
+  font-family: var(--display); font-size: 40px; font-weight: 800;
+  letter-spacing: -0.03em; color: var(--paper); margin: 0 0 8px;
 }
 body.page-detail .meta { font-size: 14px; color: var(--mute); margin: 0 0 32px; }
 
@@ -1681,6 +1686,8 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
   body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
+  /* 데스크톱 40px 는 좁은 화면에서 긴 공연명이 한 글자씩 좁게 줄바꿈된다. */
+  body.page-detail h2 { font-size: 28px; }
   /* 요약 카드는 sticky 칸의 남는 자리를 채우려고 있는 것인데, 여기서는 칸이 sticky 가 아니라
      제목 위로 올라간다 — 공연명보다 최저가가 먼저 읽히는 이상한 순서가 되고, 같은 정보가
      바로 아래 공연 정보 표에 다시 나온다. 그래서 숨긴다. */
@@ -1804,10 +1811,13 @@ body.page-home .hero > * {
 body.page-home .hero h2 {
   font-family: var(--display);
   max-width: none;
-  font-size: clamp(30px, 4.2vw, 48px);
+  font-size: clamp(34px, 4.6vw, 52px);
   line-height: 1.1;
   font-weight: 850;
-  letter-spacing: 0;
+  /* 자간은 글자가 커질수록 좁혀야 시각적으로 고르게 보인다(옵티컬 사이징) — 종전엔
+     이 화면에서 가장 큰 글자인데 자간이 0 이라, 더 작은 다른 제목들(-0.02em)보다
+     오히려 헐렁해 보이는 게 거꾸로였다. */
+  letter-spacing: -0.03em;
   margin: 0 0 14px;
   white-space: nowrap;
 }
@@ -1896,7 +1906,7 @@ body.page-home .hs-head {
 }
 body.page-home .hs-title h2 {
   font-family: var(--display);
-  font-size: 22px; font-weight: 800; letter-spacing: 0;
+  font-size: 26px; font-weight: 750; letter-spacing: -0.015em;
   margin: 0 0 4px;
 }
 body.page-home .hs-title p { margin: 0; font-size: 13px; color: var(--mute); }
@@ -1925,7 +1935,7 @@ body.page-home .allmore a:hover { border-color: var(--brass); background: rgba(2
     border-radius: var(--radius-sm);
   }
   body.page-home .hero h2 {
-    font-size: 30px;
+    font-size: 32px;
     white-space: normal;
   }
   /* 좁은 화면에서 버튼까지 한 줄에 넣으면 입력 칸이 글자 몇 개 폭으로 눌린다.

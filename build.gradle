@@ -20,6 +20,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    // 비밀번호 재설정 메일 발송용. spring.mail.host 가 없으면 발송 시점에만 실패하고
+    // (PasswordResetMailSender 가 삼킨다) 앱 기동에는 영향이 없다.
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     // 컨테이너/로드밸런서 헬스체크(/actuator/health)용. 다른 엔드포인트는 노출하지 않는다.
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'

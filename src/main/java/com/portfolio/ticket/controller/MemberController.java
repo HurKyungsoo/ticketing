@@ -28,9 +28,10 @@ public class MemberController {
     public String signup(@RequestParam String loginId,
                           @RequestParam String password,
                           @RequestParam String nickname,
+                          @RequestParam String email,
                           Model model) {
         try {
-            memberService.signup(loginId, password, nickname);
+            memberService.signup(loginId, password, nickname, email);
         } catch (IllegalStateException e) {
             model.addAttribute("error", e.getMessage());
             return "member/signup";
