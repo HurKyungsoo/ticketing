@@ -276,41 +276,70 @@
 
     var csrfToken = document.querySelector('meta[name="_csrf"]').content;
     var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+    // 좌석도의 PENDING_HOLD_KEY 와 같은 목적 — 로그인하고 돌아왔을 때 아까 누르려던 걸 이어간다.
+    var PENDING_WISH_KEY = 'pendingWishlist';
 
     function render(wishlisted) {
         wishBtn.setAttribute('aria-pressed', String(wishlisted));
         wishBtn.querySelector('.wish-label').textContent = wishlisted ? '찜함' : '찜하기';
     }
 
-    wishBtn.addEventListener('click', async function () {
-        wishBtn.disabled = true;
+    /** 찜 토글을 시도한다. 비로그인 상태면 authRequired 만 true 로 반환하고 리다이렉트는 호출부가 처리한다. */
+    async function toggleWishlist() {
         try {
             var res = await fetch('/api/performances/' + wishBtn.dataset.performanceId + '/wishlist', {
                 method: 'POST',
                 headers: { [csrfHeader]: csrfToken }
             });
 
-            // 미인증이면 폼 로그인으로 302 된다. 돌아왔을 때 이 공연을 다시 보도록 returnTo 를 싣는다.
+            // 미인증이면 폼 로그인으로 302 된다.
             if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
-                location.href = '/login?returnTo=' + encodeURIComponent(location.pathname);
-                return;
+                return { authRequired: true };
             }
             if (!res.ok) {
-                window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-                return;
+                return { authRequired: false, ok: false };
             }
-
-            // 서버가 알려준 "호출 후 상태"를 그대로 반영한다. 화면에서 토글을 스스로 뒤집으면
-            // 요청이 엇갈렸을 때 버튼 모양과 실제 저장 상태가 갈린다.
-            var data = await res.json();
-            render(data.wishlisted);
-            window.__toast(data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
+            return { authRequired: false, ok: true, data: await res.json() };
         } catch (e) {
-            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-        } finally {
-            wishBtn.disabled = false;
+            return { authRequired: false, ok: false };
         }
+    }
+
+    wishBtn.addEventListener('click', async function () {
+        wishBtn.disabled = true;
+        var result = await toggleWishlist();
+        wishBtn.disabled = false;
+
+        if (result.authRequired) {
+            // 돌아왔을 때 이 공연을 다시 보도록 returnTo 를 싣고, 누르려던 동작 자체는 세션에 남긴다.
+            sessionStorage.setItem(PENDING_WISH_KEY, wishBtn.dataset.performanceId);
+            location.href = '/login?returnTo=' + encodeURIComponent(location.pathname);
+            return;
+        }
+        if (!result.ok) {
+            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
+
+        // 서버가 알려준 "호출 후 상태"를 그대로 반영한다. 화면에서 토글을 스스로 뒤집으면
+        // 요청이 엇갈렸을 때 버튼 모양과 실제 저장 상태가 갈린다.
+        render(result.data.wishlisted);
+        window.__toast(result.data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
     });
+
+    /** 로그인하느라 이 화면을 떠났다가 돌아온 직후라면, 아까 누르려던 찜을 자동으로 이어간다.
+        지금까지는 이 이어감이 없어서 로그인만 하고 원래 누르려던 버튼을 다시 눌러야 했다. */
+    (async function resumePendingWishlist() {
+        var pendingId = sessionStorage.getItem(PENDING_WISH_KEY);
+        if (!pendingId) return;
+        sessionStorage.removeItem(PENDING_WISH_KEY);
+        if (pendingId !== wishBtn.dataset.performanceId) return;
+
+        var result = await toggleWishlist();
+        if (result.authRequired || !result.ok) return; // 다시 실패하면 버튼을 다시 누르게 둔다
+        render(result.data.wishlisted);
+        window.__toast(result.data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
+    })();
 })();
 </script>
 

@@ -18,9 +18,16 @@
                 <p>공연 예매를 시작하려면 로그인하세요.</p>
             </div>
 
-            <!-- 좌석 선택 중 로그인으로 넘어온 경우. 로그인만 하면 고르던 좌석 그대로 이어진다는 걸 알려준다. -->
-            <p class="authnotice" th:if="${param.returnTo}">
+            <!--
+                returnTo 는 좌석도(선점 이어가기)뿐 아니라 찜처럼 좌석과 무관한 화면에서도 붙는다.
+                예전엔 returnTo 존재 여부만 보고 "좌석으로 이어집니다"를 무조건 띄워서, 찜 때문에
+                로그인 화면으로 온 사람에게 하지도 않은 좌석 선택 얘기를 하고 있었다.
+            -->
+            <p class="authnotice" th:if="${param.returnTo != null and #strings.startsWith(param.returnTo[0], '/schedules/')}">
                 로그인하면 선택하신 좌석으로 바로 이어집니다.
+            </p>
+            <p class="authnotice" th:if="${param.returnTo != null and !#strings.startsWith(param.returnTo[0], '/schedules/')}">
+                로그인하면 원래 보던 화면으로 돌아갑니다.
             </p>
 
             <p class="authnotice" th:if="${param.resetDone}">
