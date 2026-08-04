@@ -653,22 +653,33 @@ a { color: inherit; text-decoration: none; }
    예매 바 위에 떠 있어야 하므로 --footer-h(바 실측 높이)를 기준으로 띄운다. 고정값을 쓰면
    범례가 여러 줄로 접히거나 고른 좌석 칩이 늘어날 때 바에 가린다 — 좌석 격자와 같은 이유다.
    z-index 는 예매 바(10)보다 위, 그래야 지도를 보면서 바를 넘겨다볼 수 있다. */
+/*
+   position: fixed 라 화면 우하단 그 자리에 늘 있고, 그 아래 좌석은 완전히 가려져
+   클릭이 안 된다(elementsFromPoint 로 실측 — 클릭이 항상 .minimap 으로 간다).
+   패널 크기(위 MINI_MAX_W/H)를 줄이고 opacity 로 옅게 만들어 겹치는 영향을 줄인다.
+   opacity 를 .minimap-zone 에 개별로 걸지 않고 패널 전체에 거는 이유: 등급 블록의
+   배경·글자색은 서로 대비 4.6 이상으로 맞춘 값인데(아래 .minimap-zone 주석 참고),
+   전체에 한 번에 걸면 둘 다 같은 배경 쪽으로 같이 옅어져서 그 상대 대비가 거의
+   유지된다 — 블록 하나에만 걸면 그 계산이 깨진다.
+*/
 .minimap {
   position: fixed;
   right: 20px;
   bottom: calc(var(--footer-h, 150px) + 16px);
   z-index: 11;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: rgba(11, 11, 12, .86);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  opacity: .82;
   cursor: pointer;
   /* 미니맵 위 끌기는 브라우저 스크롤이 아니라 우리가 처리한다. */
   touch-action: none;
 }
+.minimap:hover, .minimap:focus-within { opacity: 1; }
 .minimap-inner { position: relative; }
 /*
    구역 블록. 그 구역에서 가장 많은 등급의 색을 깔아 확대 중에도 어디가 어느 등급인지 보이고,
@@ -708,7 +719,7 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 720px) {
   /* 좁은 화면에서는 지도 자체가 좁으니 미니맵도 자리를 덜 차지하게 줄인다. */
-  .minimap { right: 12px; bottom: calc(var(--footer-h, 150px) + 10px); padding: 6px; }
+  .minimap { right: 12px; bottom: calc(var(--footer-h, 150px) + 10px); }
 }
 
 /* 가격표. 예매 바 안에 고정으로 들어간다. 바깥 여백은 바가 갖고 있다. */

@@ -349,8 +349,12 @@
 
     /* ---------- 확대 모드 미니맵 ---------- */
 
-    const MINI_MAX_W = 168;
-    const MINI_MAX_H = 120;
+    // 큰 홀에서 우하단에 고정된 미니맵이 그 자리에 오는 좌석을 완전히 가려 클릭을
+    // 못 받는 문제가 있다(elementsFromPoint 로 확인 — 그 좌석 자리 클릭이 항상
+    // .minimap 으로 간다). 근본 해결은 아니지만 패널을 줄이면 겹치는 면적 자체가
+    // 줄어든다. 아래 .minimap 의 opacity 와 함께 본다.
+    const MINI_MAX_W = 130;
+    const MINI_MAX_H = 95;
     const minimap = document.getElementById('minimap');
     const minimapInner = document.getElementById('minimapInner');
     const minimapZones = document.getElementById('minimapZones');
