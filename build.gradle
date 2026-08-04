@@ -7,6 +7,21 @@ plugins {
 group = 'com.portfolio'
 version = '0.0.1-SNAPSHOT'
 
+/*
+   이 프로젝트는 OneDrive 동기화 폴더 안에 있다. OneDrive 가 build/ 를 계속
+   동기화 대상으로 잡아서 "Failed to clean up stale outputs", 컴파일된 클래스가
+   ClassNotFoundException 을 내는 것, 지운 파일이 클라우드 캐시에서 되살아나는
+   것까지 겪었다(자세한 증상은 각 세션 메모리에 있음).
+
+   GRADLE_BUILD_DIR 환경변수가 있으면 그 경로로 산출물을 내보낸다 — 이 컴퓨터에서만
+   설정해두면 소스는 계속 OneDrive 로 백업되면서 build/ 만 동기화 대상에서 빠진다.
+   변수가 없으면(CI, 다른 컴퓨터) 원래대로 프로젝트 안 build/ 를 그대로 쓴다.
+*/
+String customBuildDir = System.getenv('GRADLE_BUILD_DIR')
+if (customBuildDir) {
+    layout.buildDirectory.set(file(customBuildDir))
+}
+
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }

@@ -38,6 +38,12 @@
 환경변수 `PUBLICDATA_SERVICE_KEY` 가 없으면 외부 API 호출은 빈 리스트를 반환한다.
 (앱은 정상 기동됨)
 
+이 프로젝트가 OneDrive 동기화 폴더 안에 있으면(`Desktop`, `문서` 등) `build/` 가 계속
+동기화 대상이 되어 stale outputs 오류·`ClassNotFoundException`·삭제한 파일이 되살아나는
+증상이 난다. 환경변수 `GRADLE_BUILD_DIR` 을 OneDrive 밖 경로(예: `C:\gradle-builds\<repo>`)
+로 설정하면 `build.gradle` 이 산출물을 그쪽으로 내보내 해결된다. 변수가 없으면(CI 등)
+원래대로 동작한다.
+
 ## 아키텍처 규칙
 
 ### JPA vs MyBatis
