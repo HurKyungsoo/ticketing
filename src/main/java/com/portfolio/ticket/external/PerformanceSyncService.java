@@ -18,22 +18,25 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 수집 → 정규화 → upsert → 회차/좌석 생성.
  *
- * API 원본에는 "회차" 개념이 없어서, 공연 기간 안에서 최대 8개까지 회차를
- * 생성하는 규칙을 두었다. 시각은 KOPIS 시간대별 상연 통계 분포를 따른다.
- * (README 의 데이터 가공 규칙 참고)
+ * API 원본에는 "회차" 개념이 없어서, 공연 기간 안에서 회차를 만드는 규칙을 둔다.
+ * 시각은 KOPIS 시간대별 상연 통계 분포를 따른다. (README 의 데이터 가공 규칙 참고)
+ *
+ * <p>신규 수집 시에는 오늘(또는 시작일, 더 늦은 쪽)부터 종료일까지 한 번에 다 만든다.
+ * 이미 있는 공연은 매 동기화마다 {@link #topUpSchedules} 로 마지막 회차 다음 날부터
+ * 종료일까지 빠진 만큼만 추가한다 — 과거 회차는 그대로 두고 건드리지 않는다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PerformanceSyncService {
 
-    private static final int MAX_SCHEDULES = 8;
     private static final LocalTime SHOW_TIME = LocalTime.of(19, 0);
 
     /**
@@ -107,6 +110,7 @@ public class PerformanceSyncService {
                         external.getTotalSeatCount(), external.getBasePrice(),
                         external.getSourceType(), categoryResolver.resolve(external.getGenre()),
                         external.getRegion());
+                topUpSchedules(performance, external);
             }
         }
         log.info("공연 동기화 완료. 수신={}, 신규={}", externals.size(), saved);
@@ -184,21 +188,60 @@ public class PerformanceSyncService {
                 .build();
     }
 
+    /** 신규 수집. 오늘(또는 시작일, 더 늦은 쪽)부터 종료일까지 한 번에 다 만든다. */
     private void createSchedules(Performance performance, ExternalPerformance external) {
+        LocalDate from = laterOf(performance.getStartDate(), LocalDate.now());
+        generateSchedulesFrom(performance, external, from);
+    }
+
+    /**
+     * 이미 있는 공연의 회차를 채운다. 첫 수집 때 종료일까지 다 만들어 두므로 보통은 할 일이
+     * 없지만, 그 사이 원본의 공연 기간(endDate)이 늘어난 경우 마지막 회차 다음 날부터
+     * 새 종료일까지의 빈 구간만 추가한다.
+     *
+     * <p>마지막 회차 "다음 날"부터 시작해서, 이미 회차가 있는 날은 절대 다시 건드리지
+     * 않는다 — (performance_id, showAt) 유니크 제약과도, 과거/판매 중인 회차를 보존해야
+     * 한다는 규칙과도 맞는다.
+     */
+    private void topUpSchedules(Performance performance, ExternalPerformance external) {
+        LocalDate lastScheduled = performance.getSchedules().stream()
+                .map(s -> s.getShowAt().toLocalDate())
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+
+        LocalDate from = lastScheduled == null
+                ? laterOf(performance.getStartDate(), LocalDate.now())
+                : laterOf(lastScheduled.plusDays(1), LocalDate.now());
+
+        if (from.isAfter(performance.getEndDate())) {
+            return;
+        }
+        generateSchedulesFrom(performance, external, from);
+    }
+
+    private static LocalDate laterOf(LocalDate a, LocalDate b) {
+        return a.isAfter(b) ? a : b;
+    }
+
+    private void generateSchedulesFrom(Performance performance, ExternalPerformance external, LocalDate from) {
         Map<DayOfWeek, List<LocalTime>> showTimesByDay = external.getShowTimesByDay();
         int totalSeats = performance.getTotalSeatCount() == null ? 200 : performance.getTotalSeatCount();
 
         int created = (showTimesByDay == null || showTimesByDay.isEmpty())
-                ? createDefaultSchedules(performance, totalSeats)
-                : createGuidedSchedules(performance, showTimesByDay, totalSeats);
+                ? createDefaultSchedules(performance, from, totalSeats)
+                : createGuidedSchedules(performance, showTimesByDay, from, totalSeats);
 
+        if (created == 0 && showTimesByDay != null && !showTimesByDay.isEmpty()) {
+            // dtguidance 가 있었지만 남은 기간에 매칭되는 요일이 하나도 없는 경우 등 (안전망)
+            created = createDefaultSchedules(performance, from, totalSeats);
+        }
         if (created == 0) {
-            // dtguidance 가 있었지만 해당 기간에 매칭되는 요일이 하나도 없는 경우 등 (안전망)
-            createDefaultSchedules(performance, totalSeats);
+            return;
         }
 
         performanceRepository.flush();
 
+        // 이미 좌석이 생성된 회차는 SeatGenerator 내부에서 건너뛴다 — 여기서는 새/기존을 가리지 않는다.
         for (PerformanceSchedule schedule : performance.getSchedules()) {
             seatGenerator.generate(schedule.getId(), performance.getVenueHallId(), performance.getVenue(),
                     performance.getTotalSeatCount(), performance.getBasePrice(), external.getPricesByGrade());
@@ -206,17 +249,17 @@ public class PerformanceSyncService {
     }
 
     /**
-     * 원본에 회차 개념이 없을 때 쓰는 대체 규칙: 공연 기간 내 최대 8일, 하루 한 회차.
+     * 원본에 회차 개념이 없을 때 쓰는 대체 규칙: from 부터 종료일까지 하루 한 회차.
      *
      * 시각은 KOPIS 시간대별 상연 통계의 실측 분포를 따른다(showtime-distribution.yml).
      * 설정이 없으면 예전 규칙인 19:00 고정으로 떨어진다.
      */
-    private int createDefaultSchedules(Performance performance, int totalSeats) {
-        LocalDate cursor = performance.getStartDate();
+    private int createDefaultSchedules(Performance performance, LocalDate from, int totalSeats) {
+        LocalDate cursor = from;
         LocalDate end = performance.getEndDate();
         int created = 0;
 
-        while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
+        while (!cursor.isAfter(end)) {
             addSchedule(performance, LocalDateTime.of(cursor, resolveShowTime(performance, cursor)), totalSeats);
             created++;
             cursor = cursor.plusDays(1);
@@ -236,16 +279,15 @@ public class PerformanceSyncService {
 
     /** KOPIS dtguidance 파싱 결과(요일별 실제 공연시간)로 회차를 만든다. 하루에 여러 회차(마티네/저녁)도 반영. */
     private int createGuidedSchedules(Performance performance, Map<DayOfWeek, List<LocalTime>> showTimesByDay,
-                                       int totalSeats) {
-        LocalDate cursor = performance.getStartDate();
+                                       LocalDate from, int totalSeats) {
+        LocalDate cursor = from;
         LocalDate end = performance.getEndDate();
         int created = 0;
 
-        while (!cursor.isAfter(end) && created < MAX_SCHEDULES) {
+        while (!cursor.isAfter(end)) {
             List<LocalTime> times = showTimesByDay.get(cursor.getDayOfWeek());
             if (times != null) {
                 for (LocalTime time : times) {
-                    if (created >= MAX_SCHEDULES) break;
                     addSchedule(performance, LocalDateTime.of(cursor, time), totalSeats);
                     created++;
                 }
