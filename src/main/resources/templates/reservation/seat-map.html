@@ -136,6 +136,8 @@
     </div>
 </div>
 
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+
 <script th:inline="javascript">
     const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
@@ -841,8 +843,16 @@
         bookBtn.disabled = false;
     }
 
+    /* 선택 상태는 클래스(눈으로 보는 것)와 aria-pressed(스크린리더가 읽는 것)를 항상 같이
+       바꾼다. 한쪽만 바꾸면 화면은 골라졌는데 읽히기는 안 골라진 것으로 나온다.
+       좌석을 켜고 끄는 곳이 네 군데(클릭·인원수 축소·선점 실패·로그인 후 복원)라 함수로 묶었다. */
+    function setSelected(seat, on) {
+        seat.classList.toggle('selected', on);
+        seat.setAttribute('aria-pressed', String(on));
+    }
+
     function deselect(seat) {
-        seat.classList.remove('selected');
+        setSelected(seat, false);
         selectedSeats = selectedSeats.filter(s => s !== seat);
     }
 
@@ -862,10 +872,12 @@
                 return;
             }
             if (selectedSeats.length >= partySize()) {
-                alert(`인원수(${partySize()}명)만큼만 좌석을 선택할 수 있습니다.`);
+                // 인원수를 1명으로 둔 채 두 번째 좌석을 누르는 건 흔한 실수라 자주 뜬다.
+                // 좌석을 고르는 도중에 브라우저 모달이 뜨면 그때마다 흐름이 끊긴다.
+                window.__toast(`인원수(${partySize()}명)만큼만 좌석을 선택할 수 있습니다.`);
                 return;
             }
-            seat.classList.add('selected');
+            setSelected(seat, true);
             selectedSeats.push(seat);
             renderPicked();
         });
@@ -898,6 +910,9 @@
             s.dataset.status = 'HELD';
             s.disabled = true;
             s.classList.remove('selected');
+            // 이제 누를 수 없는 좌석이라 "눌린 상태" 개념이 없어진다 — 템플릿이 예매 가능한
+            // 좌석에만 aria-pressed 를 주는 것과 같은 규칙으로 속성 자체를 뗀다.
+            s.removeAttribute('aria-pressed');
         });
         selectedSeats = selectedSeats.filter(s => !failedIds.has(Number(s.dataset.seatId)));
     }
@@ -923,12 +938,14 @@
                 // 결제 페이지로. 여기서 토스페이먼츠 결제창을 띄운다.
                 location.href = `/reservations/${result.data.reservationNo}/payment`;
             } else {
-                alert(result.data.message);
+                // 실패는 놓치면 안 되므로 기본(2.2초)보다 길게 둔다. 어느 좌석이 막혔는지는
+                // markFailedSeats 가 좌석도에 그대로 표시하므로 문구가 사라져도 상태는 남는다.
+                window.__toast(result.data.message, 4000);
                 markFailedSeats(result.data.failedSeatIds);
                 renderPicked();
             }
         } catch (e) {
-            alert('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.', 4000);
         } finally {
             bookBtn.textContent = '예매하기';
             bookBtn.disabled = selectedSeats.length === 0;
@@ -949,7 +966,7 @@
         pending.seatIds.forEach(seatId => {
             const seat = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
             if (seat && seat.dataset.status === 'AVAILABLE') {
-                seat.classList.add('selected');
+                setSelected(seat, true);
                 selectedSeats.push(seat);
             }
         });
@@ -965,7 +982,7 @@
             return;
         }
         if (!result.authRequired) {
-            alert(result.data.message);
+            window.__toast(result.data.message, 4000);
             markFailedSeats(result.data.failedSeatIds);
         }
         renderPicked();

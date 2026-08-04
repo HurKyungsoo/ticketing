@@ -18,6 +18,23 @@
             <div class="row" th:each="row : ${floor.rows}"
                  th:style="'--n:' + ${row.seats.size()}">
                 <span class="rowlabel" th:text="${row.rowNo}">1</span>
+            <!--
+                좌석 버튼은 내용이 비어 있어서(색만으로 등급을 나타낸다) 접근 가능한 이름을
+                속성으로 줘야 한다. 종전엔 title 이었는데 두 가지가 걸렸다.
+
+                ① title 은 접근 가능한 이름 계산에서 최후 수단이라 스크린리더·설정에 따라
+                   안 읽힐 수 있다. aria-label 은 그보다 우선순위가 높아 확실하다.
+                ② title 이 있으면 브라우저 기본 툴팁이 뜨는데, 이 좌석에는 이미
+                   data-tooltip 으로 그리는 커스텀 툴팁(::after)이 있다. 호버하면 커스텀
+                   툴팁이 먼저 뜨고 1초쯤 뒤 기본 툴팁이 그 위에 또 떠서 두 개가 겹쳤다.
+
+                aria-label 로 바꾸면 둘 다 해결되고, 같은 문구를 옮기는 것뿐이라 HTML
+                크기도 그대로다(좌석 3,000개짜리 홀이라 이게 중요하다).
+
+                aria-pressed 는 예매 가능한 좌석에만 준다 — 판매 완료·결제 대기 좌석은
+                disabled 라 누를 수 없으니 "눌린 상태"라는 개념 자체가 없다. 값은 JS 가
+                선택할 때마다 갱신한다(안 하면 화면은 바뀌는데 스크린리더는 모른다).
+            -->
                 <button type="button" class="seat"
                         th:each="seat, seatStat : ${row.seats}"
                         th:style="'--i:' + ${seatStat.index}"
@@ -27,9 +44,10 @@
                                  data-label=${seat.label},
                                  data-price=${seat.price},
                                  data-grade=${seat.grade},
-                                 data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'"
-                        th:disabled="${seat.status != 'AVAILABLE'}"
-                        th:title="|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|">
+                                 data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원',
+                                 aria-label=|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|,
+                                 aria-pressed=${seat.status == 'AVAILABLE'} ? 'false' : null"
+                        th:disabled="${seat.status != 'AVAILABLE'}">
                 </button>
             </div>
         </div>

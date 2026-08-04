@@ -213,21 +213,11 @@
     </div>
 </div>
 
-<!-- 짧은 안내. 공유·찜 결과를 alert 로 띄우면 확인을 눌러야 해서, 알려주자고 흐름을 끊는 꼴이 된다. -->
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
 
 <script>
 (function () {
-    var toastEl = document.getElementById('toast');
-    var toastTimer;
-
-    function toast(message) {
-        toastEl.textContent = message;
-        toastEl.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
-    }
-    window.__toast = toast;
+    var toast = window.__toast;
 
     var shareBtn = document.getElementById('shareBtn');
     if (!shareBtn) return;

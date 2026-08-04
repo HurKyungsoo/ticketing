@@ -2074,6 +2074,13 @@ body.page-detail .pf-wish[aria-pressed="true"] {
   transition: opacity .16s ease, transform .16s ease;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+/*
+   좌석 선택 화면에는 화면 아래에 고정된 예매 바가 있다. 기본 위치(bottom: 32px)로 두면
+   토스트가 가격표와 「예매하기」 위에 겹친다(z-index 60 이라 가려지진 않지만, 마침
+   그때 눌러야 하는 버튼을 덮는다). 미니맵과 같은 방식으로 바 높이(--footer-h, JS 가 실측)
+   만큼 띄운다.
+*/
+body.page-seatmap .toast { bottom: calc(var(--footer-h, 150px) + 20px); }
 
 /* 움직임을 줄이도록 설정한 사용자에게는 위치 이동 없이 밝기만 바꾼다. */
 @media (prefers-reduced-motion: reduce) {

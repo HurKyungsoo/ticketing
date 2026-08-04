@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<!--
+    짧은 안내. alert 는 확인을 눌러야 사라져서, 알려주자고 흐름을 끊는 꼴이 된다.
+
+    공연 상세에만 인라인으로 있던 것을 조각으로 뺐다 — 좌석 선택 화면이 같은 안내를
+    alert 로 띄우고 있었는데, 거기가 alert 이 가장 나쁜 자리다(좌석 고르는 도중에
+    브라우저 모달이 뜬다). 두 화면이 같은 구현을 쓰게 한다.
+
+    role="status" + aria-live="polite" 라 스크린리더도 흐름을 끊지 않고 읽어준다.
+-->
+<th:block th:fragment="toast">
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+    (function () {
+        var toastEl = document.getElementById('toast');
+        var toastTimer;
+
+        /**
+         * @param message 보여줄 문구
+         * @param ms      유지 시간(기본 2200). 실패 안내는 사용자가 놓치면 안 되므로
+         *                호출부에서 더 길게 준다 — alert 과 달리 자동으로 사라지기 때문에
+         *                "성공했다" 와 "실패했다" 를 같은 시간 두면 실패 쪽이 짧게 느껴진다.
+         */
+        function toast(message, ms) {
+            toastEl.textContent = message;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                toastEl.classList.remove('show');
+            }, ms || 2200);
+        }
+        window.__toast = toast;
+    })();
+    </script>
+</th:block>
+</body>
+</html>
