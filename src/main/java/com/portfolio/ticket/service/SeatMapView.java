@@ -60,9 +60,13 @@ public class SeatMapView {
      * @param name     구역 이름("1층 A", "합창석"). 좌석도가 없는 기본 생성 홀도 A/B/C 로
      *                 갈리므로 실질적으로 항상 값이 있다 — 이미 생성된 옛 데이터에만 빈
      *                 문자열이 남아 있을 수 있다.
-     * @param anchorId 구역 바로가기 링크용 id. 구역 이름에 한글·숫자가 섞여 그대로는 못 쓴다.
+     * @param anchorId  구역 바로가기 링크용 id. 구역 이름에 한글·숫자가 섞여 그대로는 못 쓴다.
+     * @param shortName 층 이름을 뗀 구역 이름("1층 A" → "A"). 층 이름은 밴드 머릿글이 한 번만
+     *                  쓰므로, 구역마다 "1층" 을 되풀이하면 같은 정보가 다섯 번 반복된다.
+     *                  뗄 게 없으면(구역명이 곧 층 이름) 빈 문자열이고, 그때 화면은 구역
+     *                  이름을 아예 안 그린다 — 머릿글과 똑같은 글자가 두 번 나오게 된다.
      */
-    public record Floor(String name, String anchorId, List<Row> rows,
+    public record Floor(String name, String anchorId, String shortName, List<Row> rows,
                         int seatCount, int availableCount) {}
 
     /**
@@ -96,6 +100,23 @@ public class SeatMapView {
         public String anchorId() {
             List<Floor> floors = floors();
             return floors.isEmpty() ? "" : floors.get(0).anchorId();
+        }
+
+        /**
+         * 층 머릿글 자체의 id. 층 바로가기는 여기로 보낸다 — 첫 구역({@link #anchorId()})으로
+         * 보내면 머릿글을 지나쳐 멈춰서, 방금 누른 층 이름이 화면 위로 밀려나 안 보인다.
+         */
+        public String headerAnchorId() {
+            String first = anchorId();
+            return first.isEmpty() ? "" : first + "-head";
+        }
+
+        /**
+         * 층 바로가기가 실제로 걸 목적지. 머릿글은 층 이름({@code tier})을 얻은 밴드에만
+         * 그리므로, 못 얻은 밴드는 머릿글이 없어 첫 구역으로 보내야 한다(종전 동작).
+         */
+        public String jumpTargetId() {
+            return name.isBlank() ? anchorId() : headerAnchorId();
         }
 
         /**
@@ -208,7 +229,7 @@ public class SeatMapView {
             bands.get(position)
                     .computeIfAbsent(tier, k -> new TreeMap<>())
                     .computeIfAbsent(column, k -> new ArrayList<>())
-                    .add(floorOf(name, "floor-" + index++, bySection.get(name), position));
+                    .add(floorOf(name, "floor-" + index++, tier, bySection.get(name), position));
         }
 
         return new Arena(bandsOf(bands.get(SectionPosition.REAR)), bandsOf(bands.get(SectionPosition.FRONT)));
@@ -221,7 +242,7 @@ public class SeatMapView {
                 .toList();
     }
 
-    private Floor floorOf(String name, String anchorId,
+    private Floor floorOf(String name, String anchorId, String tier,
                           Map<Integer, List<SeatMapRow>> rowsByNo, SectionPosition position) {
         List<Row> rows = new ArrayList<>(rowsByNo.size());
         rowsByNo.forEach((rowNo, seats) -> rows.add(new Row(rowNo, seats)));
@@ -235,7 +256,23 @@ public class SeatMapView {
             rows.sort(Comparator.comparingInt(Row::rowNo).reversed());
         }
 
-        return new Floor(name, anchorId, List.copyOf(rows), seatCountOf(rows), availableCountOf(rows));
+        return new Floor(name, anchorId, shortNameOf(name, tier),
+                List.copyOf(rows), seatCountOf(rows), availableCountOf(rows));
+    }
+
+    /**
+     * 구역 이름에서 층 이름을 뗀다("1층 A" + tier "1층" → "A"). 층은 밴드 머릿글이 한 번만
+     * 쓰므로 구역마다 되풀이할 필요가 없다.
+     *
+     * <p>뗀 결과가 비면 빈 문자열을 준다 — 구역 이름이 곧 층 이름인 경우(열이 하나뿐인 밴드)라
+     * 화면에 또 그리면 머릿글과 같은 글자가 두 번 나온다. tier 를 못 얻은 홀은 접두사가 없으니
+     * 이름을 그대로 쓴다(그 홀은 밴드 머릿글도 첫 구역 이름을 쓰므로 중복되지 않는다).
+     */
+    private static String shortNameOf(String name, String tier) {
+        if (tier == null || tier.isBlank() || !name.startsWith(tier)) {
+            return name;
+        }
+        return name.substring(tier.length()).trim();
     }
 
     private static int seatCountOf(List<Row> rows) {

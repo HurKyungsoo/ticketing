@@ -6,8 +6,14 @@
     무대 기준 위치마다 같은 마크업을 써야 해서 조각으로 뺐다.
 -->
 <th:block th:fragment="floors(floors)">
-    <section class="floor" th:each="floor : ${floors}" th:id="${floor.anchorId}">
-        <h2 class="floorname" th:if="${!floor.name.isEmpty()}" th:text="${floor.name}">1층</h2>
+    <!-- data-name 은 층까지 붙은 전체 이름("1층 C")이다. 화면에 그리는 이름(.floorname)은
+         층을 뗀 "C" 뿐이라, 미니맵 블록의 title 처럼 층 맥락이 필요한 곳이 따로 읽어간다. -->
+    <section class="floor" th:each="floor : ${floors}" th:id="${floor.anchorId}"
+             th:attr="data-name=${floor.name}">
+        <!-- 층 이름은 밴드 머릿글(.bandname)이 한 번만 쓴다. 여기는 층을 뗀 나머지("A")만.
+             뗄 게 없으면(구역명이 곧 층 이름) 빈 문자열이라 아예 안 그린다 — 그리면 바로
+             위 머릿글과 같은 글자가 두 번 나온다. -->
+        <h3 class="floorname" th:if="${!floor.shortName.isEmpty()}" th:text="${floor.shortName}">A</h3>
         <div class="house">
             <!--
                 --n(줄 좌석 수) 과 --i(줄 안에서 몇 번째) 로 좌석마다 호(arc) 곡선의 y 오프셋을

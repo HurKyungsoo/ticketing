@@ -35,7 +35,7 @@
         구역 이름 아래에서 확인하면 된다.
     -->
     <nav class="floornav" th:if="${arena.bands().size() > 1}">
-        <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.anchorId}">
+        <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.jumpTargetId()}">
             <span th:text="${band.displayName()}">1층</span>
             <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
         </a>
@@ -50,21 +50,45 @@
       <!-- 핀치 중에는 이 래퍼만 transform 으로 확대해 보여준다(레이아웃 없이 합성만 하므로 부드럽다).
            손을 떼는 순간 실제 좌석 크기로 확정하고 transform 을 지운다. -->
       <div id="housecontent">
-        <!-- 무대 뒤 밴드. 무대보다 위에 와야 무대 뒤 좌석으로 읽힌다. -->
-        <div class="zoneline zoneline-rear" th:each="band : ${arena.rear}">
-            <div class="zone" th:each="column : ${band.columns}">
-                <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
+        <!--
+            층 머릿글. 종전에는 층 경계를 알려주는 게 구역 이름 텍스트뿐이었는데, 층 사이
+            간격(44px)이 같은 열 안 구역 사이 간격(44px)과 똑같아서 "층이 바뀌었다"와
+            "옆 구역으로 넘어갔다"가 같은 무게로 읽혔다. 실제로 2층→3층 경계가 구별된 건
+            마침 등급색이 달라서였고, 인접한 두 층이 같은 등급이면 경계가 사라진다.
+
+            층 이름을 구역마다 되풀이하는 대신(콘서트홀 1층은 "1층" 이 다섯 번 나왔다)
+            여기서 한 번만 크게 쓰고, 구역은 알파벳만 남긴다(Floor.shortName).
+
+            층 이름을 못 얻은 밴드(구역명이 "1층 A" 꼴이 아닌 홀)는 머릿글을 안 그린다 —
+            그 경우 Band.displayName() 이 첫 구역 이름을 쓰므로 구역 이름과 겹친다.
+        -->
+        <th:block th:each="band : ${arena.rear}">
+            <h2 class="bandname" th:if="${!band.name.isEmpty()}" th:id="${band.headerAnchorId()}">
+                <span th:text="${band.displayName()}">합창석</span>
+                <em>잔여 <b th:text="${#numbers.formatInteger(band.availableCount(),0,'COMMA')}">274</b></em>
+            </h2>
+            <!-- 무대 뒤 밴드. 무대보다 위에 와야 무대 뒤 좌석으로 읽힌다. -->
+            <div class="zoneline zoneline-rear">
+                <div class="zone" th:each="column : ${band.columns}">
+                    <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
+                </div>
             </div>
-        </div>
+        </th:block>
 
         <div class="stage">STAGE</div>
 
         <!-- 정면 밴드. 층마다 한 줄이고, 한 층이 A~E 로 갈리면 그 줄에 열이 다섯 개 생긴다. -->
-        <div class="zoneline" th:each="band : ${arena.front}">
-            <div class="zone" th:each="column : ${band.columns}">
-                <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
+        <th:block th:each="band : ${arena.front}">
+            <h2 class="bandname" th:if="${!band.name.isEmpty()}" th:id="${band.headerAnchorId()}">
+                <span th:text="${band.displayName()}">1층</span>
+                <em>잔여 <b th:text="${#numbers.formatInteger(band.availableCount(),0,'COMMA')}">1,226</b></em>
+            </h2>
+            <div class="zoneline">
+                <div class="zone" th:each="column : ${band.columns}">
+                    <th:block th:replace="~{fragment/seatzone :: floors(${column})}"></th:block>
+                </div>
             </div>
-        </div>
+        </th:block>
       </div>
     </div>
 
@@ -449,7 +473,9 @@
         scroller.querySelectorAll('.floor').forEach(floor => {
             const house = floor.querySelector('.house');
             if (!house) return;
-            const name = (floor.querySelector('.floorname')?.textContent || '').trim();
+            // 화면의 .floorname 은 층을 뗀 "C" 뿐이라 그대로 쓰면 미니맵 title 에서 층이
+            // 사라진다("1층 C" → "C"). 전체 이름은 .floor[data-name] 이 들고 있다.
+            const name = (floor.dataset.name || '').trim();
             place(house, 'minimap-zone grade-' + gradeOf(floor), name);
         });
         const stage = scroller.querySelector('.stage');
