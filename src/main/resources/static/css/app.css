@@ -2129,6 +2129,64 @@ body.page-detail .pf-actions button {
 body.page-detail .pf-actions button:hover { border-color: var(--paper); color: var(--paper); }
 body.page-detail .pf-actions button svg { flex: none; }
 
+/* ---- 공유 시트 ----
+   "공유하기" 를 누르면 뜨는 채널 선택 창(카카오톡 / 링크복사). 배경을 눌러도 뒤 화면을
+   조작 못 하게 막는 게 맞는 화면이라 팝오버가 아니라 전체 화면 dialog 로 뒀다.
+   기존 .fp-backdrop(모바일 필터 패널)과 같은 opacity/pointer-events 전환 방식이라
+   숨김에 display:none 대신 이 방식을 쓴다 — 열고 닫을 때 애니메이션이 붙는다. */
+body.page-detail .sharesheet-backdrop {
+  position: fixed; inset: 0; z-index: 70;
+  background: rgba(0, 0, 0, .55);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease;
+}
+body.page-detail .sharesheet-backdrop.open { opacity: 1; pointer-events: auto; }
+
+body.page-detail .sharesheet {
+  position: fixed; top: 50%; left: 50%; z-index: 71;
+  width: min(320px, calc(100vw - 40px));
+  transform: translate(-50%, -50%) scale(.96);
+  background: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+body.page-detail .sharesheet.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+
+body.page-detail .sharesheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+body.page-detail .sharesheet-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--paper); }
+body.page-detail .sharesheet-close {
+  display: flex; padding: 4px;
+  background: none; border: none; color: var(--mute);
+  cursor: pointer; transition: color .12s;
+}
+body.page-detail .sharesheet-close:hover { color: var(--paper); }
+
+body.page-detail .sharesheet-options { display: flex; gap: 28px; justify-content: center; }
+body.page-detail .sharesheet-option {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--paper);
+}
+body.page-detail .sharesheet-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s;
+}
+body.page-detail .sharesheet-option:hover .sharesheet-icon { transform: scale(1.06); }
+/* 카카오 브랜드 색(로그인 화면 .oauthbtn-kakao 와 같은 값). 링크복사는 브랜드가 없으니
+   이 화면의 중립 표면색(--ink-raised)에 테두리만 준다. */
+body.page-detail .sharesheet-icon-kakao { background: #FEE500; }
+body.page-detail .sharesheet-icon-link {
+  background: var(--ink-raised); border: 1px solid var(--line-strong); color: var(--paper);
+}
+
 /* 찜한 상태. 눌렸다는 걸 색 하나로만 알리면 색각 이상에서 구분이 안 되므로
    하트를 속이 빈 것에서 채운 것으로 바꾸고(아이콘 모양) 글자도 함께 바꾼다. */
 body.page-detail .pf-wish[aria-pressed="true"] {
