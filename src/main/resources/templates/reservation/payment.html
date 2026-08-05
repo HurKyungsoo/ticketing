@@ -9,76 +9,111 @@
     <script src="https://js.tosspayments.com/v2/standard"></script>
 </head>
 <body class="page-payment">
-<div class="wrap authwrap">
+<div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='결제', showAuthNav=false)}"></header>
 
-    <!--
-        선점 만료 타이머. 이 화면에서 가장 중요한 정보다 — 종전에는 남은 시간을 어디에도
-        보여주지 않아서, 카드 정보를 입력하는 도중 선점이 풀려도 아무 예고가 없었다.
-        남은 초는 서버가 계산해 넘긴다(PaymentController 주석 참고).
-    -->
-    <div class="paytimer" th:if="${payable}" id="payTimer" th:attr="data-remaining=${remainingSeconds}">
-        <span class="pt-label">결제 남은 시간</span>
-        <strong class="pt-clock" id="payClock">--:--</strong>
-        <span class="pt-note">시간이 지나면 좌석 선점이 해제됩니다.</span>
+    <!-- 지금 어느 단계인지. 결제는 좌석 선택 → 결제 → 완료 세 화면을 거치는데 종전엔
+         이 화면만 봐서는 그중 어디인지 알 길이 없었다. 이미 결제까지 끝난 예매
+         (마이페이지에서 다시 이 URL로 들어온 경우)는 완료를 현재 단계로 짚는다. -->
+    <ol class="paysteps" th:with="done=${reservation.status.name() == 'CONFIRMED'}">
+        <li class="ps-done">좌석 선택</li>
+        <li th:classappend="${done} ? 'ps-done' : 'ps-current'"
+            th:attr="aria-current=${done} ? null : 'step'">결제</li>
+        <li th:classappend="${done} ? 'ps-current'"
+            th:attr="aria-current=${done} ? 'step' : null">완료</li>
+    </ol>
+
+    <div class="paylayout">
+        <!-- 주문 정보. 뭘 얼마에 사는지 — 결제 전 마지막으로 확인하는 자리라 포스터로
+             한눈에 알아보게 하고, 좌석이 여러 장이면 한 장씩 가격을 보여준다. -->
+        <div class="payinfo">
+            <div class="orderhead">
+                <div class="poster" th:classappend="${performance.posterUrl == null} ? ' no-img'">
+                    <img th:if="${performance.posterUrl != null}"
+                         th:src="@{/img/poster(u=${performance.posterUrl})}" th:alt="${performance.title}">
+                    <div class="posterfallback">
+                        <span class="pf-initial" th:text="${#strings.substring(performance.title, 0, 1)}">공</span>
+                    </div>
+                </div>
+                <div class="orderhead-text">
+                    <h2 class="paytitle" th:text="${performance.title}">공연명</h2>
+                    <dl class="payspec">
+                        <div>
+                            <dt>일시</dt>
+                            <dd th:text="${#temporals.format(schedule.showAt, 'yyyy.M.d(E) HH:mm')}">2026.8.28(금) 11:00</dd>
+                        </div>
+                        <div>
+                            <dt>공연장</dt>
+                            <dd th:text="${performance.venue}">공연장</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+
+            <h3 class="detail-heading">좌석</h3>
+            <!-- 좌석이 살아 있으면(정상 결제 흐름) 장당 등급·가격을 보여준다. 만료·취소된
+                 예매는 Seat.release() 가 연결을 끊어 좌석이 0개이므로, 그때는 예매 시점
+                 스냅샷(seatSummary) 한 줄로 대체한다 — 상세 없이도 뭘 예매했었는지는 남는다. -->
+            <ul class="payseats" th:if="${!seats.isEmpty()}">
+                <li th:each="seat : ${seats}">
+                    <span class="ps-seat" th:text="${seat.seatLabel()}">1층 1열 1번</span>
+                    <span class="ps-grade" th:text="${seat.grade}">VIP</span>
+                    <span class="ps-price" th:text="${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'">180,000원</span>
+                </li>
+            </ul>
+            <p class="payseats-fallback" th:if="${seats.isEmpty()}" th:text="${reservation.seatSummary}">1층 1열 1번 VIP</p>
+
+            <h3 class="detail-heading refund-heading">취소 · 환불 규정</h3>
+            <ul class="refundpolicy">
+                <li th:each="t : ${T(com.portfolio.ticket.domain.Reservation).REFUND_TIERS}">
+                    <span class="rp-when" th:text="'관람일 ' + ${t.minDaysBefore()} + '일 전까지'">관람일 10일 전까지</span>
+                    <span class="rp-fee" th:text="${t.feeRate() == 0} ? '수수료 없음' : '수수료 ' + ${t.feeRate()} + '%'">수수료 없음</span>
+                </li>
+                <li class="rp-deny">
+                    <span class="rp-when">관람일 당일</span>
+                    <span class="rp-fee">취소 불가</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 결제 패널. 남은 시간 · 총액 · 결제 버튼처럼 끝까지 눈에 있어야 하는 것만
+             모아 sticky 로 고정한다 — 환불 규정을 읽으러 내려가도 타이머와 버튼이
+             화면 밖으로 밀리지 않는다. -->
+        <aside class="paypanel">
+            <div class="paytimer" th:if="${payable}" id="payTimer" th:attr="data-remaining=${remainingSeconds}">
+                <span class="pt-label">결제 남은 시간</span>
+                <strong class="pt-clock" id="payClock">--:--</strong>
+                <span class="pt-note">시간이 지나면 좌석 선점이 해제됩니다.</span>
+            </div>
+
+            <div class="paytimer paytimer--dead" th:unless="${payable}">
+                <span class="pt-label">결제 불가</span>
+                <strong class="pt-clock" th:switch="${reservation.status.name()}">
+                    <th:block th:case="'CONFIRMED'">결제 완료</th:block>
+                    <th:block th:case="'CANCELED'">취소된 예매</th:block>
+                    <th:block th:case="*">선점 만료</th:block>
+                </strong>
+                <span class="pt-note" th:switch="${reservation.status.name()}">
+                    <th:block th:case="'CONFIRMED'">이미 결제가 완료된 예매입니다.</th:block>
+                    <th:block th:case="'CANCELED'">취소된 예매는 결제할 수 없습니다.</th:block>
+                    <th:block th:case="*">좌석 선점 시간이 지나 결제할 수 없습니다. 좌석을 다시 선택해 주세요.</th:block>
+                </span>
+            </div>
+
+            <dl class="paytotal">
+                <div>
+                    <dt>총 결제금액</dt>
+                    <dd th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">180,000원</dd>
+                </div>
+            </dl>
+
+            <button type="button" id="payBtn" class="paybtn" th:if="${payable}">카드로 결제하기</button>
+            <a class="paybtn paybtn--ghost" th:unless="${payable}" th:href="@{/mypage/reservations}">예매 내역으로</a>
+
+            <!-- 결제 전까지는 내부 식별자일 뿐이라 총액·버튼보다 눈에 띄면 안 된다. -->
+            <p class="payno">예매번호 <span th:text="${reservation.reservationNo}">26073177684019</span></p>
+        </aside>
     </div>
-
-    <div class="paytimer paytimer--dead" th:unless="${payable}">
-        <span class="pt-label">결제 불가</span>
-        <strong class="pt-clock" th:switch="${reservation.status.name()}">
-            <th:block th:case="'CONFIRMED'">결제 완료</th:block>
-            <th:block th:case="'CANCELED'">취소된 예매</th:block>
-            <th:block th:case="*">선점 만료</th:block>
-        </strong>
-        <span class="pt-note" th:switch="${reservation.status.name()}">
-            <th:block th:case="'CONFIRMED'">이미 결제가 완료된 예매입니다.</th:block>
-            <th:block th:case="'CANCELED'">취소된 예매는 결제할 수 없습니다.</th:block>
-            <th:block th:case="*">좌석 선점 시간이 지나 결제할 수 없습니다. 좌석을 다시 선택해 주세요.</th:block>
-        </span>
-    </div>
-
-    <h2 class="paytitle" th:text="${performance.title}">공연명</h2>
-
-    <dl class="payspec">
-        <div>
-            <dt>일시</dt>
-            <dd th:text="${#temporals.format(schedule.showAt, 'yyyy.M.d(E) HH:mm')}">2026.8.28(금) 11:00</dd>
-        </div>
-        <div>
-            <dt>공연장</dt>
-            <dd th:text="${performance.venue}">공연장</dd>
-        </div>
-        <div>
-            <!-- 좌석 표기는 스냅샷을 쓴다. 만료되면 좌석 연결이 끊겨 실제 좌석에서 못 읽는다. -->
-            <dt>좌석</dt>
-            <dd th:text="${reservation.seatSummary}">1층 A 1열 1번 VIP</dd>
-        </div>
-        <div>
-            <dt>예매번호</dt>
-            <dd class="payspec-no" th:text="${reservation.reservationNo}">26073177684019</dd>
-        </div>
-        <div class="payspec-total">
-            <dt>결제금액</dt>
-            <dd th:text="${#numbers.formatInteger(reservation.amount,0,'COMMA')} + '원'">180,000원</dd>
-        </div>
-    </dl>
-
-    <button type="button" id="payBtn" class="paybtn" th:if="${payable}">카드로 결제하기</button>
-    <a class="paybtn paybtn--ghost" th:unless="${payable}" th:href="@{/mypage/reservations}">예매 내역으로</a>
-
-    <!-- 상세 화면과 같은 목록(Reservation.REFUND_TIERS)을 읽는다. 결제 직전에 한 번 더
-         보여줘야 하는 정보라 여기에도 둔다. -->
-    <h3 class="detail-heading refund-heading">취소 · 환불 규정</h3>
-    <ul class="refundpolicy">
-        <li th:each="t : ${T(com.portfolio.ticket.domain.Reservation).REFUND_TIERS}">
-            <span class="rp-when" th:text="'관람일 ' + ${t.minDaysBefore()} + '일 전까지'">관람일 10일 전까지</span>
-            <span class="rp-fee" th:text="${t.feeRate() == 0} ? '수수료 없음' : '수수료 ' + ${t.feeRate()} + '%'">수수료 없음</span>
-        </li>
-        <li class="rp-deny">
-            <span class="rp-when">관람일 당일</span>
-            <span class="rp-fee">취소 불가</span>
-        </li>
-    </ul>
 </div>
 
 <script th:inline="javascript">

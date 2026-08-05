@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -56,6 +57,10 @@ public class PaymentController {
         model.addAttribute("schedule", reservation.getSchedule());
         model.addAttribute("performance", reservation.getSchedule().getPerformance());
         model.addAttribute("orderName", orderName(reservation));
+        // 좌석 목록 표시용. ID 순 = 생성 순이라 화면마다 순서가 흔들리지 않는다.
+        // 만료·취소된 예매는 좌석 연결이 끊겨 있으므로(화면은 seatSummary 스냅샷으로 대체) 빈 리스트다.
+        model.addAttribute("seats", reservation.getSeats().stream()
+                .sorted(Comparator.comparing(Seat::getId)).toList());
         model.addAttribute("remainingSeconds", remainingSeconds);
         model.addAttribute("payable", payable);
         model.addAttribute("tossClientKey", tossProperties.getClientKey());

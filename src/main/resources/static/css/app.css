@@ -1902,22 +1902,111 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
   /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
   body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
   body.page-detail .sd-date { width: auto; }
+
+  /* 결제 패널이 sticky 로 붙을 만큼 옆에 공간이 없다 — 주문 정보 아래로 내려서
+     보통 흐름으로 되돌린다(결제 직전 마지막 화면이라 아래로 스크롤해도 버튼을
+     놓치지 않는다는 전제는 좁은 화면에서 깨지지만, sticky 패널이 화면 폭의 절반을
+     먹는 것보다는 낫다). */
+  body.page-payment .paylayout { grid-template-columns: 1fr; gap: 32px; }
+  body.page-payment .paypanel { position: static; }
 }
 
 /* ==================================================================
    결제 화면.
 
-   종전에는 주문명 한 줄 + 버튼 하나가 전부였다. 돈이 나가는 마지막 화면인데
-   예매 정보도, 남은 시간도, 환불 규정도 없었다.
+   처음엔 주문명 한 줄 + 버튼 하나가 전부였고, 그다음엔 정보를 다 채웠지만
+   로그인 폼용 좁은 칸(.authwrap, 400px)에 밀어넣어 오히려 더 빼곡해졌다.
+   상세 화면과 같은 2단 레이아웃(주문 정보 + sticky 결제 패널)으로 바꿨다 —
+   실제 커머스 결제 화면들이 쓰는 구성이고, sticky 패널은 상세의 요약 카드에서
+   이미 검증한 패턴이다.
    ================================================================== */
+
+/* ---- 진행 단계 ---- */
+body.page-payment .paysteps {
+  display: flex; align-items: center; gap: 8px;
+  list-style: none; margin: 28px 0 32px; padding: 0;
+  font-size: 13px; color: var(--mute);
+}
+body.page-payment .paysteps li { display: flex; align-items: center; gap: 8px; }
+body.page-payment .paysteps li + li::before {
+  content: ''; width: 16px; height: 1px; background: var(--line-strong);
+}
+body.page-payment .paysteps .ps-done { color: var(--paper); }
+body.page-payment .paysteps .ps-current { color: var(--brass); font-weight: 700; }
+
+body.page-payment .paylayout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 48px;
+  align-items: start;
+}
+
+/* ---- 주문 정보 (좌측) ---- */
+body.page-payment .orderhead {
+  display: flex; gap: 20px; margin-bottom: 28px;
+}
+body.page-payment .poster {
+  flex: none; width: 96px; aspect-ratio: 3 / 4;
+  position: relative; border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--line); background: var(--ink-soft);
+}
+body.page-payment .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.page-payment .posterfallback { display: none; }
+body.page-payment .poster.no-img {
+  display: grid; place-content: center;
+  background: linear-gradient(160deg, #1B1B20 0%, #131316 100%);
+}
+body.page-payment .poster.no-img .posterfallback { display: block; }
+body.page-payment .pf-initial {
+  font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1;
+  color: var(--brass-dim); opacity: .55;
+}
+body.page-payment .orderhead-text { min-width: 0; }
 body.page-payment .paytitle {
   font-family: var(--display); font-size: 22px; font-weight: 800;
   letter-spacing: -0.02em; color: var(--paper);
-  margin: 28px 0 18px;
+  margin: 0 0 14px;
+}
+body.page-payment .payspec { margin: 0; }
+body.page-payment .payspec div {
+  display: flex; gap: 20px; align-items: baseline;
+  padding: 7px 0; font-size: 14px;
+}
+body.page-payment .payspec dt { width: 74px; flex: none; color: var(--mute); margin: 0; }
+body.page-payment .payspec dd { margin: 0; color: var(--paper); }
+
+/* 좌석 장당 내역. 결제 패널의 총액은 이 목록을 그대로 합산한 값이다(reservation.amount,
+   서버가 이미 계산해 둔 값을 다시 씀 — 화면이 따로 더하지 않는다). */
+body.page-payment .payseats {
+  list-style: none; margin: 0 0 8px; padding: 0;
+  border-top: 1px solid var(--line);
+}
+body.page-payment .payseats li {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+body.page-payment .ps-seat { color: var(--paper); }
+body.page-payment .ps-grade {
+  font-size: 12px; font-weight: 700; color: var(--brass-dim);
+  border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px;
+}
+body.page-payment .ps-price { margin-left: auto; color: var(--mute); font-variant-numeric: tabular-nums; }
+/* 좌석 연결이 끊긴 예매(만료·취소)의 대체 표기. 스냅샷 한 줄뿐이라 목록 스타일 대신
+   본문 텍스트로 조용히 보여준다. */
+body.page-payment .payseats-fallback {
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  margin: 0 0 8px; padding: 13px 0;
+  font-size: 14px; color: var(--paper);
 }
 
-/* ---- 선점 만료 타이머 ----
-   이 화면에서 가장 먼저 읽혀야 하는 정보라 본문 위, 헤더 바로 아래에 둔다. */
+/* ---- 결제 패널 (우측, sticky) ---- */
+body.page-payment .paypanel {
+  position: sticky; top: 96px;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 20px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--ink-soft);
+}
 body.page-payment .paytimer {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1951,29 +2040,25 @@ body.page-payment .paytimer--urgent .pt-clock { color: var(--rose); }
 /* 결제 불가(만료·취소·이미 결제됨). 강조를 걷어 조용한 안내로 만든다. */
 body.page-payment .paytimer--dead {
   border-color: var(--line);
-  background: var(--ink-soft);
+  background: var(--ink-raised);
 }
 body.page-payment .paytimer--dead .pt-clock { color: var(--mute); font-size: 20px; }
 
-/* ---- 예매 정보 ---- */
-body.page-payment .payspec {
-  border-top: 1px solid var(--line);
-  margin: 0 0 24px;
+body.page-payment .paytotal {
+  display: flex; margin: 0; padding: 4px 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
 }
-body.page-payment .payspec div {
-  display: flex; gap: 20px; align-items: baseline;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 14px;
+body.page-payment .paytotal div { display: flex; justify-content: space-between; align-items: baseline; width: 100%; padding: 8px 0; }
+body.page-payment .paytotal dt { font-size: 14px; color: var(--mute); margin: 0; }
+body.page-payment .paytotal dd {
+  font-family: var(--display); font-size: 22px; font-weight: 800;
+  color: var(--brass); margin: 0;
 }
-body.page-payment .payspec dt { width: 74px; flex: none; color: var(--mute); margin: 0; }
-body.page-payment .payspec dd { margin: 0; color: var(--paper); }
-/* 예매번호는 자릿수를 세게 되는 값이라 고정폭으로. */
-body.page-payment .payspec-no { font-variant-numeric: tabular-nums; color: var(--mute); }
-/* 결제금액은 이 목록에서 유일하게 크게 읽혀야 하는 값이다. */
-body.page-payment .payspec-total dd {
-  font-family: var(--display); font-size: 20px; font-weight: 800;
-  color: var(--brass);
+
+/* 결제 전까지는 내부 식별자일 뿐이라 총액·버튼보다 눈에 띄면 안 된다. */
+body.page-payment .payno {
+  margin: 0; text-align: center;
+  font-size: 12px; color: var(--mute); font-variant-numeric: tabular-nums;
 }
 
 /* ==================================================================
