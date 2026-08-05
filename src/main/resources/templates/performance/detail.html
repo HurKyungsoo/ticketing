@@ -58,6 +58,37 @@
                      고르는 것이지 가장 빠른 회차가 기본값이 아니기 때문이다. -->
                 <a class="sc-cta" th:if="${summary.nextSchedule() != null}" href="#schedule-pick">회차 선택하기</a>
             </div>
+
+            <!-- 이 공연에 대한 액션 줄. 예매(회차 선택)와 달리 결정을 미루거나 남에게 넘기는
+                 동작들이라 예매 CTA 아래, 포스터 칸 맨 밑에 둔다. -->
+            <div class="pf-actions">
+                <!--
+                    찜. aria-pressed 로 눌림 상태를 나타내고 화면 표시도 그 속성에 물려 둔다 —
+                    상태를 클래스와 속성 두 곳에 두면 한쪽만 갱신되는 순간 보이는 것과
+                    읽히는 것이 갈린다.
+                -->
+                <button type="button" class="pf-wish" id="wishBtn"
+                        th:attr="data-performance-id=${performance.id}, aria-pressed=${wishlisted}">
+                    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
+                              fill="currentColor" class="wish-fill"/>
+                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
+                              fill="none" stroke="currentColor" stroke-width="1.4" class="wish-outline"/>
+                    </svg>
+                    <span class="wish-label" th:text="${wishlisted} ? '찜함' : '찜하기'">찜하기</span>
+                </button>
+
+                <!-- 공유 주소는 SEO 의 canonical 을 그대로 쓴다. 화면에서 주소를 다시 조립하면
+                     쿼리스트링이 붙은 현재 URL 이 퍼져나가, 공유받은 사람마다 다른 주소를 보게 된다. -->
+                <button type="button" class="pf-share" id="shareBtn"
+                        th:attr="data-url=${seo.canonicalUrl}, data-title=${performance.title}">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
+                              fill="currentColor"/>
+                    </svg>
+                    공유
+                </button>
+            </div>
         </div>
 
         <div>
@@ -169,38 +200,6 @@
             <p class="empty-inline" th:if="${scheduleDays.isEmpty() and !performanceEnded}">
                 예매 가능한 회차를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
             </p>
-
-            <!-- 이 공연에 대한 액션 줄. 예매(회차 선택)와 달리 결정을 미루거나 남에게 넘기는
-                 동작들이라, 화면의 핵심 동작인 회차 선택 다음으로 뺐다 — 위에 있으면 처음
-                 들어온 사람이 예매 정보를 읽기도 전에 찜·공유부터 마주친다. -->
-            <div class="pf-actions">
-                <!--
-                    찜. aria-pressed 로 눌림 상태를 나타내고 화면 표시도 그 속성에 물려 둔다 —
-                    상태를 클래스와 속성 두 곳에 두면 한쪽만 갱신되는 순간 보이는 것과
-                    읽히는 것이 갈린다.
-                -->
-                <button type="button" class="pf-wish" id="wishBtn"
-                        th:attr="data-performance-id=${performance.id}, aria-pressed=${wishlisted}">
-                    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
-                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
-                              fill="currentColor" class="wish-fill"/>
-                        <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
-                              fill="none" stroke="currentColor" stroke-width="1.4" class="wish-outline"/>
-                    </svg>
-                    <span class="wish-label" th:text="${wishlisted} ? '찜함' : '찜하기'">찜하기</span>
-                </button>
-
-                <!-- 공유 주소는 SEO 의 canonical 을 그대로 쓴다. 화면에서 주소를 다시 조립하면
-                     쿼리스트링이 붙은 현재 URL 이 퍼져나가, 공유받은 사람마다 다른 주소를 보게 된다. -->
-                <button type="button" class="pf-share" id="shareBtn"
-                        th:attr="data-url=${seo.canonicalUrl}, data-title=${performance.title}">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
-                              fill="currentColor"/>
-                    </svg>
-                    공유
-                </button>
-            </div>
 
             <!--
                 취소·환불 규정. 요율을 여기에 문자열로 적지 않고 Reservation.REFUND_TIERS 를
