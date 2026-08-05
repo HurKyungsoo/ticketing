@@ -1,5 +1,6 @@
 package com.portfolio.ticket.controller;
 
+import com.portfolio.ticket.config.KakaoShareProperties;
 import com.portfolio.ticket.config.NaverMapProperties;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
@@ -47,6 +48,7 @@ public class PerformanceController {
     private final SeatMapper seatMapper;
     private final PerformanceListService performanceListService;
     private final NaverMapProperties naverMapProperties;
+    private final KakaoShareProperties kakaoShareProperties;
     private final SeatMapView seatMapView;
     private final SeoView seoView;
     private final WishlistService wishlistService;
@@ -212,6 +214,8 @@ public class PerformanceController {
                 principal != null && wishlistService.isWishlisted(principal.getMemberId(), id));
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
+        // 카카오톡 공유 JS 키. 키가 없으면 null 이고 템플릿이 카카오톡 공유 버튼을 아예 안 그린다.
+        model.addAttribute("kakaoJsKey", kakaoShareProperties.isConfigured() ? kakaoShareProperties.getJsKey() : null);
         return "performance/detail";
     }
 

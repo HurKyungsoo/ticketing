@@ -56,6 +56,9 @@ services:
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-REPLACE_ME}
       # 공연 상세의 공연장 위치 지도. 없으면 지도 없이 길찾기 링크만 나온다.
       NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID:-REPLACE_ME}
+      # 공연 상세의 카카오톡 공유 버튼. KAKAO_CLIENT_ID(REST API 키)와 다른 "JavaScript 키".
+      # 없으면 버튼 자체가 안 뜬다.
+      KAKAO_JS_KEY: ${KAKAO_JS_KEY:-REPLACE_ME}
       # application.yml 기본값은 localhost 라, 컨테이너 네트워크에서는 서비스명으로 덮어쓴다.
       SPRING_DATA_REDIS_HOST: redis
     ports:

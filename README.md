@@ -446,6 +446,11 @@ export TOSS_SECRET_KEY="test_sk_..."
 #      (키가 없어도 앱은 정상 동작한다 — 지도 없이 길찾기 링크만 노출)
 export NAVER_MAP_CLIENT_ID="발급받은_키"
 
+# 2-3) 공연 상세의 카카오톡 공유 버튼을 쓰려면 카카오 개발자 콘솔에서 JavaScript 키 발급
+#      (소셜 로그인의 KAKAO_CLIENT_ID 와는 다른 키다) + 플랫폼 > Web 에 http://localhost:8080 등록
+#      (키가 없어도 앱은 정상 동작한다 — 버튼 자체가 안 뜬다)
+export KAKAO_JS_KEY="발급받은_JavaScript_키"
+
 # 3) 실행 (H2, 파일 기반 - data/ 에 저장돼 재시작해도 유지된다)
 ./gradlew bootRun
 
@@ -477,6 +482,7 @@ export TOSS_CLIENT_KEY="test_ck_..."
 export TOSS_SECRET_KEY="test_sk_..."
 # 선택 — 없으면 해당 기능만 빠지고 앱은 정상 기동된다
 export NAVER_MAP_CLIENT_ID="발급받은_지도_키"
+export KAKAO_JS_KEY="..."         # 카카오톡 공유 (KAKAO_CLIENT_ID 와 다른 키)
 export KAKAO_CLIENT_ID="..."      # 소셜 로그인
 export KAKAO_CLIENT_SECRET="..."
 export NAVER_CLIENT_ID="..."
@@ -612,4 +618,5 @@ docker compose up --build
 - [ ] 공공데이터 동기화 배치 상호배제 — 수동 트리거(`/api/admin/sync`)와 새벽 4시 cron 이 겹치면 같은 회차 행을 두 트랜잭션이 동시에 써서 `Concurrent update` → 롤백 실패 → 커넥션 파손까지 간다(회차 상한 버그 백필 중 실제로 겪음). 배치 시작 시 실행 중 플래그/락으로 겹침 자체를 막아야 한다.
 - [x] 공연 상세 화면 여백 정리 — 요소들이 너무 빼곡히 붙어 있다는 피드백을 받았다. 찜/공유 버튼 아래 margin이 4px 뿐이라 바로 밑 "공연 정보" 제목과 거의 붙어 있던 게 가장 심했고, `.spec`/회차/환불 규정 같은 구획 사이 여백도 전반적으로 좁았다(14~40px). 각 구획 사이 여백을 18~56px 로 넓혔다. 고치다가 **결제 화면에서만 조용히 동작하던 버그**도 같이 잡았다 — `.refund-heading { margin-top: 40px }` 가 상세 화면에서는 `body.page-detail .detail-heading { margin: 0 0 14px }` 에 명시도로 항상 져서(0,2,1 > 0,1,0) 한 번도 안 먹고 있었다. 상세 화면 전용 오버라이드를 추가해 결제 화면과 같은 간격이 나오게 했다. 여백을 넓히는 김에 찜·공유 버튼 위치도 옮겼다 — 처음엔 "예매(회차 선택하기 버튼) 다음"을 본문 오른쪽 회차 목록 아래로 잘못 이해해 옮겼는데, 실제로는 포스터 아래 sticky 요약 카드의 "회차 선택하기" **CTA 버튼** 바로 밑, 즉 왼쪽 칸을 가리킨 것이었다. 다시 옮겨 최종적으로 포스터 → 요약 카드(최저가·가장 빠른 회차·회차 선택하기) → 찜·공유 순으로 왼쪽 sticky 칸에 다 모았다. 요약 카드가 없는 공연(회차·가격 미상)에서도 버튼은 그대로 나온다(`th:if` 밖에 둠). 로그인 복귀 흐름(찜 버튼)은 위치와 무관해 회귀 없음
 - [x] 공연 상세 장르 배지를 포스터 오버레이로 — 본문 쪽 제목 밑에 테두리 배지로 떠 있던 걸, 목록·홈 카드가 이미 쓰는 자리(포스터 좌상단 오버레이)로 옮겼다. 같은 `.card-badge` 클래스를 그대로 재사용해 스타일이 두 벌로 갈라지지 않는다. 포스터가 없는 공연(폴백 그라데이션)에도 그대로 얹힌다 — `.poster` 가 `position: relative` 라 `no-img` 여부와 무관하게 동작한다. 제목 바로 아래에 있던 자리가 비어서 `h2` margin-bottom 을 32px 로 올려 다음 섹션과의 간격을 메웠다
+- [x] 공연 상세 카카오톡 공유 — 기존 공유 버튼(OS 공유 시트·클립보드 폴백)도 모바일에서는 카톡으로 이어지지만, 제목·설명·포스터·버튼이 붙는 카드형 카톡 공유는 카카오 JS SDK(`Kakao.Share.sendDefault`)가 따로 필요하다. OAuth 로그인에 이미 쓰는 `KAKAO_CLIENT_ID`(REST API 키)와는 다른 키다 — 콘솔의 "JavaScript 키"를 `KAKAO_JS_KEY` 로 새로 받는다. 네이버 지도와 같은 패턴으로 키가 없으면(`KakaoShareProperties.isConfigured()`) 버튼 자체를 안 그린다 — SDK 를 키 없이 부르면 호출마다 실패한다. 카드에 넣는 제목·설명·이미지·링크는 전부 공유 카드(OG)와 같은 `SeoView.Meta` 값을 그대로 써서 화면에 뜨는 것과 카톡 카드가 어긋나지 않는다. 포스터 없는 공연은 이미지 필수인 feed 템플릿 대신 text 템플릿으로 내린다. 개발계는 키 미발급이라 버튼 미노출까지만 확인했다 — 실제 공유 카드 렌더링은 키 발급 + 콘솔의 "플랫폼 > Web" 도메인 등록 후 확인이 필요하다(안 하면 KOE101)
 - [ ] AWS EC2 + RDS 배포 (CD)

@@ -167,6 +167,14 @@ naver:
     # 두 엔드포인트를 직접 호출해 확인한 결과 /v3/auth + ncpKeyId 가 정상 응답한다.
     key-param: ncpKeyId
 
+# 카카오톡 공유 JS SDK - 절대 커밋하지 말 것.
+# 위 OAuth 로그인의 KAKAO_CLIENT_ID(REST API 키)와는 다른 키다 - 카카오 개발자 콘솔의
+# "JavaScript 키"를 쓴다(내 애플리케이션 > 앱 키 > JavaScript 키). 도메인도 콘솔의
+# "플랫폼 > Web" 에 등록해야 한다 - 안 하면 실행 시 KOE101 에러가 난다.
+kakao:
+  share:
+    js-key: ${KAKAO_JS_KEY:REPLACE_ME}
+
 ---
 spring:
   config:

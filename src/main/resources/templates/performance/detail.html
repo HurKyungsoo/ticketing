@@ -91,6 +91,22 @@
                     </svg>
                     공유
                 </button>
+
+                <!--
+                    카카오톡 공유. JS 키가 없으면(미발급) 아예 안 그린다 — 위 공유 버튼(OS
+                    공유 시트·클립보드)만으로도 카톡 공유 자체는 되지만, 이 버튼은 카카오
+                    피드 템플릿(제목+설명+이미지+버튼)으로 뜨는 카드형 공유라 눌러야 할
+                    이유가 또렷하다. data-* 는 seo(공유 카드와 같은 값)에서 그대로 가져와
+                    화면에 뜨는 것과 카톡 카드가 어긋나지 않게 한다.
+                -->
+                <button type="button" class="pf-kakao" id="kakaoShareBtn" th:if="${kakaoJsKey != null}"
+                        th:attr="data-url=${seo.canonicalUrl}, data-title=${performance.title},
+                                 data-description=${seo.description}, data-image=${seo.imageUrl}">
+                    <svg class="pf-kakao-icon" width="15" height="15" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path fill="#000000" d="M9 2C4.582 2 1 4.94 1 8.56c0 2.32 1.53 4.36 3.84 5.53-.17.62-.6 2.19-.69 2.53-.11.42.16.42.33.3.14-.1 2.2-1.49 3.09-2.1.47.07.95.1 1.43.1 4.418 0 8-2.94 8-6.56C17 4.94 13.418 2 9 2z"/>
+                    </svg>
+                    카카오톡
+                </button>
             </div>
         </div>
 
@@ -366,6 +382,36 @@
         var pos = new naver.maps.LatLng(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng));
         var map = new naver.maps.Map(el, { center: pos, zoom: 16 });
         new naver.maps.Marker({ position: pos, map: map, title: el.dataset.name });
+      })();
+    </script>
+</th:block>
+
+<!-- 카카오톡 공유도 키가 있을 때만 SDK 를 받는다(위 버튼도 같은 조건으로 안 그려진다). -->
+<th:block th:if="${kakaoJsKey != null}">
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+    <script th:inline="javascript">
+      (function () {
+        const btn = document.getElementById('kakaoShareBtn');
+        // 도메인이 카카오 콘솔의 "Web 플랫폼"에 등록 안 돼 있으면 init 은 되지만 sendDefault
+        // 호출에서 KOE101 로 실패한다 — 그때도 화면은 그대로 두고 클릭 시 토스트로만 알린다.
+        if (!btn || !window.Kakao) return;
+        if (!window.Kakao.isInitialized()) {
+          window.Kakao.init(/*[[${kakaoJsKey}]]*/ '');
+        }
+
+        btn.addEventListener('click', function () {
+          const link = { mobileWebUrl: btn.dataset.url, webUrl: btn.dataset.url };
+          const buttons = [{ title: '공연 보러가기', link: link }];
+          // 포스터가 없는 공연은 이미지 없는 feed 템플릿이 카카오 쪽에서 거부되므로 text 템플릿으로 내린다.
+          const params = btn.dataset.image
+              ? { objectType: 'feed', content: { title: btn.dataset.title, description: btn.dataset.description, imageUrl: btn.dataset.image, link: link }, buttons: buttons }
+              : { objectType: 'text', text: btn.dataset.title + '\n' + btn.dataset.description, link: link, buttons: buttons };
+          try {
+            window.Kakao.Share.sendDefault(params);
+          } catch (e) {
+            window.__toast('카카오톡 공유를 열지 못했습니다. 잠시 후 다시 시도해 주세요.');
+          }
+        });
       })();
     </script>
 </th:block>
