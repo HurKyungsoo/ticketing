@@ -1727,10 +1727,14 @@ body.page-detail .meta {
   margin: 0 0 32px;
 }
 
-body.page-detail .detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
+body.page-detail .detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 18px; }
+/* .refund-heading 는 아래 unscoped 규칙이 주는데, 이 body.page-detail 스코프 규칙이
+   명시도(0,2,1 > 0,1,0)로 항상 이겨서 상세 화면에서는 margin-top 이 한 번도 안 먹었다
+   — 결제 화면에서만 조용히 동작하던 버그였다. 상세 화면에도 같은 값을 준다. */
+body.page-detail .refund-heading { margin-top: 56px; }
 
-body.page-detail .spec { border-top: 1px solid var(--line); margin: 0 0 36px; }
-body.page-detail .spec div { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+body.page-detail .spec { border-top: 1px solid var(--line); margin: 0 0 48px; }
+body.page-detail .spec div { display: flex; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 body.page-detail .spec dt { width: 96px; flex: none; font-weight: 600; color: var(--mute); margin: 0; }
 body.page-detail .spec dd { margin: 0; color: var(--paper); }
 
@@ -1757,7 +1761,7 @@ body.page-detail .spec dd { margin: 0; color: var(--paper); }
 body.page-detail .description {
   font-size: 14px; line-height: 1.7; color: var(--paper);
   white-space: pre-line;
-  margin: 0 0 36px;
+  margin: 0 0 48px;
 }
 
 /* ---- 회차 선택 (날짜 한 줄 + 그 날의 시각들) ----
@@ -1768,7 +1772,7 @@ body.page-detail .scheduledays {
 }
 body.page-detail .scheduleday {
   display: flex; align-items: baseline; gap: 20px;
-  padding: 14px 0;
+  padding: 18px 0;
   border-bottom: 1px solid var(--line);
 }
 body.page-detail .sd-date {
@@ -1811,7 +1815,7 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 }
 .refundpolicy li {
   display: flex; justify-content: space-between; gap: 20px;
-  padding: 12px 0;
+  padding: 15px 0;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
@@ -1819,14 +1823,14 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 .rp-fee { color: var(--paper); font-weight: 600; }
 .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
 .refundnote {
-  margin: 14px 0 0;
+  margin: 18px 0 0;
   font-size: 13px; line-height: 1.7; color: var(--mute);
 }
 /* 상세 화면의 제목 스타일도 결제에서 그대로 쓴다. */
-.detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
+.detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 18px; }
 /* .detail-heading 뒤에 와야 한다 — 앞에 두면 위 margin 단축 속성이 margin-top 을 0 으로
    되돌려서(같은 명시도라 나중 선언이 이김) 규정 제목이 결제 버튼에 딱 붙는다. */
-.refund-heading { margin-top: 40px; }
+.refund-heading { margin-top: 56px; }
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
@@ -2114,7 +2118,7 @@ body.page-home .allmore a:hover { border-color: var(--brass); background: rgba(2
    ================================================================== */
 body.page-detail .pf-actions {
   display: flex; flex-wrap: wrap; gap: 8px;
-  margin: 16px 0 4px;
+  margin: 28px 0 32px;
 }
 body.page-detail .pf-actions button {
   display: inline-flex; align-items: center; gap: 6px;
