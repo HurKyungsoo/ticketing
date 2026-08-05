@@ -328,8 +328,7 @@
     function setZoomed(on) {
         zoomed = on;
         zoomBtn.setAttribute('aria-pressed', String(on));
-        zoomBtn.textContent = on ? '전체 보기' : '확대';
-        // 안내문은 syncZoomBtn 이 좌석 크기까지 보고 정한다(아래에서 호출된다).
+        // 버튼 문구·안내문은 syncZoomBtn 이 좌석 크기까지 보고 정한다(아래에서 호출된다).
         // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(높이를 고정한다).
         scroller.classList.toggle('zoomed', on);
         applySeatSize();
@@ -370,6 +369,7 @@
 
         const suggestZoom = !zoomed && tooSmallToTap;
         zoomBtn.classList.toggle('zoomtoggle--suggest', suggestZoom);
+        zoomBtn.textContent = zoomed ? '전체 보기' : (suggestZoom ? '확대해서 선택' : '확대');
         zoomHint.textContent = zoomed ? ZOOM_HINT : (tooSmallToTap ? FIT_SMALL_HINT : FIT_HINT);
     }
 
@@ -855,17 +855,32 @@
         return Number(partySizeSelect.value);
     }
 
+    /*
+       고른 좌석 수·합계를 예매 바 안에서 가장 눈에 띄게 보여준다(.pickedsummary).
+       좌석을 고르는 행위 자체는 지도 위에서 이미 또렷한데, "그래서 몇 석에 얼마인지"는
+       전에는 본문과 같은 굵기의 텍스트 한 줄이라 결제 판단에 필요한 정보치고 약했다.
+    */
     function renderPicked() {
         if (selectedSeats.length === 0) {
             pickedBox.innerHTML = '<p class="pickedlist">좌석을 선택하세요</p>';
+            bookbar.classList.remove('is-ready');
             bookBtn.disabled = true;
             return;
         }
         const chips = selectedSeats.map(s => `<span class="pickchip">${s.dataset.label}</span>`).join('');
         const total = selectedSeats.reduce((sum, s) => sum + Number(s.dataset.price), 0).toLocaleString();
+        const remaining = partySize() - selectedSeats.length;
+        const hint = remaining > 0
+                ? `<p class="pickedhint">${remaining}석 더 고를 수 있어요</p>`
+                : '';
         pickedBox.innerHTML =
             `<p class="pickedlist">${chips}</p>` +
-            `<p class="pickedtotal">${selectedSeats.length}석 · 총 <strong>${total}원</strong></p>`;
+            hint +
+            `<div class="pickedsummary">` +
+                `<span class="pickedcount">${selectedSeats.length}석 선택</span>` +
+                `<span class="pickedtotal">총 <strong>${total}원</strong></span>` +
+            `</div>`;
+        bookbar.classList.add('is-ready');
         bookBtn.disabled = false;
     }
 
@@ -892,6 +907,13 @@
 
     document.querySelectorAll('.seat').forEach(seat => {
         seat.addEventListener('click', () => {
+            // 판매 완료·결제 대기 좌석은 disabled 를 안 쓰므로(탭 안내를 받으려고) 클릭이
+            // 여기까지 들어온다 — 데스크톱은 이미 호버 툴팁(data-tooltip)으로 이유를 보지만
+            // 모바일은 호버가 없으므로 탭에서도 같은 문구를 토스트로 띄운다.
+            if (seat.getAttribute('aria-disabled') === 'true') {
+                window.__toast(seat.dataset.tooltip);
+                return;
+            }
             if (seat.classList.contains('selected')) {
                 deselect(seat);
                 renderPicked();
@@ -934,7 +956,9 @@
         const failedIds = new Set(failedSeatIds || []);
         selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
             s.dataset.status = 'HELD';
-            s.disabled = true;
+            s.dataset.tooltip = '결제 대기 중';
+            s.setAttribute('aria-disabled', 'true');
+            s.tabIndex = -1;
             s.classList.remove('selected');
             // 이제 누를 수 없는 좌석이라 "눌린 상태" 개념이 없어진다 — 템플릿이 예매 가능한
             // 좌석에만 aria-pressed 를 주는 것과 같은 규칙으로 속성 자체를 뗀다.

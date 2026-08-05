@@ -258,6 +258,8 @@ a { color: inherit; text-decoration: none; }
 .zoomtoggle--suggest {
   background: var(--brass); border-color: var(--brass);
   color: var(--ink); font-weight: 700;
+  padding: 7px 18px; font-size: 13px;
+  box-shadow: 0 0 0 3px rgba(233, 180, 76, .18), 0 4px 14px rgba(233, 180, 76, .35);
 }
 .zoomtoggle--suggest:hover { border-color: var(--brass); filter: brightness(1.08); }
 
@@ -630,7 +632,7 @@ a { color: inherit; text-decoration: none; }
 /* 호 오프셋을 유지한 채로 살짝 더 들어올린다. --arc-y 를 빼먹으면 hover 때 좌석이 평평한
    자리로 튀어 내려간다. 테두리를 없앴으므로 강조는 바깥 링(box-shadow)으로 준다 —
    링은 레이아웃을 차지하지 않아서 좌석 크기 자동 맞춤 계산에 영향을 주지 않는다. */
-.seat:hover:not(:disabled) {
+.seat:hover:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(calc(var(--arc-y) - 2px));
   box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.12)) var(--paper);
 }

@@ -38,8 +38,14 @@
                 크기도 그대로다(좌석 3,000개짜리 홀이라 이게 중요하다).
 
                 aria-pressed 는 예매 가능한 좌석에만 준다 — 판매 완료·결제 대기 좌석은
-                disabled 라 누를 수 없으니 "눌린 상태"라는 개념 자체가 없다. 값은 JS 가
-                선택할 때마다 갱신한다(안 하면 화면은 바뀌는데 스크린리더는 모른다).
+                "눌린 상태"라는 개념 자체가 없다. 값은 JS 가 선택할 때마다 갱신한다
+                (안 하면 화면은 바뀌는데 스크린리더는 모른다).
+
+                판매 완료·결제 대기 좌석에도 네이티브 disabled 를 주지 않는다 — disabled 는
+                클릭/탭 이벤트 자체를 막아버려서, 왜 못 고르는지(결제 대기 중/이미 판매됨)를
+                탭으로 안내할 방법이 없어진다(모바일은 호버가 없다). 대신 aria-disabled 로
+                의미만 전달하고 tabindex=-1 로 탭 키 이동 순서에서만 뺀다 — 클릭은 JS 가
+                받아서 안내 토스트를 띄운다.
             -->
                 <button type="button" class="seat"
                         th:each="seat, seatStat : ${row.seats}"
@@ -50,10 +56,11 @@
                                  data-label=${seat.label},
                                  data-price=${seat.price},
                                  data-grade=${seat.grade},
-                                 data-tooltip=${seat.grade} + '석 · ' + ${#numbers.formatInteger(seat.price,0,'COMMA')} + '원',
-                                 aria-label=|${seat.label} ${seat.grade}석 ${#numbers.formatInteger(seat.price,0,'COMMA')}원|,
-                                 aria-pressed=${seat.status == 'AVAILABLE'} ? 'false' : null"
-                        th:disabled="${seat.status != 'AVAILABLE'}">
+                                 data-tooltip=${seat.tooltipText},
+                                 aria-label=${seat.ariaLabel},
+                                 aria-pressed=${seat.available} ? 'false' : null,
+                                 aria-disabled=${seat.available} ? null : 'true',
+                                 tabindex=${seat.available} ? null : '-1'">
                 </button>
             </div>
         </div>
