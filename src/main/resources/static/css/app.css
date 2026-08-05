@@ -994,6 +994,8 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   display: flex; flex-direction: column; gap: 8px;
   font-size: 13px; color: var(--mute);
 }
+/* 라벨 텍스트("이메일")와 같은 크기·색이면 안내문이 필드명처럼 읽혀 구분이 안 된다. */
+.authform .hint { font-size: 12px; }
 .authform input {
   font-family: var(--body); font-size: 15px;
   background: var(--ink-raised); color: var(--paper);
