@@ -20,9 +20,21 @@
 
     <div class="reslist" th:if="${!reservations.isEmpty()}">
         <div class="resrow" th:each="r : ${reservations}">
-            <div class="resinfo">
-                <!-- 공연 정보는 예매가 직접 든 회차에서 가져온다. 좌석을 거치면 취소된 예매(좌석 0개)가
-                     화면에서 통째로 사라진다. 좌석 표기도 예매 시점 스냅샷을 쓴다. -->
+            <!-- 공연 정보는 예매가 직접 든 회차에서 가져온다. 좌석을 거치면 취소된 예매(좌석 0개)가
+                 화면에서 통째로 사라진다. 좌석 표기도 예매 시점 스냅샷을 쓴다.
+
+                 클릭하면 아래 공유 팝업(포스터+정보+좌석)이 뜬다 — data-* 로 필요한 값만
+                 미리 실어 두고, 모달 자체는 화면에 하나만 두고 값을 갈아끼운다(예매 건수만큼
+                 모달을 복제하면 DOM 이 쓸데없이 커진다). 포스터가 없는 공연은 data-poster 를
+                 아예 안 실어서(th:attr 이 null 이면 속성 자체를 안 그린다) JS 가 폴백을 그린다.
+                 취소·만료 건도 똑같이 눌리게 둔다 — 그때 뭘 봤었는지 확인하는 것도 유효한
+                 용도라 상태로 막을 이유가 없다. -->
+            <div class="resinfo" role="button" tabindex="0"
+                 th:attr="data-title=${r.schedule.performance.title},
+                          data-venue=${r.schedule.performance.venue},
+                          data-datetime=${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')},
+                          data-seat=${r.seatSummary},
+                          data-poster=${r.schedule.performance.posterUrl != null} ? @{/img/poster(u=${r.schedule.performance.posterUrl})}">
                 <p class="restitle" th:text="${r.schedule.performance.title}">공연명</p>
                 <p class="resmeta">
                     <span th:text="${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
@@ -58,6 +70,32 @@
     <div class="empty-state" th:if="${reservations.isEmpty()}">
         <p>예매 내역이 없습니다.</p>
         <p><a th:href="@{/}" style="color:var(--brass)">공연 보러 가기</a></p>
+    </div>
+</div>
+
+<!-- 예매 건 클릭 시 뜨는 요약 팝업. 공유 시트(공연 상세)와 같은 배경+dialog 구조라 그때
+     정한 규칙을 그대로 따른다: 배경을 눌러도 뒤 화면 조작이 안 되고, Esc·배경·닫기 버튼
+     셋 다 닫는다. -->
+<div class="resmodal-backdrop" id="resModalBackdrop"></div>
+<div class="resmodal" id="resModal" role="dialog" aria-modal="true" aria-labelledby="resModalTitle">
+    <button type="button" class="resmodal-close" id="resModalClose" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2 2l12 12M14 2 2 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+    </button>
+    <div class="resmodal-poster">
+        <img id="resModalPoster" alt="">
+        <!-- 포스터가 없는 공연의 폴백. 공연 상세의 .poster.no-img 와 같은 발상(그라데이션 +
+             공연명 첫 글자)이되, 여기는 팝업이라 훨씬 작아서 첫 글자만 남긴다. -->
+        <div class="resmodal-posterfallback" id="resModalPosterFallback" aria-hidden="true"></div>
+    </div>
+    <div class="resmodal-body">
+        <h3 id="resModalTitle">공연명</h3>
+        <dl class="resmodal-spec">
+            <div><dt>공연장</dt><dd id="resModalVenue">-</dd></div>
+            <div><dt>일시</dt><dd id="resModalDatetime">-</dd></div>
+            <div><dt>좌석</dt><dd id="resModalSeat">-</dd></div>
+        </dl>
     </div>
 </div>
 
@@ -97,6 +135,62 @@
             }
         });
     });
+
+    (function () {
+        const backdrop = document.getElementById('resModalBackdrop');
+        const modal = document.getElementById('resModal');
+        const closeBtn = document.getElementById('resModalClose');
+        const posterImg = document.getElementById('resModalPoster');
+        const posterFallback = document.getElementById('resModalPosterFallback');
+        const titleEl = document.getElementById('resModalTitle');
+        const venueEl = document.getElementById('resModalVenue');
+        const datetimeEl = document.getElementById('resModalDatetime');
+        const seatEl = document.getElementById('resModalSeat');
+        if (!modal) return;
+
+        function openModal(trigger) {
+            titleEl.textContent = trigger.dataset.title;
+            venueEl.textContent = trigger.dataset.venue || '-';
+            datetimeEl.textContent = trigger.dataset.datetime;
+            seatEl.textContent = trigger.dataset.seat;
+
+            // 포스터 유무에 따라 실제 이미지/폴백(첫 글자) 중 하나만 보인다 — 공연 상세의
+            // .poster.no-img 와 같은 발상. hidden 속성 대신 style.display 를 직접 건드린다
+            // — .resmodal-poster img 에 이미 display:block 규칙이 있어서(공유 시트를 만들
+            // 때도, 그 전 회차 상한 버그 때도 겪은 것과 같은 명시도 함정) hidden="" 만으로는
+            // 안 먹는다. 인라인 스타일은 어떤 클래스 규칙보다도 이긴다.
+            if (trigger.dataset.poster) {
+                posterImg.src = trigger.dataset.poster;
+                posterImg.alt = trigger.dataset.title;
+                posterImg.style.display = '';
+                posterFallback.style.display = 'none';
+            } else {
+                posterImg.removeAttribute('src');
+                posterImg.style.display = 'none';
+                posterFallback.style.display = 'flex';
+                posterFallback.textContent = trigger.dataset.title.charAt(0);
+            }
+
+            backdrop.classList.add('open');
+            modal.classList.add('open');
+        }
+        function closeModal() {
+            backdrop.classList.remove('open');
+            modal.classList.remove('open');
+        }
+
+        document.querySelectorAll('.resinfo').forEach(el => {
+            el.addEventListener('click', () => openModal(el));
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(el); }
+            });
+        });
+        closeBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', closeModal);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+        });
+    })();
 </script>
 </body>
 </html>

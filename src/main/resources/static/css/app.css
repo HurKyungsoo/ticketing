@@ -1185,10 +1185,70 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   background: var(--ink-soft);
   padding: 20px 24px;
 }
-.resinfo { flex: 1; min-width: 0; }
-.restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+/* 클릭하면 포스터+정보+좌석 팝업(.resmodal)이 뜬다. cursor/hover/focus-visible 로 눌리는
+   영역이라는 걸 알려준다 — 옆 .resaction(취소·결제하기 버튼)은 그대로 각자 동작한다. */
+.resinfo { flex: 1; min-width: 0; cursor: pointer; border-radius: var(--radius-xs); }
+.resinfo:hover .restitle { color: var(--brass); }
+.resinfo:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+.restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; transition: color .12s; }
 .resmeta { font-size: 13px; color: var(--paper); margin: 0 0 4px; }
 .resno { font-size: 12px; color: var(--mute); margin: 0; }
+
+/* ---- 예매 요약 팝업 ----
+   공유 시트(공연 상세)와 같은 배경+dialog 구조 — 그때 정한 opacity/pointer-events 전환,
+   Esc·배경·닫기 버튼 세 가지로 닫는 규칙을 그대로 따른다. 예매 건마다 모달을 복제하지
+   않고 하나만 두고 클릭한 행의 data-* 값으로 내용을 갈아끼운다. */
+.resmodal-backdrop {
+  position: fixed; inset: 0; z-index: 70;
+  background: rgba(0, 0, 0, .55);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease;
+}
+.resmodal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.resmodal {
+  position: fixed; top: 50%; left: 50%; z-index: 71;
+  width: min(340px, calc(100vw - 40px));
+  transform: translate(-50%, -50%) scale(.96);
+  background: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.resmodal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+
+.resmodal-close {
+  position: absolute; top: 14px; right: 14px; z-index: 1;
+  display: flex; padding: 4px;
+  background: none; border: none; color: var(--mute);
+  cursor: pointer; transition: color .12s;
+}
+.resmodal-close:hover { color: var(--paper); }
+
+.resmodal-poster {
+  position: relative; width: 100%; aspect-ratio: 3 / 4;
+  border-radius: var(--radius-sm); overflow: hidden;
+  border: 1px solid var(--line); background: var(--ink-raised);
+  margin-bottom: 16px;
+}
+.resmodal-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.resmodal-posterfallback {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 48px; font-weight: 800;
+  color: var(--brass-dim); opacity: .55;
+  background: linear-gradient(160deg, #1B1B20 0%, #131316 100%);
+}
+
+.resmodal-body h3 { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--paper); padding-right: 24px; }
+.resmodal-spec { margin: 0; }
+.resmodal-spec div { display: flex; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.resmodal-spec div:first-child { border-top: none; padding-top: 0; }
+.resmodal-spec dt { width: 56px; flex: none; color: var(--mute); margin: 0; }
+.resmodal-spec dd { margin: 0; color: var(--paper); }
 
 .resaction { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
 .badge {
