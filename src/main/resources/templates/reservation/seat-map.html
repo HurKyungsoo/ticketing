@@ -22,6 +22,7 @@
             <option value="4">4명</option>
         </select>
         <span class="hint">선택한 인원수만큼 좌석을 고를 수 있습니다.</span>
+        <button type="button" class="zoomtoggle" id="autopickBtn">연석 자동 찾기</button>
         <button type="button" class="zoomtoggle" id="zoomBtn" aria-pressed="false">확대</button>
     </div>
 
@@ -136,7 +137,13 @@
             가격표는 보기만 하는 정보가 아니라 필터다. 예산을 먼저 정하고 그 안에서 자리를
             고르는 게 실제 구매 순서라, 등급을 누르면 그 등급만 남기고 나머지를 뒤로 물린다.
             아무것도 안 누른 상태(= 전부 해제)가 곧 "전체 보기"라 초기화 버튼을 따로 두지 않는다.
+
+            문제는 이 줄이 "범례"인지 "필터"인지 처음 보면 구분이 안 간다는 것 — 눌렀을 때
+            바뀌는 게 옅은 흰색 배경 하나뿐이라 눌러보기 전에는 클릭 가능한 줄인지도 모른다.
+            힌트 문구를 붙이고, 눌린 상태는 이 화면의 다른 활성 상태(층 바로가기·확대 버튼)와
+            같은 브라스 강조로 통일했다(아래 CSS).
         -->
+        <p class="legend-hint">가격을 눌러 그 등급만 볼 수 있어요</p>
         <div class="legend-row legend-grades" id="gradeFilter">
             <button type="button" data-grade="VIP" aria-pressed="false">
                 <i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b>
@@ -336,6 +343,8 @@
         syncZoomBtn();
         // 좌석 크기와 격자 높이가 확정된 뒤라야 미니맵 배율이 맞는다.
         syncMinimap();
+        // 기준선(sticky 바 vs 지도 뷰포트)이 모드마다 다르므로 전환 직후 다시 계산한다.
+        syncActiveFloorChip();
     }
 
     /**
@@ -523,9 +532,51 @@
     /* 스크롤도 pointermove 처럼 화면 주사율보다 자주 올 수 있으므로 프레임당 한 번만 반영한다. */
     let miniFrame = null;
     scroller.addEventListener('scroll', () => {
-        if (minimap.hidden || miniFrame !== null) return;
-        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncMinimapView(); });
+        if (miniFrame !== null) return;
+        miniFrame = requestAnimationFrame(() => {
+            miniFrame = null;
+            if (!minimap.hidden) syncMinimapView();
+            syncActiveFloorChip();
+        });
     }, { passive: true });
+
+    /* ---------- 층 바로가기 강조 (스크롤 스파이) ----------
+       콘서트홀처럼 층 바로가기 칩이 여러 개인 홀에서는, 눌러서 이동한 뒤로는 지금 스크롤로
+       보고 있는 곳이 몇 층인지 칩 목록 어디에도 안 나타났다 — `.floorchip.active` CSS 는
+       이미 있었는데 그걸 붙이는 JS 가 없었다(선언만 있고 실물이 없는 죽은 스타일).
+
+       각 칩의 href(`#floor-3-head` 등)가 곧 그 층 머릿글의 id 이므로, 새로 매핑을 만들지
+       않고 그 값을 그대로 재사용한다 — 서버(SeatMapView)가 이미 알고 있는 사실을 JS 가
+       다시 계산하면 나중에 한쪽만 바뀌었을 때 조용히 어긋난다. */
+    const floorChipTargets = [...document.querySelectorAll('.floorchip')]
+            .map(chip => ({ chip, el: document.getElementById(chip.getAttribute('href').slice(1)) }))
+            .filter(t => t.el);
+
+    /**
+     * 지금 화면 위쪽 기준선보다 위에서 시작한 것 중 가장 아래(=가장 최근에 지난) 층을 고른다.
+     * 기준선은 sticky 바(헤더+인원수줄, 확대 모드는 지도 뷰포트 위쪽) 바로 아래로 잡는다 —
+     * 그 위는 이미 스크롤로 지나간 영역이라 "지금 보고 있는 곳"이 아니다.
+     */
+    function syncActiveFloorChip() {
+        if (floorChipTargets.length === 0) return;
+        const referenceY = zoomed
+                ? scroller.getBoundingClientRect().top + 24
+                : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) + 12;
+
+        let current = floorChipTargets[0];
+        for (const target of floorChipTargets) {
+            if (target.el.getBoundingClientRect().top <= referenceY) current = target;
+            else break;   // 칩 순서 = 밴드 순서 = DOM 순서(위→아래)라 여기서 멈춰도 된다.
+        }
+        floorChipTargets.forEach(({ chip }) => chip.removeAttribute('aria-current'));
+        current.chip.setAttribute('aria-current', 'true');
+    }
+    window.addEventListener('scroll', () => {
+        if (zoomed) return;   // 확대 모드는 위 scroller 스크롤 핸들러가 맡는다.
+        if (miniFrame !== null) return;
+        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncActiveFloorChip(); });
+    }, { passive: true });
+    syncActiveFloorChip();
 
     /* 미니맵을 누르거나 끌면 그 지점이 화면 가운데로 오게 지도를 옮긴다.
        미니맵은 격자 바깥의 fixed 요소라 격자의 끌기 처리와 겹치지 않는다. */
@@ -896,6 +947,63 @@
         setSelected(seat, false);
         selectedSeats = selectedSeats.filter(s => s !== seat);
     }
+
+    /* ---------- 연석 자동 찾기 ----------
+       인원수 선택(1~4명)은 이미 있는데, 붙은 자리를 찾으려면 좌석도를 눈으로 훑어야 했다.
+       `.row` 안에서 좌석은 이미 seat_no 순으로 렌더되고 통로는 `.aisle` 클래스(그 좌석
+       뒤에 통로가 있다)로 이미 표시돼 있으므로, 한 줄 안의 "끊기지 않은 예매 가능 구간"을
+       찾는 문제로 바뀐다 — 새 데이터가 필요 없다.
+
+       "가장 좋은 자리"를 거리로 정렬하지는 않는다. 층·구역 사이의 실제 거리는 지금 화면에
+       없는 정보다(무대 기준 좌표는 있지만 등급 안에서의 좌우 위치까지는 없다). 대신 DOM 순서를
+       근사치로 쓴다 — 정면 밴드가 무대 뒤(합창석)보다 먼저 그려지고, 같은 밴드 안에서는
+       구역(A/B/C…)이 좌석도 순서대로, 줄은 1열부터 순서대로 나온다. 좌석도가 보통 가까운
+       구역을 먼저 선언하므로 "처음 찾은 구간"이 "완벽한 최단 거리"는 아니어도 쓸만한
+       기본값이다. 정면에서 못 찾으면 그때 무대 뒤까지 넓힌다.
+    */
+    function contiguousRunsInRow(row, size) {
+        const seats = [...row.querySelectorAll('.seat')];
+        const runs = [];
+        let run = [];
+        const flush = () => {
+            if (run.length >= size) runs.push(run.slice(0, size));
+            run = [];
+        };
+        seats.forEach(seat => {
+            if (seat.dataset.status !== 'AVAILABLE') { flush(); return; }
+            run.push(seat);
+            if (seat.classList.contains('aisle')) flush();   // 통로 뒤는 이어진 자리가 아니다.
+        });
+        flush();
+        return runs;
+    }
+
+    function findAdjacentSeats(size) {
+        const search = (rows) => {
+            for (const row of rows) {
+                const runs = contiguousRunsInRow(row, size);
+                if (runs.length) return runs[0];
+            }
+            return null;
+        };
+        return search(scroller.querySelectorAll('.zoneline:not(.zoneline-rear) .row'))
+                || search(scroller.querySelectorAll('.zoneline-rear .row'));
+    }
+
+    const autopickBtn = document.getElementById('autopickBtn');
+    autopickBtn.addEventListener('click', () => {
+        const size = partySize();
+        const run = findAdjacentSeats(size);
+        if (!run) {
+            window.__toast('연석으로 남은 자리가 없어요. 인원수를 나눠서 골라보세요.', 4000);
+            return;
+        }
+        // 기존 선택은 비우고 찾은 자리로 교체한다 — 둘 다 남기면 인원수를 넘어설 수 있다.
+        [...selectedSeats].forEach(deselect);
+        run.forEach(seat => { setSelected(seat, true); selectedSeats.push(seat); });
+        renderPicked();
+        run[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    });
 
     // 인원수를 줄이면 초과분은 선택 해제한다.
     partySizeSelect.addEventListener('change', () => {
