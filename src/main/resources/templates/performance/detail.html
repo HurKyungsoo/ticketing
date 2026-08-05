@@ -62,7 +62,11 @@
 
         <div>
             <h2 th:text="${performance.title}">공연명</h2>
-            <p class="meta" th:text="${performance.genre}">장르</p>
+            <!-- 원본 genre 문자열("서양음악(클래식)", "무용(서양/한국무용)" 등)은 소스마다 표기가
+                 달라 그대로 걸면 배지 안에서 줄바꿈되거나 정보가 넘친다. 목록·홈 카드가 이미
+                 쓰는 정규화된 category 로 통일해 짧고 일관된 라벨("클래식")을 보여준다.
+                 category 가 없는 옛 데이터는(재동기화되면 채워진다) 기타로 대체한다. -->
+            <p class="meta" th:text="${performance.category != null} ? ${performance.category.label()} : '기타'">장르</p>
 
             <!-- 이 공연에 대한 액션 줄. 예매(회차 선택)와 달리 결정을 미루거나 남에게 넘기는
                  동작들이라 본문 위, 회차 목록보다 앞에 둔다. -->

@@ -1708,7 +1708,22 @@ body.page-detail h2 {
   font-family: var(--display); font-size: 40px; font-weight: 800;
   letter-spacing: -0.03em; color: var(--paper); margin: 0 0 8px;
 }
-body.page-detail .meta { font-size: 14px; color: var(--mute); margin: 0 0 32px; }
+/*
+   종전엔 그냥 회색 텍스트 한 줄이라 옆의 굵은 제목(40px/800)에 눌려 있는 듯 안 보이는 듯했다.
+   목록·홈 카드의 장르 배지(.card-badge)와 같은 태그 어법(테두리+radius 999+작은 패딩)으로
+   맞춰 "장르"라는 걸 한눈에 알아보게 했다. 카드 배지는 포스터 위에 얹히는 오버레이라 배경이
+   짙고 블러가 있지만, 여기는 본문 위라 그 정도는 필요 없어 테두리 중심으로 가볍게 뒀다 —
+   같은 화면에 브라스 강조가 이미 있어서(가격·CTA) 장르 배지까지 강조색을 쓰면 위계가 뭉갠다.
+*/
+body.page-detail .meta {
+  display: inline-block;
+  font-size: 12px; font-weight: 600; color: var(--paper);
+  background: rgba(248, 244, 236, .06);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 5px 14px;
+  margin: 0 0 32px;
+}
 
 body.page-detail .detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
 
