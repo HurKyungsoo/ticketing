@@ -1073,6 +1073,7 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   background: var(--brass); color: #0B0B0C;
   border: 0; border-radius: var(--radius-sm);
   padding: 16px; cursor: pointer;
+  text-align: center;
   transition: filter .12s;
 }
 .paybtn:hover { filter: brightness(1.08); }
@@ -1084,7 +1085,6 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .paybtn--ghost {
   background: none; color: var(--paper);
   border: 1px solid var(--line-strong);
-  text-align: center;
 }
 .paybtn--ghost:hover { border-color: var(--brass); color: var(--brass); filter: none; }
 
@@ -2061,9 +2061,9 @@ body.page-payment .payno {
   font-size: 12px; color: var(--mute); font-variant-numeric: tabular-nums;
 }
 
-/* ---- 결제 완료 화면 ----
+/* ---- 결제 결과 화면 (완료 · 실패 · 자동환불 셋 공용) ----
    결제 화면과 같은 부품(.orderhead/.payseats/.paytotal/.payno)을 그대로 재사용한다 —
-   확정 직후 화면이 결제 화면과 다르게 생기면 "이게 정말 그 예매가 맞나" 다시 눈으로
+   결과 화면이 결제 화면과 다르게 생기면 "이게 정말 그 예매가 맞나" 다시 눈으로
    맞춰보게 된다. 다만 더 이상 할 일이 남지 않은 화면이라 2단 sticky 대신 가운데
    카드 하나로 좁혀, 로그인 화면과 같은 "결과를 확인하고 다음으로 넘어가는" 느낌을 준다. */
 body.page-payment .paydone {
@@ -2080,12 +2080,36 @@ body.page-payment .paydone-icon {
   border: 1px solid var(--brass-dim);
   color: var(--brass);
 }
+/* 실패 · 자동환불. 성공과 같은 자리·같은 크기의 아이콘을 색만 rose 로 바꿔 쓴다 —
+   "이 화면도 결과 화면 계열이다"는 걸 형태로 알려주고, 안 좋은 결과라는 건 색으로. */
+body.page-payment .paydone-icon--fail {
+  background: rgba(255, 92, 122, .12);
+  border-color: var(--rose);
+  color: var(--rose);
+}
 body.page-payment .paydone-lead {
   font-family: var(--display); font-size: 20px; font-weight: 800;
   color: var(--paper); margin: 0 0 28px; text-align: center;
 }
+/* 실패·환불 화면은 헤드라인 바로 아래에 사유 문단이 붙으므로, 그 사이 간격은
+   좁게 두고(:has 로 뒤에 오는 형제를 보고 판단) 사유 문단 쪽에서 orderhead 까지의
+   간격을 낸다. 성공 화면처럼 헤드라인 다음이 바로 orderhead 면 원래 여백(28px)을 쓴다. */
+body.page-payment .paydone-lead:has(+ .payfail-code),
+body.page-payment .paydone-lead:has(+ .payfail-reason) { margin-bottom: 6px; }
+body.page-payment .payfail-code {
+  margin: 0 0 6px; text-align: center;
+  font-size: 12px; color: var(--mute);
+}
+body.page-payment .payfail-reason {
+  margin: 0 0 28px; text-align: center;
+  font-size: 13px; line-height: 1.7; color: var(--mute);
+}
 body.page-payment .paydone .paytotal { margin-top: 16px; }
 body.page-payment .paydone .payno { margin: 10px 0 28px; }
+/* 실패 화면은 결제 전이라 결제금액·예매번호가 없다 — 좌석 목록 바로 다음이 버튼이라
+   그 사이만 따로 벌린다(있으면 .payno 의 28px 여백을 그대로 쓴다). */
+body.page-payment .payseats:has(+ .paydone-actions),
+body.page-payment .payseats-fallback:has(+ .paydone-actions) { margin-bottom: 28px; }
 body.page-payment .paydone-actions { display: flex; gap: 10px; }
 body.page-payment .paydone-actions .paybtn { flex: 1; }
 

@@ -102,6 +102,11 @@ public class PaymentController {
 
             model.addAttribute("reservation", reservation);
             model.addAttribute("amount", result.totalAmount());
+            // 이미 읽어 둔(detached) 좌석 스냅샷이다 — 이 시점엔 DB 에서는 release() 로
+            // 연결이 끊긴 뒤지만, 앞서 join fetch 해 둔 메모리 상의 값은 그대로 남아 있어
+            // "무엇을 환불받았는지" 보여주는 데 문제없다.
+            model.addAttribute("seats", reservation.getSeats().stream()
+                    .sorted(Comparator.comparing(Seat::getId)).toList());
             return "reservation/payment-refunded";
         }
 
@@ -115,18 +120,39 @@ public class PaymentController {
     }
 
     @GetMapping("/fail")
-    public String fail(@RequestParam(required = false) String code,
+    public String fail(@PathVariable String reservationNo,
+                        @RequestParam(required = false) String code,
                         @RequestParam(required = false) String message,
+                        @AuthenticationPrincipal CustomUserDetails principal,
                         Model model) {
         model.addAttribute("code", code);
         model.addAttribute("message", message);
+        addFailureContext(reservationNo, principal, model);
         return "reservation/payment-fail";
     }
 
     @ExceptionHandler(TossPaymentException.class)
-    public String handleTossFailure(TossPaymentException e, Model model) {
+    public String handleTossFailure(TossPaymentException e,
+                                     @PathVariable String reservationNo,
+                                     @AuthenticationPrincipal CustomUserDetails principal,
+                                     Model model) {
         model.addAttribute("message", e.getMessage());
+        addFailureContext(reservationNo, principal, model);
         return "reservation/payment-fail";
+    }
+
+    /**
+     * 실패 화면에도 결제 화면과 같은 주문 정보(포스터·좌석)를 보여준다 — 예매번호 하나만
+     * 뜨면 뭘 사려던 건지 결제 화면으로 되돌아가야 알 수 있다. 실패 직후에는 좌석 선점이
+     * 아직 살아 있는 게 보통이라(사용자가 결제창을 취소했거나 카드가 거절된 것뿐, 선점
+     * 자체는 안 풀렸다) seats 가 비어 있을 일이 드물지만, 혹시 그 사이 만료됐더라도
+     * 결제 화면과 같은 방식(빈 리스트 → seatSummary 폴백)으로 화면이 안전하게 대체한다.
+     */
+    private void addFailureContext(String reservationNo, CustomUserDetails principal, Model model) {
+        Reservation reservation = getOwnedReservation(reservationNo, principal);
+        model.addAttribute("reservation", reservation);
+        model.addAttribute("seats", reservation.getSeats().stream()
+                .sorted(Comparator.comparing(Seat::getId)).toList());
     }
 
     private Reservation getOwnedReservation(String reservationNo, CustomUserDetails principal) {

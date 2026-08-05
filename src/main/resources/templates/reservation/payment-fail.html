@@ -7,17 +7,70 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
-<div class="wrap authwrap">
+<body class="page-payment">
+<div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='결제 실패', showAuthNav=false)}"></header>
 
-    <div class="empty-state" style="text-align:left;padding:0">
-        <p><strong style="color:var(--rose)">결제에 실패했습니다.</strong></p>
-        <p th:if="${code}">오류 코드: <span th:text="${code}">CODE</span></p>
-        <p th:if="${message}" th:text="${message}">사유</p>
-    </div>
+    <!-- 결제가 끝난 게 아니라 중단된 것뿐이다 — 좌석 선점은 대개 아직 살아 있으므로
+         "완료"가 아니라 "결제" 단계에 그대로 머문다. -->
+    <ol class="paysteps">
+        <li class="ps-done">좌석 선택</li>
+        <li class="ps-current" aria-current="step">결제</li>
+        <li>완료</li>
+    </ol>
 
-    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+    <div class="paydone">
+        <div class="paydone-icon paydone-icon--fail" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <p class="paydone-lead">결제에 실패했습니다</p>
+        <p class="payfail-reason" th:if="${message}" th:text="${message}">사유</p>
+        <p class="payfail-code" th:if="${code}">오류 코드 <span th:text="${code}">CODE</span></p>
+
+        <!-- 좌석 선점은 대개 그대로 살아 있으므로, 뭘 사려던 건지 다시 보여주면 재시도가
+             훨씬 쉬워진다 — 예매번호 하나만 덩그러니 뜨던 종전엔 결제 화면으로 돌아가야
+             알 수 있었다. -->
+        <div class="orderhead">
+            <div class="poster" th:classappend="${reservation.schedule.performance.posterUrl == null} ? ' no-img'">
+                <img th:if="${reservation.schedule.performance.posterUrl != null}"
+                     th:src="@{/img/poster(u=${reservation.schedule.performance.posterUrl})}"
+                     th:alt="${reservation.schedule.performance.title}">
+                <div class="posterfallback">
+                    <span class="pf-initial" th:text="${#strings.substring(reservation.schedule.performance.title, 0, 1)}">공</span>
+                </div>
+            </div>
+            <div class="orderhead-text">
+                <h2 class="paytitle" th:text="${reservation.schedule.performance.title}">공연명</h2>
+                <dl class="payspec">
+                    <div>
+                        <dt>일시</dt>
+                        <dd th:text="${#temporals.format(reservation.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">2026.8.28(금) 11:00</dd>
+                    </div>
+                    <div>
+                        <dt>공연장</dt>
+                        <dd th:text="${reservation.schedule.performance.venue}">공연장</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <h3 class="detail-heading">좌석</h3>
+        <ul class="payseats" th:if="${!seats.isEmpty()}">
+            <li th:each="seat : ${seats}">
+                <span class="ps-seat" th:text="${seat.seatLabel()}">1층 1열 1번</span>
+                <span class="ps-grade" th:text="${seat.grade}">VIP</span>
+                <span class="ps-price" th:text="${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'">180,000원</span>
+            </li>
+        </ul>
+        <p class="payseats-fallback" th:if="${seats.isEmpty()}" th:text="${reservation.seatSummary}">1층 1열 1번 VIP</p>
+
+        <div class="paydone-actions">
+            <a class="paybtn" th:href="@{/reservations/{no}/payment(no=${reservation.reservationNo})}">다시 시도</a>
+            <a class="paybtn paybtn--ghost" th:href="@{/mypage/reservations}">예매 내역으로</a>
+        </div>
+    </div>
 </div>
 </body>
 </html>

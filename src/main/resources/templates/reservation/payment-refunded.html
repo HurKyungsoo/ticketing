@@ -7,19 +7,77 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
-<div class="wrap authwrap">
+<body class="page-payment">
+<div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='자동 환불', showAuthNav=false)}"></header>
 
-    <div class="empty-state" style="text-align:left;padding:0">
-        <p><strong style="color:var(--rose)">좌석 선점이 만료되어 결제가 자동 환불되었습니다.</strong></p>
-        <p>결제 승인 처리 중 선점 시간이 지나 좌석을 확보하지 못했습니다.
-           승인된 결제 금액은 토스페이먼츠를 통해 자동으로 취소 처리했습니다.</p>
-        <p>예매번호: <span th:text="${reservation.reservationNo}">번호</span></p>
-        <p>환불금액: <span th:text="${#numbers.formatInteger(amount,0,'COMMA')} + '원'">금액</span></p>
-    </div>
+    <!-- 결제 승인까지는 갔지만 예매가 확정되지는 못한 상태라 "완료"로 못 짚는다. -->
+    <ol class="paysteps">
+        <li class="ps-done">좌석 선택</li>
+        <li class="ps-current" aria-current="step">결제</li>
+        <li>완료</li>
+    </ol>
 
-    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+    <div class="paydone">
+        <div class="paydone-icon paydone-icon--fail" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <p class="paydone-lead">결제가 자동 환불되었습니다</p>
+        <p class="payfail-reason">결제 승인 처리 중 선점 시간이 지나 좌석을 확보하지 못했습니다.
+            승인된 결제 금액은 토스페이먼츠를 통해 자동으로 취소 처리했습니다.</p>
+
+        <!-- 좌석은 이미 풀려 다른 사람이 가져갈 수 있는 상태지만(재시도 불가), 무엇을
+             사려다 놓쳤는지는 결제 화면과 같은 방식으로 보여준다 — join fetch 로 미리
+             읽어 둔 값이라 이 시점에 DB 를 다시 안 봐도 된다. -->
+        <div class="orderhead">
+            <div class="poster" th:classappend="${reservation.schedule.performance.posterUrl == null} ? ' no-img'">
+                <img th:if="${reservation.schedule.performance.posterUrl != null}"
+                     th:src="@{/img/poster(u=${reservation.schedule.performance.posterUrl})}"
+                     th:alt="${reservation.schedule.performance.title}">
+                <div class="posterfallback">
+                    <span class="pf-initial" th:text="${#strings.substring(reservation.schedule.performance.title, 0, 1)}">공</span>
+                </div>
+            </div>
+            <div class="orderhead-text">
+                <h2 class="paytitle" th:text="${reservation.schedule.performance.title}">공연명</h2>
+                <dl class="payspec">
+                    <div>
+                        <dt>일시</dt>
+                        <dd th:text="${#temporals.format(reservation.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">2026.8.28(금) 11:00</dd>
+                    </div>
+                    <div>
+                        <dt>공연장</dt>
+                        <dd th:text="${reservation.schedule.performance.venue}">공연장</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <h3 class="detail-heading">좌석</h3>
+        <ul class="payseats" th:if="${!seats.isEmpty()}">
+            <li th:each="seat : ${seats}">
+                <span class="ps-seat" th:text="${seat.seatLabel()}">1층 1열 1번</span>
+                <span class="ps-grade" th:text="${seat.grade}">VIP</span>
+                <span class="ps-price" th:text="${#numbers.formatInteger(seat.price,0,'COMMA')} + '원'">180,000원</span>
+            </li>
+        </ul>
+        <p class="payseats-fallback" th:if="${seats.isEmpty()}" th:text="${reservation.seatSummary}">1층 1열 1번 VIP</p>
+
+        <dl class="paytotal">
+            <div>
+                <dt>환불금액</dt>
+                <dd th:text="${#numbers.formatInteger(amount,0,'COMMA')} + '원'">180,000원</dd>
+            </div>
+        </dl>
+        <p class="payno">예매번호 <span th:text="${reservation.reservationNo}">26073177684019</span></p>
+
+        <div class="paydone-actions">
+            <a class="paybtn" th:href="@{/mypage/reservations}">예매 내역 보기</a>
+            <a class="paybtn paybtn--ghost" th:href="@{/}">공연 더 보기</a>
+        </div>
+    </div>
 </div>
 </body>
 </html>
