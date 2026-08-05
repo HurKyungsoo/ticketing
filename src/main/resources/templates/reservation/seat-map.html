@@ -22,6 +22,7 @@
             <option value="4">4명</option>
         </select>
         <span class="hint">선택한 인원수만큼 좌석을 고를 수 있습니다.</span>
+        <button type="button" class="zoomtoggle" id="autopickBtn">연석 자동 찾기</button>
         <button type="button" class="zoomtoggle" id="zoomBtn" aria-pressed="false">확대</button>
     </div>
 
@@ -136,7 +137,13 @@
             가격표는 보기만 하는 정보가 아니라 필터다. 예산을 먼저 정하고 그 안에서 자리를
             고르는 게 실제 구매 순서라, 등급을 누르면 그 등급만 남기고 나머지를 뒤로 물린다.
             아무것도 안 누른 상태(= 전부 해제)가 곧 "전체 보기"라 초기화 버튼을 따로 두지 않는다.
+
+            문제는 이 줄이 "범례"인지 "필터"인지 처음 보면 구분이 안 간다는 것 — 눌렀을 때
+            바뀌는 게 옅은 흰색 배경 하나뿐이라 눌러보기 전에는 클릭 가능한 줄인지도 모른다.
+            힌트 문구를 붙이고, 눌린 상태는 이 화면의 다른 활성 상태(층 바로가기·확대 버튼)와
+            같은 브라스 강조로 통일했다(아래 CSS).
         -->
+        <p class="legend-hint">가격을 눌러 그 등급만 볼 수 있어요</p>
         <div class="legend-row legend-grades" id="gradeFilter">
             <button type="button" data-grade="VIP" aria-pressed="false">
                 <i class="legend-grade grade-VIP"></i> VIP석 <b class="legend-price" data-grade="VIP"></b>
@@ -328,8 +335,7 @@
     function setZoomed(on) {
         zoomed = on;
         zoomBtn.setAttribute('aria-pressed', String(on));
-        zoomBtn.textContent = on ? '전체 보기' : '확대';
-        // 안내문은 syncZoomBtn 이 좌석 크기까지 보고 정한다(아래에서 호출된다).
+        // 버튼 문구·안내문은 syncZoomBtn 이 좌석 크기까지 보고 정한다(아래에서 호출된다).
         // 확대 모드에서만 격자가 지도처럼 상하좌우로 스크롤된다(높이를 고정한다).
         scroller.classList.toggle('zoomed', on);
         applySeatSize();
@@ -337,6 +343,8 @@
         syncZoomBtn();
         // 좌석 크기와 격자 높이가 확정된 뒤라야 미니맵 배율이 맞는다.
         syncMinimap();
+        // 기준선(sticky 바 vs 지도 뷰포트)이 모드마다 다르므로 전환 직후 다시 계산한다.
+        syncActiveFloorChip();
     }
 
     /**
@@ -370,6 +378,7 @@
 
         const suggestZoom = !zoomed && tooSmallToTap;
         zoomBtn.classList.toggle('zoomtoggle--suggest', suggestZoom);
+        zoomBtn.textContent = zoomed ? '전체 보기' : (suggestZoom ? '확대해서 선택' : '확대');
         zoomHint.textContent = zoomed ? ZOOM_HINT : (tooSmallToTap ? FIT_SMALL_HINT : FIT_HINT);
     }
 
@@ -523,9 +532,62 @@
     /* 스크롤도 pointermove 처럼 화면 주사율보다 자주 올 수 있으므로 프레임당 한 번만 반영한다. */
     let miniFrame = null;
     scroller.addEventListener('scroll', () => {
-        if (minimap.hidden || miniFrame !== null) return;
-        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncMinimapView(); });
+        if (miniFrame !== null) return;
+        miniFrame = requestAnimationFrame(() => {
+            miniFrame = null;
+            if (!minimap.hidden) syncMinimapView();
+            syncActiveFloorChip();
+        });
     }, { passive: true });
+
+    /* ---------- 층 바로가기 강조 (스크롤 스파이) ----------
+       콘서트홀처럼 층 바로가기 칩이 여러 개인 홀에서는, 눌러서 이동한 뒤로는 지금 스크롤로
+       보고 있는 곳이 몇 층인지 칩 목록 어디에도 안 나타났다 — `.floorchip.active` CSS 는
+       이미 있었는데 그걸 붙이는 JS 가 없었다(선언만 있고 실물이 없는 죽은 스타일).
+
+       각 칩의 href(`#floor-3-head` 등)가 곧 그 층 머릿글의 id 이므로, 새로 매핑을 만들지
+       않고 그 값을 그대로 재사용한다 — 서버(SeatMapView)가 이미 알고 있는 사실을 JS 가
+       다시 계산하면 나중에 한쪽만 바뀌었을 때 조용히 어긋난다. */
+    const floorChipTargets = [...document.querySelectorAll('.floorchip')]
+            .map(chip => ({ chip, el: document.getElementById(chip.getAttribute('href').slice(1)) }))
+            .filter(t => t.el);
+
+    /**
+     * 기준선을 sticky 바 바로 아래(=화면 맨 위)로 잡았더니, 좌석이 몇 안 되는 홀(한 층이
+     * 6줄뿐인 400석 블루스퀘어 등)에서는 다음 층 머릿글이 그 기준선에 닿기 한참 전부터
+     * 이미 화면 대부분이 다음 층 좌석으로 덮여 있었다 — 정작 눈에 보이는 건 2층인데 칩은
+     * 계속 1층이라고 우겼다. 한 층이 뷰포트보다 짧으면 "머릿글이 맨 위 줄을 지났는가"로는
+     * 못 잡는다.
+     *
+     * 기준선을 보이는 영역의 **세로 중앙**으로 옮겼다 — 화면 가운데에 걸린 층이 "지금 보는
+     * 곳"이라는, 흔한 스크롤스파이 관례와 같다. 층이 뷰포트보다 긴 콘서트홀에서도 결과는
+     * 그대로다(중앙을 넘어서면 어차피 그 층이 화면 대부분을 채운 뒤이므로).
+     */
+    function syncActiveFloorChip() {
+        if (floorChipTargets.length === 0) return;
+        let referenceY;
+        if (zoomed) {
+            const rect = scroller.getBoundingClientRect();
+            referenceY = rect.top + rect.height / 2;
+        } else {
+            const stickyH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) || 0;
+            referenceY = stickyH + (window.innerHeight - stickyH) / 2;
+        }
+
+        let current = floorChipTargets[0];
+        for (const target of floorChipTargets) {
+            if (target.el.getBoundingClientRect().top <= referenceY) current = target;
+            else break;   // 칩 순서 = 밴드 순서 = DOM 순서(위→아래)라 여기서 멈춰도 된다.
+        }
+        floorChipTargets.forEach(({ chip }) => chip.removeAttribute('aria-current'));
+        current.chip.setAttribute('aria-current', 'true');
+    }
+    window.addEventListener('scroll', () => {
+        if (zoomed) return;   // 확대 모드는 위 scroller 스크롤 핸들러가 맡는다.
+        if (miniFrame !== null) return;
+        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncActiveFloorChip(); });
+    }, { passive: true });
+    syncActiveFloorChip();
 
     /* 미니맵을 누르거나 끌면 그 지점이 화면 가운데로 오게 지도를 옮긴다.
        미니맵은 격자 바깥의 fixed 요소라 격자의 끌기 처리와 겹치지 않는다. */
@@ -855,17 +917,32 @@
         return Number(partySizeSelect.value);
     }
 
+    /*
+       고른 좌석 수·합계를 예매 바 안에서 가장 눈에 띄게 보여준다(.pickedsummary).
+       좌석을 고르는 행위 자체는 지도 위에서 이미 또렷한데, "그래서 몇 석에 얼마인지"는
+       전에는 본문과 같은 굵기의 텍스트 한 줄이라 결제 판단에 필요한 정보치고 약했다.
+    */
     function renderPicked() {
         if (selectedSeats.length === 0) {
             pickedBox.innerHTML = '<p class="pickedlist">좌석을 선택하세요</p>';
+            bookbar.classList.remove('is-ready');
             bookBtn.disabled = true;
             return;
         }
         const chips = selectedSeats.map(s => `<span class="pickchip">${s.dataset.label}</span>`).join('');
         const total = selectedSeats.reduce((sum, s) => sum + Number(s.dataset.price), 0).toLocaleString();
+        const remaining = partySize() - selectedSeats.length;
+        const hint = remaining > 0
+                ? `<p class="pickedhint">${remaining}석 더 고를 수 있어요</p>`
+                : '';
         pickedBox.innerHTML =
             `<p class="pickedlist">${chips}</p>` +
-            `<p class="pickedtotal">${selectedSeats.length}석 · 총 <strong>${total}원</strong></p>`;
+            hint +
+            `<div class="pickedsummary">` +
+                `<span class="pickedcount">${selectedSeats.length}석 선택</span>` +
+                `<span class="pickedtotal">총 <strong>${total}원</strong></span>` +
+            `</div>`;
+        bookbar.classList.add('is-ready');
         bookBtn.disabled = false;
     }
 
@@ -882,6 +959,63 @@
         selectedSeats = selectedSeats.filter(s => s !== seat);
     }
 
+    /* ---------- 연석 자동 찾기 ----------
+       인원수 선택(1~4명)은 이미 있는데, 붙은 자리를 찾으려면 좌석도를 눈으로 훑어야 했다.
+       `.row` 안에서 좌석은 이미 seat_no 순으로 렌더되고 통로는 `.aisle` 클래스(그 좌석
+       뒤에 통로가 있다)로 이미 표시돼 있으므로, 한 줄 안의 "끊기지 않은 예매 가능 구간"을
+       찾는 문제로 바뀐다 — 새 데이터가 필요 없다.
+
+       "가장 좋은 자리"를 거리로 정렬하지는 않는다. 층·구역 사이의 실제 거리는 지금 화면에
+       없는 정보다(무대 기준 좌표는 있지만 등급 안에서의 좌우 위치까지는 없다). 대신 DOM 순서를
+       근사치로 쓴다 — 정면 밴드가 무대 뒤(합창석)보다 먼저 그려지고, 같은 밴드 안에서는
+       구역(A/B/C…)이 좌석도 순서대로, 줄은 1열부터 순서대로 나온다. 좌석도가 보통 가까운
+       구역을 먼저 선언하므로 "처음 찾은 구간"이 "완벽한 최단 거리"는 아니어도 쓸만한
+       기본값이다. 정면에서 못 찾으면 그때 무대 뒤까지 넓힌다.
+    */
+    function contiguousRunsInRow(row, size) {
+        const seats = [...row.querySelectorAll('.seat')];
+        const runs = [];
+        let run = [];
+        const flush = () => {
+            if (run.length >= size) runs.push(run.slice(0, size));
+            run = [];
+        };
+        seats.forEach(seat => {
+            if (seat.dataset.status !== 'AVAILABLE') { flush(); return; }
+            run.push(seat);
+            if (seat.classList.contains('aisle')) flush();   // 통로 뒤는 이어진 자리가 아니다.
+        });
+        flush();
+        return runs;
+    }
+
+    function findAdjacentSeats(size) {
+        const search = (rows) => {
+            for (const row of rows) {
+                const runs = contiguousRunsInRow(row, size);
+                if (runs.length) return runs[0];
+            }
+            return null;
+        };
+        return search(scroller.querySelectorAll('.zoneline:not(.zoneline-rear) .row'))
+                || search(scroller.querySelectorAll('.zoneline-rear .row'));
+    }
+
+    const autopickBtn = document.getElementById('autopickBtn');
+    autopickBtn.addEventListener('click', () => {
+        const size = partySize();
+        const run = findAdjacentSeats(size);
+        if (!run) {
+            window.__toast('연석으로 남은 자리가 없어요. 인원수를 나눠서 골라보세요.', 4000);
+            return;
+        }
+        // 기존 선택은 비우고 찾은 자리로 교체한다 — 둘 다 남기면 인원수를 넘어설 수 있다.
+        [...selectedSeats].forEach(deselect);
+        run.forEach(seat => { setSelected(seat, true); selectedSeats.push(seat); });
+        renderPicked();
+        run[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    });
+
     // 인원수를 줄이면 초과분은 선택 해제한다.
     partySizeSelect.addEventListener('change', () => {
         while (selectedSeats.length > partySize()) {
@@ -892,6 +1026,13 @@
 
     document.querySelectorAll('.seat').forEach(seat => {
         seat.addEventListener('click', () => {
+            // 판매 완료·결제 대기 좌석은 disabled 를 안 쓰므로(탭 안내를 받으려고) 클릭이
+            // 여기까지 들어온다 — 데스크톱은 이미 호버 툴팁(data-tooltip)으로 이유를 보지만
+            // 모바일은 호버가 없으므로 탭에서도 같은 문구를 토스트로 띄운다.
+            if (seat.getAttribute('aria-disabled') === 'true') {
+                window.__toast(seat.dataset.tooltip);
+                return;
+            }
             if (seat.classList.contains('selected')) {
                 deselect(seat);
                 renderPicked();
@@ -934,7 +1075,9 @@
         const failedIds = new Set(failedSeatIds || []);
         selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
             s.dataset.status = 'HELD';
-            s.disabled = true;
+            s.dataset.tooltip = '결제 대기 중';
+            s.setAttribute('aria-disabled', 'true');
+            s.tabIndex = -1;
             s.classList.remove('selected');
             // 이제 누를 수 없는 좌석이라 "눌린 상태" 개념이 없어진다 — 템플릿이 예매 가능한
             // 좌석에만 aria-pressed 를 주는 것과 같은 규칙으로 속성 자체를 뗀다.

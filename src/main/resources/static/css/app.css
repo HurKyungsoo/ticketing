@@ -258,6 +258,8 @@ a { color: inherit; text-decoration: none; }
 .zoomtoggle--suggest {
   background: var(--brass); border-color: var(--brass);
   color: var(--ink); font-weight: 700;
+  padding: 7px 18px; font-size: 13px;
+  box-shadow: 0 0 0 3px rgba(233, 180, 76, .18), 0 4px 14px rgba(233, 180, 76, .35);
 }
 .zoomtoggle--suggest:hover { border-color: var(--brass); filter: brightness(1.08); }
 
@@ -630,7 +632,7 @@ a { color: inherit; text-decoration: none; }
 /* 호 오프셋을 유지한 채로 살짝 더 들어올린다. --arc-y 를 빼먹으면 hover 때 좌석이 평평한
    자리로 튀어 내려간다. 테두리를 없앴으므로 강조는 바깥 링(box-shadow)으로 준다 —
    링은 레이아웃을 차지하지 않아서 좌석 크기 자동 맞춤 계산에 영향을 주지 않는다. */
-.seat:hover:not(:disabled) {
+.seat:hover:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(calc(var(--arc-y) - 2px));
   box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.12)) var(--paper);
 }
@@ -754,12 +756,19 @@ a { color: inherit; text-decoration: none; }
 .minimap-zone.grade-A   { background: var(--grade-a);   color: var(--paper); }
 /* 무대. 방향을 잡아주는 기준점이라 등급색보다 또렷하게 둔다. */
 .minimap-stage { position: absolute; border-radius: 1px; background: var(--brass); opacity: .9; }
-/* 지금 화면에 보이는 범위. */
+/*
+   지금 화면에 보이는 범위. 흰 테두리 1.5px + 옅은 채움이었는데, 패널 전체가 opacity .82로
+   가라앉아 있고 등급 블록도 밝은 색(VIP·R)이 섞여 있어 흰 테두리가 묻혀 보였다 — 정작
+   미니맵에서 가장 중요한 정보(지금 보고 있는 곳)가 가장 안 보이는 역설이었다.
+   이 화면에서 "지금 활성" 을 나타내는 유일한 색(브라스)로 바꾸고 글로우를 얹어
+   패널의 다른 어떤 블록보다 위에 뜨게 했다.
+*/
 .minimap-view {
   position: absolute;
-  border: 1.5px solid var(--paper);
+  border: 2px solid var(--brass);
   border-radius: 2px;
-  background: rgba(250, 250, 250, .14);
+  background: rgba(233, 180, 76, .16);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 0 8px rgba(233, 180, 76, .6);
   pointer-events: none;
 }
 
@@ -789,6 +798,8 @@ a { color: inherit; text-decoration: none; }
    가격표 항목이 버튼이다. 예산을 먼저 정하고 그 안에서 자리를 고르는 게 실제 구매 순서라,
    등급을 누르면 그 등급만 남기고 나머지 좌석을 뒤로 물린다. .legend-row 의 gap 이 22px 라
    버튼 자체 padding 과 겹쳐 넓어 보이므로 이 줄만 간격을 좁힌다. */
+/* "범례일 뿐" 이라는 첫인상을 깨는 안내. 다른 sticky 힌트(.partysize .hint)와 같은 톤. */
+.legend-hint { margin: 0 0 6px; font-size: 11px; color: var(--mute); }
 .legend-grades { gap: 6px; }
 .legend-grades button {
   display: flex; align-items: center; gap: 7px;
@@ -798,9 +809,12 @@ a { color: inherit; text-decoration: none; }
   transition: background .12s, border-color .12s, opacity .12s;
 }
 .legend-grades button:hover:not(:disabled) { border-color: var(--line-strong); }
+/* 눌린 상태는 이 화면의 다른 활성 표시(층 바로가기 칩·확대 버튼)와 같은 브라스 언어를 쓴다 —
+   종전엔 옅은 흰색 배경뿐이라 "필터가 걸렸다"는 신호가 다른 활성 상태보다 약했다. */
 .legend-grades button[aria-pressed="true"] {
-  background: rgba(255, 255, 255, .10);
-  border-color: var(--line-strong);
+  background: rgba(233, 180, 76, .14);
+  border-color: var(--brass);
+  color: var(--brass);
 }
 /* 이번 회차에 그 등급 좌석이 아예 없으면 누를 게 없다. */
 .legend-grades button:disabled { opacity: .35; cursor: default; }
@@ -1696,7 +1710,22 @@ body.page-detail h2 {
   font-family: var(--display); font-size: 40px; font-weight: 800;
   letter-spacing: -0.03em; color: var(--paper); margin: 0 0 8px;
 }
-body.page-detail .meta { font-size: 14px; color: var(--mute); margin: 0 0 32px; }
+/*
+   종전엔 그냥 회색 텍스트 한 줄이라 옆의 굵은 제목(40px/800)에 눌려 있는 듯 안 보이는 듯했다.
+   목록·홈 카드의 장르 배지(.card-badge)와 같은 태그 어법(테두리+radius 999+작은 패딩)으로
+   맞춰 "장르"라는 걸 한눈에 알아보게 했다. 카드 배지는 포스터 위에 얹히는 오버레이라 배경이
+   짙고 블러가 있지만, 여기는 본문 위라 그 정도는 필요 없어 테두리 중심으로 가볍게 뒀다 —
+   같은 화면에 브라스 강조가 이미 있어서(가격·CTA) 장르 배지까지 강조색을 쓰면 위계가 뭉갠다.
+*/
+body.page-detail .meta {
+  display: inline-block;
+  font-size: 12px; font-weight: 600; color: var(--paper);
+  background: rgba(248, 244, 236, .06);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 5px 14px;
+  margin: 0 0 32px;
+}
 
 body.page-detail .detail-heading { font-size: 15px; font-weight: 700; color: var(--paper); margin: 0 0 14px; }
 
