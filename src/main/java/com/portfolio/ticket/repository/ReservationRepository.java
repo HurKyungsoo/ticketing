@@ -45,11 +45,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      *
      * <p>좌석 표기는 {@code seatSummary} 스냅샷을 쓰므로 좌석을 fetch 하지 않는다.
      * 컬렉션을 안 당겨오니 행이 늘지 않아 {@code distinct} 도 필요없다.
+     *
+     * <p>{@code hiddenAt} 이 있는 건(마이페이지에서 삭제한 예매)은 뺀다 — 행 자체는 남아
+     * 있으므로 취소·환불 이력이나 매출 집계에는 계속 잡힌다.
      */
     @Query("select r from Reservation r " +
             "join fetch r.schedule sc " +
             "join fetch sc.performance " +
-            "where r.memberId = :memberId " +
+            "where r.memberId = :memberId and r.hiddenAt is null " +
             "order by r.createdAt desc")
     List<Reservation> findWithScheduleByMemberIdOrderByCreatedAtDesc(@Param("memberId") Long memberId);
 

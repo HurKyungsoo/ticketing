@@ -74,6 +74,13 @@ public class Reservation {
     private LocalDateTime confirmedAt;
     private LocalDateTime canceledAt;
 
+    /**
+     * 마이페이지 "삭제". 행을 실제로 지우지 않는다 — 예매는 영수증 성격이라 취소·환불
+     * 이력, 매출 집계에서 계속 살아 있어야 한다(REFUND_TIERS 주석·ReservationRepository
+     * 참고). 이 사용자의 목록 조회에서만 뺀다.
+     */
+    private LocalDateTime hiddenAt;
+
     /** 토스페이먼츠 결제 건 식별자. 결제 승인 후에만 값이 채워진다 (취소/환불 API 호출에 필요). */
     private String paymentKey;
 
@@ -94,6 +101,17 @@ public class Reservation {
 
     public void expire() {
         this.status = ReservationStatus.EXPIRED;
+    }
+
+    /**
+     * 취소·만료된 예매만 삭제(숨김)할 수 있다. 결제 대기·확정 건은 아직 유효한 표라 목록에서
+     * 빠지면 안 된다 — 특히 확정 건이 사라지면 관람일에 뭘 예매했는지 볼 방법이 없어진다.
+     */
+    public void hide() {
+        if (status != ReservationStatus.CANCELED && status != ReservationStatus.EXPIRED) {
+            throw new IllegalStateException("취소되었거나 만료된 예매만 삭제할 수 있습니다. status=" + status);
+        }
+        this.hiddenAt = LocalDateTime.now();
     }
 
     public boolean isHoldExpired(LocalDateTime now) {

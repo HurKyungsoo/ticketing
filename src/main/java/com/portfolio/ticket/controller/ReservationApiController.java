@@ -68,6 +68,17 @@ public class ReservationApiController {
     }
 
     /**
+     * 마이페이지 "삭제". 행을 지우는 게 아니라 이 회원의 목록에서만 뺀다 — 취소된 예매만
+     * 대상이라 별도 응답 값이 없다(환불 같은 부수 효과가 없다).
+     */
+    @PostMapping("/reservations/{reservationNo}/hide")
+    public ResponseEntity<?> hide(@PathVariable String reservationNo,
+                                  @AuthenticationPrincipal CustomUserDetails principal) {
+        reservationService.hide(reservationNo, principal.getMemberId());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 결과를 분리해서 반환한다.
      * KOPIS 는 기본이 증분 수집이라, 전체를 다시 받으려면 {@code ?full=true} 를 붙인다.
      */

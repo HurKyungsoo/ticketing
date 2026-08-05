@@ -292,6 +292,23 @@ public class ReservationService {
         return refund;
     }
 
+    /**
+     * 마이페이지 "삭제" — 행을 지우지 않고 이 회원의 목록 조회에서만 뺀다(엔티티
+     * {@link Reservation#hide()} 참고). 취소·만료된 건만 대상이라 좌석·회차를 잠글 일이
+     * 없다(이미 {@link #cancel} 또는 만료 스케줄러가 좌석 연결을 끊어 둔 뒤다).
+     */
+    @Transactional
+    public void hide(String reservationNo, Long memberId) {
+        Reservation reservation = reservationRepository.findByReservationNo(reservationNo)
+                .orElseThrow(() -> new NotFoundException("예매 내역을 찾을 수 없습니다."));
+
+        if (!reservation.getMemberId().equals(memberId)) {
+            throw new ForbiddenException("본인 예매만 삭제할 수 있습니다.");
+        }
+
+        reservation.hide();
+    }
+
     /** 예매에 속한 좌석들을 id 오름차순으로 하나씩 잠근다 (데드락 방지 순서 고정). */
     private List<Seat> lockSeatsInOrder(Reservation reservation) {
         List<Long> sortedSeatIds = reservation.getSeats().stream().map(Seat::getId).sorted().toList();

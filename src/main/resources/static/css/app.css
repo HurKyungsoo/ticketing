@@ -1259,14 +1259,15 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
 .badge-CONFIRMED { color: var(--brass); border-color: var(--brass-dim); }
 .badge-CANCELED, .badge-EXPIRED { color: var(--rose); opacity: .75; }
 
-.btn-pay, .btn-cancel {
+.btn-pay, .btn-cancel, .btn-delete {
   font-family: var(--body); font-size: 13px; font-weight: 600;
   border: 0; border-radius: var(--radius-sm); padding: 8px 16px; cursor: pointer; white-space: nowrap;
 }
 .btn-pay { background: var(--brass); color: var(--ink); }
-.btn-cancel { background: transparent; border: 1px solid var(--line); color: var(--mute); }
+.btn-cancel, .btn-delete { background: transparent; border: 1px solid var(--line); color: var(--mute); }
 .btn-cancel:hover { border-color: var(--rose); color: var(--rose); }
-.btn-cancel:disabled { opacity: .5; cursor: not-allowed; }
+.btn-delete:hover { border-color: var(--line-strong); color: var(--paper); }
+.btn-cancel:disabled, .btn-delete:disabled { opacity: .5; cursor: not-allowed; }
 
 @media (max-width: 720px) {
   .masthead .logo-mark { width: 22px; height: 14px; margin-right: 6px; }

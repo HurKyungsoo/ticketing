@@ -63,6 +63,16 @@
                         th:attr="data-reservation-no=${r.reservationNo}, data-status=${r.status}">
                     취소
                 </button>
+
+                <!-- 삭제는 취소·만료된 건만 — 결제 대기·확정 건은 아직 유효한 표라 지우면
+                     관람일에 뭘 예매했는지 볼 방법이 없어진다(서버의 Reservation.hide() 가
+                     같은 규칙으로 한 번 더 막는다). 행을 실제로 지우는 게 아니라 이 계정의
+                     목록에서만 빼는 것이라 "취소"와 문구를 분명히 다르게 뒀다. -->
+                <button type="button" class="btn-delete"
+                        th:if="${r.status.name() == 'CANCELED' or r.status.name() == 'EXPIRED'}"
+                        th:attr="data-reservation-no=${r.reservationNo}">
+                    삭제
+                </button>
             </div>
         </div>
     </div>
@@ -126,6 +136,32 @@
                         : '선점을 취소했습니다.');
                     location.reload();
                 } else {
+                    alert(data.message);
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                btn.disabled = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reservationNo = btn.dataset.reservationNo;
+            if (!confirm('목록에서 삭제하시겠습니까? 취소·환불 이력은 그대로 보관됩니다.')) return;
+
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/reservations/${reservationNo}/hide`, {
+                    method: 'POST',
+                    headers: { [CSRF_HEADER]: CSRF_TOKEN }
+                });
+
+                if (res.ok) {
+                    btn.closest('.resrow').remove();
+                } else {
+                    const data = await res.json();
                     alert(data.message);
                     btn.disabled = false;
                 }
