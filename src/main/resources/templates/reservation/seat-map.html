@@ -553,15 +553,26 @@
             .filter(t => t.el);
 
     /**
-     * 지금 화면 위쪽 기준선보다 위에서 시작한 것 중 가장 아래(=가장 최근에 지난) 층을 고른다.
-     * 기준선은 sticky 바(헤더+인원수줄, 확대 모드는 지도 뷰포트 위쪽) 바로 아래로 잡는다 —
-     * 그 위는 이미 스크롤로 지나간 영역이라 "지금 보고 있는 곳"이 아니다.
+     * 기준선을 sticky 바 바로 아래(=화면 맨 위)로 잡았더니, 좌석이 몇 안 되는 홀(한 층이
+     * 6줄뿐인 400석 블루스퀘어 등)에서는 다음 층 머릿글이 그 기준선에 닿기 한참 전부터
+     * 이미 화면 대부분이 다음 층 좌석으로 덮여 있었다 — 정작 눈에 보이는 건 2층인데 칩은
+     * 계속 1층이라고 우겼다. 한 층이 뷰포트보다 짧으면 "머릿글이 맨 위 줄을 지났는가"로는
+     * 못 잡는다.
+     *
+     * 기준선을 보이는 영역의 **세로 중앙**으로 옮겼다 — 화면 가운데에 걸린 층이 "지금 보는
+     * 곳"이라는, 흔한 스크롤스파이 관례와 같다. 층이 뷰포트보다 긴 콘서트홀에서도 결과는
+     * 그대로다(중앙을 넘어서면 어차피 그 층이 화면 대부분을 채운 뒤이므로).
      */
     function syncActiveFloorChip() {
         if (floorChipTargets.length === 0) return;
-        const referenceY = zoomed
-                ? scroller.getBoundingClientRect().top + 24
-                : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) + 12;
+        let referenceY;
+        if (zoomed) {
+            const rect = scroller.getBoundingClientRect();
+            referenceY = rect.top + rect.height / 2;
+        } else {
+            const stickyH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) || 0;
+            referenceY = stickyH + (window.innerHeight - stickyH) / 2;
+        }
 
         let current = floorChipTargets[0];
         for (const target of floorChipTargets) {
