@@ -144,4 +144,89 @@ class PerformanceScheduleSyncTest {
         Performance saved = performanceRepository.findByExternalId("KOPIS-IDEMPOTENT").orElseThrow();
         assertThat(scheduleRepository.findByPerformanceIdOrderByShowAtAsc(saved.getId())).hasSize(11);
     }
+
+    /**
+     * KOPIS 증분 수집은 원본이 바뀐 건만 다시 내려온다. 한 번 등록된 뒤로 원본이
+     * 안 바뀐 공연은 sync() 자체가 호출되지 않으므로 topUpSchedules 도 못 탄다 —
+     * 실기동 중 실제로 발견한 사각지대다(id=95 KOPIS-PF297332, 최근 동기화가
+     * 안 잡아서 회차가 6/16 이후로 안 늘어나 있었다). topUpStaleSchedules 는 그
+     * 사각지대를 외부 응답과 무관하게 로컬 DB만 보고 잡아야 한다.
+     */
+    @DisplayName("증분 수집에 다시 안 잡힌 공연도 topUpStaleSchedules 가 잡아낸다")
+    @Test
+    void topUpStaleSchedulesFixesPerformanceNeverRevisitedBySync() {
+        LocalDate oldStart = LocalDate.now().minusDays(40);
+        LocalDate end = LocalDate.now().plusDays(10);
+
+        Performance stale = performanceRepository.save(Performance.builder()
+                .externalId("KOPIS-STALE")
+                .sourceType(SourceType.KOPIS)
+                .title("테스트 공연")
+                .category(PerformanceCategory.ETC)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(oldStart)
+                .endDate(end)
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build());
+        for (int i = 0; i < 8; i++) {
+            scheduleRepository.save(PerformanceSchedule.builder()
+                    .performance(stale)
+                    .showAt(LocalDateTime.of(oldStart.plusDays(i), LocalTime.of(19, 0)))
+                    .totalSeats(100)
+                    .remainingSeats(100)
+                    .build());
+        }
+
+        // sync() 를 한 번도 안 거치고 이 메서드만 호출한다 — 증분 수집이 아예 다시 안
+        // 내려주는 상황을 그대로 흉내낸다.
+        int topped = syncService.topUpStaleSchedules();
+
+        assertThat(topped).isEqualTo(1);
+        List<PerformanceSchedule> schedules =
+                scheduleRepository.findByPerformanceIdOrderByShowAtAsc(stale.getId());
+        assertThat(schedules).hasSizeGreaterThan(8);
+        assertThat(schedules.get(schedules.size() - 1).getShowAt().toLocalDate()).isEqualTo(end);
+        assertThat(schedules.stream().anyMatch(s -> !s.getShowAt().isBefore(LocalDateTime.now()))).isTrue();
+    }
+
+    @DisplayName("topUpStaleSchedules 는 이미 미래 회차가 있는 공연은 건드리지 않는다")
+    @Test
+    void topUpStaleSchedulesSkipsPerformancesWithFutureSchedules() {
+        LocalDate start = LocalDate.now();
+        LocalDate end = start.plusDays(5);
+        syncService.sync(List.of(external("KOPIS-HEALTHY", start, end)));
+        Performance healthy = performanceRepository.findByExternalId("KOPIS-HEALTHY").orElseThrow();
+        int before = scheduleRepository.findByPerformanceIdOrderByShowAtAsc(healthy.getId()).size();
+
+        int topped = syncService.topUpStaleSchedules();
+
+        assertThat(topped).isZero();
+        assertThat(scheduleRepository.findByPerformanceIdOrderByShowAtAsc(healthy.getId())).hasSize(before);
+    }
+
+    @DisplayName("topUpStaleSchedules 는 이미 끝난 공연은 건드리지 않는다")
+    @Test
+    void topUpStaleSchedulesSkipsEndedPerformances() {
+        LocalDate start = LocalDate.now().minusDays(20);
+        LocalDate end = LocalDate.now().minusDays(1);
+
+        performanceRepository.save(Performance.builder()
+                .externalId("KOPIS-ENDED")
+                .sourceType(SourceType.KOPIS)
+                .title("테스트 공연")
+                .category(PerformanceCategory.ETC)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(start)
+                .endDate(end)
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build());
+
+        int topped = syncService.topUpStaleSchedules();
+
+        assertThat(topped).isZero();
+    }
 }

@@ -55,7 +55,7 @@ public class PerformanceSyncScheduler {
     }
 
     public record SyncSummary(SourceSyncResult standard, SourceSyncResult culture, SourceSyncResult kopis,
-                              LocalDate kopisAfterDate, int purged) {
+                              LocalDate kopisAfterDate, int purged, int staleSchedulesToppedUp) {
 
         public int totalCreated() {
             return standard.created() + culture.created() + kopis.created();
@@ -91,9 +91,13 @@ public class PerformanceSyncScheduler {
         // DB 에 있는 건은 여기서 걷어낸다 (멱등이라 매번 돌려도 안전하다).
         int purged = syncService.purgeNonPerformances();
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건",
-                standard.created(), culture.created(), kopis.created(), purged);
-        return new SyncSummary(standard, culture, kopis, afterDate, purged);
+        // 외부 응답과 무관한 안전망. 증분 수집은 원본이 안 바뀐 공연을 다시 내려주지 않으므로
+        // 위 세 소스 동기화만으로는 오래 안 건드려진 공연의 회차가 계속 빌 수 있다.
+        int staleToppedUp = syncService.topUpStaleSchedules();
+
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건, 회차 보충 {}건",
+                standard.created(), culture.created(), kopis.created(), purged, staleToppedUp);
+        return new SyncSummary(standard, culture, kopis, afterDate, purged, staleToppedUp);
     }
 
     /** 이력이 없으면(최초 수집, DB 초기화 직후) null 을 반환해 전체 수집으로 떨어뜨린다. */

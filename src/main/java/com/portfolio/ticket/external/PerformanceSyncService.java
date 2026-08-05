@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -162,6 +162,57 @@ public class PerformanceSyncService {
         return removed;
     }
 
+    /**
+     * 외부 응답과 무관하게 로컬 DB만 보고 회차를 보충한다. {@link #topUpSchedules} 는 그
+     * 공연이 이번 동기화 응답에 들어와야만 호출된다 — KOPIS 증분 수집은 원본이 바뀐 건만
+     * 다시 내려오므로, 한 번 등록된 뒤로 원본이 안 바뀐 공연은 몇 달을 더 하더라도 응답에
+     * 다시 잡히지 않고, 그러면 topUpSchedules 도 영영 호출되지 않는다.
+     *
+     * <p>이 메서드가 그 사각지대를 잡는 마지막 안전망이다 — 매 배치(PerformanceSyncScheduler)
+     * 끝에서 외부 호출 성공 여부와 무관하게 돈다. 원본의 실제 회차 시각(dtguidance)은 다시
+     * 받아오지 않으므로, 이 경로로 늘어나는 구간은 원본에 회차 개념이 없을 때와 같은 대체
+     * 규칙(실측 시각 분포)을 쓴다 — 처음 며칠은 KOPIS 실측 시각인데 그 뒤로는 대체 시각으로
+     * 바뀌는 공연이 있을 수 있다는 뜻이다. 예매 가능 여부가 먼저고, 시각 정확도는 그다음이다.
+     */
+    @Transactional
+    public int topUpStaleSchedules() {
+        LocalDate today = LocalDate.now();
+        List<Long> staleIds = performanceRepository.findIdsWithNoFutureSchedule(today, LocalDateTime.now());
+
+        int topped = 0;
+        for (Long id : staleIds) {
+            Performance performance = performanceRepository.findById(id).orElse(null);
+            if (performance == null) {
+                continue;
+            }
+            LocalDate lastScheduled = scheduleRepository.findMaxShowAtByPerformanceId(id)
+                    .map(LocalDateTime::toLocalDate)
+                    .orElse(null);
+            LocalDate from = lastScheduled == null
+                    ? laterOf(performance.getStartDate(), today)
+                    : laterOf(lastScheduled.plusDays(1), today);
+            if (from.isAfter(performance.getEndDate())) {
+                continue;
+            }
+
+            int totalSeats = performance.getTotalSeatCount() == null ? 200 : performance.getTotalSeatCount();
+            List<PerformanceSchedule> created = createDefaultSchedules(performance, from, totalSeats);
+            if (created.isEmpty()) {
+                continue;
+            }
+            performanceRepository.flush();
+            for (PerformanceSchedule schedule : created) {
+                seatGenerator.generate(schedule.getId(), performance.getVenueHallId(), performance.getVenue(),
+                        performance.getTotalSeatCount(), performance.getBasePrice(), null);
+            }
+            topped++;
+        }
+        if (topped > 0) {
+            log.info("증분 수집이 다시 다루지 않은 공연의 회차를 보충했다. {}건", topped);
+        }
+        return topped;
+    }
+
     private Performance toEntity(ExternalPerformance e) {
         return Performance.builder()
                 .externalId(e.getExternalId())
@@ -204,9 +255,10 @@ public class PerformanceSyncService {
      * 한다는 규칙과도 맞는다.
      */
     private void topUpSchedules(Performance performance, ExternalPerformance external) {
-        LocalDate lastScheduled = performance.getSchedules().stream()
-                .map(s -> s.getShowAt().toLocalDate())
-                .max(Comparator.naturalOrder())
+        // 공연의 전체 회차 컬렉션을 로딩해 스트림으로 max 를 구하면 회차가 쌓일수록(최대 90개)
+        // 매 동기화·공연마다 그 행 수만큼 읽는 꼴이 된다. 집계 쿼리 하나로 대신한다.
+        LocalDate lastScheduled = scheduleRepository.findMaxShowAtByPerformanceId(performance.getId())
+                .map(LocalDateTime::toLocalDate)
                 .orElse(null);
 
         LocalDate from = lastScheduled == null
@@ -227,22 +279,24 @@ public class PerformanceSyncService {
         Map<DayOfWeek, List<LocalTime>> showTimesByDay = external.getShowTimesByDay();
         int totalSeats = performance.getTotalSeatCount() == null ? 200 : performance.getTotalSeatCount();
 
-        int created = (showTimesByDay == null || showTimesByDay.isEmpty())
+        List<PerformanceSchedule> created = (showTimesByDay == null || showTimesByDay.isEmpty())
                 ? createDefaultSchedules(performance, from, totalSeats)
                 : createGuidedSchedules(performance, showTimesByDay, from, totalSeats);
 
-        if (created == 0 && showTimesByDay != null && !showTimesByDay.isEmpty()) {
+        if (created.isEmpty() && showTimesByDay != null && !showTimesByDay.isEmpty()) {
             // dtguidance 가 있었지만 남은 기간에 매칭되는 요일이 하나도 없는 경우 등 (안전망)
             created = createDefaultSchedules(performance, from, totalSeats);
         }
-        if (created == 0) {
+        if (created.isEmpty()) {
             return;
         }
 
         performanceRepository.flush();
 
-        // 이미 좌석이 생성된 회차는 SeatGenerator 내부에서 건너뛴다 — 여기서는 새/기존을 가리지 않는다.
-        for (PerformanceSchedule schedule : performance.getSchedules()) {
+        // 이번에 새로 만든 회차만 좌석을 만든다 — 이미 있던 회차까지 매번 다시 훑으면(SeatGenerator
+        // 가 내부에서 건너뛰긴 해도 그 판단 자체가 조회 하나다) 동기화할 때마다 공연 하나당
+        // "누적된 전체 회차 수"만큼 쓸모없는 조회가 늘어난다 — 보충이 반복될수록 매 동기화가 느려진다.
+        for (PerformanceSchedule schedule : created) {
             seatGenerator.generate(schedule.getId(), performance.getVenueHallId(), performance.getVenue(),
                     performance.getTotalSeatCount(), performance.getBasePrice(), external.getPricesByGrade());
         }
@@ -254,14 +308,13 @@ public class PerformanceSyncService {
      * 시각은 KOPIS 시간대별 상연 통계의 실측 분포를 따른다(showtime-distribution.yml).
      * 설정이 없으면 예전 규칙인 19:00 고정으로 떨어진다.
      */
-    private int createDefaultSchedules(Performance performance, LocalDate from, int totalSeats) {
+    private List<PerformanceSchedule> createDefaultSchedules(Performance performance, LocalDate from, int totalSeats) {
         LocalDate cursor = from;
         LocalDate end = performance.getEndDate();
-        int created = 0;
+        List<PerformanceSchedule> created = new ArrayList<>();
 
         while (!cursor.isAfter(end)) {
-            addSchedule(performance, LocalDateTime.of(cursor, resolveShowTime(performance, cursor)), totalSeats);
-            created++;
+            created.add(addSchedule(performance, LocalDateTime.of(cursor, resolveShowTime(performance, cursor)), totalSeats));
             cursor = cursor.plusDays(1);
         }
         return created;
@@ -278,18 +331,17 @@ public class PerformanceSyncService {
     }
 
     /** KOPIS dtguidance 파싱 결과(요일별 실제 공연시간)로 회차를 만든다. 하루에 여러 회차(마티네/저녁)도 반영. */
-    private int createGuidedSchedules(Performance performance, Map<DayOfWeek, List<LocalTime>> showTimesByDay,
+    private List<PerformanceSchedule> createGuidedSchedules(Performance performance, Map<DayOfWeek, List<LocalTime>> showTimesByDay,
                                        LocalDate from, int totalSeats) {
         LocalDate cursor = from;
         LocalDate end = performance.getEndDate();
-        int created = 0;
+        List<PerformanceSchedule> created = new ArrayList<>();
 
         while (!cursor.isAfter(end)) {
             List<LocalTime> times = showTimesByDay.get(cursor.getDayOfWeek());
             if (times != null) {
                 for (LocalTime time : times) {
-                    addSchedule(performance, LocalDateTime.of(cursor, time), totalSeats);
-                    created++;
+                    created.add(addSchedule(performance, LocalDateTime.of(cursor, time), totalSeats));
                 }
             }
             cursor = cursor.plusDays(1);
@@ -297,11 +349,13 @@ public class PerformanceSyncService {
         return created;
     }
 
-    private void addSchedule(Performance performance, LocalDateTime showAt, int totalSeats) {
-        performance.addSchedule(PerformanceSchedule.builder()
+    private PerformanceSchedule addSchedule(Performance performance, LocalDateTime showAt, int totalSeats) {
+        PerformanceSchedule schedule = PerformanceSchedule.builder()
                 .showAt(showAt)
                 .totalSeats(totalSeats)
                 .remainingSeats(totalSeats)
-                .build());
+                .build();
+        performance.addSchedule(schedule);
+        return schedule;
     }
 }

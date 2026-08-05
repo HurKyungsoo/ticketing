@@ -83,6 +83,7 @@ public class ReservationApiController {
         body.put("kopisMode", summary.kopisIncremental() ? "INCREMENTAL" : "FULL");
         body.put("kopisAfterDate", summary.kopisAfterDate());
         body.put("purged", summary.purged());
+        body.put("staleSchedulesToppedUp", summary.staleSchedulesToppedUp());
         return ResponseEntity.ok(body);
     }
 
