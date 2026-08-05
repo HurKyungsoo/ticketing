@@ -88,11 +88,15 @@
                     되어 어느 걸 눌러야 하는지부터 고민하게 만든다. data-* 는 seo(공유 카드와
                     같은 값)에서 그대로 가져와 화면에 뜨는 것과 카톡 카드가 어긋나지 않게 한다.
                 -->
+                <!-- 아이콘은 카카오 말풍선(로그인 화면 .oauthbtn-kakao 와 같은 path) — 실제로
+                     먼저 시도하는 채널이 카카오톡이라, 일반 공유 아이콘보다 눌렀을 때 뭐가
+                     뜨는지 더 잘 알려준다. 라벨은 그대로 "공유" — 실패하면 카톡이 아닌 다른
+                     경로(OS 공유 시트·클립보드)로도 넘어가므로 "카카오톡"이라고 못박지 않는다. -->
                 <button type="button" class="pf-share" id="shareBtn"
                         th:attr="data-url=${seo.canonicalUrl}, data-title=${performance.title},
                                  data-description=${seo.description}, data-image=${seo.imageUrl}">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
+                    <svg width="15" height="15" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M9 2C4.582 2 1 4.94 1 8.56c0 2.32 1.53 4.36 3.84 5.53-.17.62-.6 2.19-.69 2.53-.11.42.16.42.33.3.14-.1 2.2-1.49 3.09-2.1.47.07.95.1 1.43.1 4.418 0 8-2.94 8-6.56C17 4.94 13.418 2 9 2z"
                               fill="currentColor"/>
                     </svg>
                     공유
