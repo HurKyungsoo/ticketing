@@ -2061,6 +2061,38 @@ body.page-payment .payno {
   font-size: 12px; color: var(--mute); font-variant-numeric: tabular-nums;
 }
 
+/* ---- 결제 완료 화면 ----
+   결제 화면과 같은 부품(.orderhead/.payseats/.paytotal/.payno)을 그대로 재사용한다 —
+   확정 직후 화면이 결제 화면과 다르게 생기면 "이게 정말 그 예매가 맞나" 다시 눈으로
+   맞춰보게 된다. 다만 더 이상 할 일이 남지 않은 화면이라 2단 sticky 대신 가운데
+   카드 하나로 좁혀, 로그인 화면과 같은 "결과를 확인하고 다음으로 넘어가는" 느낌을 준다. */
+body.page-payment .paydone {
+  max-width: 480px; margin: 40px auto 0;
+  padding: 32px 28px;
+  background: var(--ink-soft); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .38);
+}
+body.page-payment .paydone-icon {
+  width: 52px; height: 52px; margin: 0 auto 16px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 201, 64, .12);
+  border: 1px solid var(--brass-dim);
+  color: var(--brass);
+}
+body.page-payment .paydone-lead {
+  font-family: var(--display); font-size: 20px; font-weight: 800;
+  color: var(--paper); margin: 0 0 28px; text-align: center;
+}
+body.page-payment .paydone .paytotal { margin-top: 16px; }
+body.page-payment .paydone .payno { margin: 10px 0 28px; }
+body.page-payment .paydone-actions { display: flex; gap: 10px; }
+body.page-payment .paydone-actions .paybtn { flex: 1; }
+
+@media (max-width: 560px) {
+  body.page-payment .paydone { margin: 24px 0 0; padding: 24px 20px; }
+}
+
 /* ==================================================================
    홈 (섹션형 둘러보기)
 

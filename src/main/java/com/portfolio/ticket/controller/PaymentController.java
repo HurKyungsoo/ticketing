@@ -106,6 +106,11 @@ public class PaymentController {
         }
 
         model.addAttribute("reservation", reservation);
+        // 결제 화면과 같은 좌석별 등급·가격 표시를 완료 화면에도 쓴다. 결제 확정 직후라
+        // 좌석 연결이 끊길 일이 없지만(release() 는 취소·만료 때만), 만약을 대비해 같은
+        // 방식(빈 리스트면 화면이 seatSummary 로 대체)으로 안전하게 둔다.
+        model.addAttribute("seats", reservation.getSeats().stream()
+                .sorted(Comparator.comparing(Seat::getId)).toList());
         return "reservation/payment-success";
     }
 
