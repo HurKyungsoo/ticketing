@@ -25,6 +25,9 @@
         -->
         <div>
             <div class="poster" th:classappend="${performance.posterUrl == null} ? ' no-img'">
+                <!-- 목록·홈 카드와 같은 태그(장르 배지)를 같은 자리(포스터 좌상단)에 그대로 재사용한다.
+                     원본 genre 문자열은 소스마다 표기가 달라 정규화된 category 로 통일한다. -->
+                <span class="card-badge" th:text="${performance.category != null} ? ${performance.category.label()} : '기타'">장르</span>
                 <img th:if="${performance.posterUrl != null}"
                      th:src="@{/img/poster(u=${performance.posterUrl})}" th:alt="${performance.title}"
                      onerror="this.remove(); this.parentElement.classList.add('no-img')">
@@ -93,11 +96,6 @@
 
         <div>
             <h2 th:text="${performance.title}">공연명</h2>
-            <!-- 원본 genre 문자열("서양음악(클래식)", "무용(서양/한국무용)" 등)은 소스마다 표기가
-                 달라 그대로 걸면 배지 안에서 줄바꿈되거나 정보가 넘친다. 목록·홈 카드가 이미
-                 쓰는 정규화된 category 로 통일해 짧고 일관된 라벨("클래식")을 보여준다.
-                 category 가 없는 옛 데이터는(재동기화되면 채워진다) 기타로 대체한다. -->
-            <p class="meta" th:text="${performance.category != null} ? ${performance.category.label()} : '기타'">장르</p>
 
             <h3 class="detail-heading">공연 정보</h3>
             <dl class="spec">
