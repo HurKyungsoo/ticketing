@@ -3265,6 +3265,238 @@ body.page-seatmap.tone-light .bookbar .inner button:not(:disabled):hover { trans
   body.page-seatmap.tone-light .masthead { padding: 14px 20px; }
 }
 
+/* ==================================================================
+   결제 · 결제 결과 — 라이트 톤
+
+   핸드오프는 결제 화면 하나만 다루지만 완료·실패·자동환불 세 화면이 같은
+   page-payment 스코프와 같은 부품(.orderhead/.payseats/.paytotal/.payno)을 쓴다.
+   결제만 라이트로 바꾸면 「결제하기」를 누른 다음 화면에서 톤이 뒤집힌다 —
+   결제 직후는 "방금 그게 잘 됐나" 를 확인하는 순간이라 화면이 딴 데로 온 것처럼
+   보이면 안 된다. 그래서 넷 다 같이 넘긴다.
+
+   어두운 면은 결제 패널 하나로 몰았다. 상세의 요약 카드와 같은 역할 —
+   이 화면에서 끝까지 눈에 있어야 하는 것(남은 시간·총액·결제 버튼)만 그 안에 있다.
+   ================================================================== */
+body.page-payment.tone-light .wrap { max-width: none; margin: 0; padding: 0; }
+body.page-payment.tone-light .masthead { margin: 0; padding: 22px 48px; }
+/* 이 화면의 헤더 부제는 "결제" 한 단어라 지금 어느 화면인지 알려준다. 목록·상세처럼
+   감추지 않는다(목업도 남겨 둔다). */
+body.page-payment.tone-light .masthead .tag {
+  display: inline;
+  color: rgba(17, 18, 20, .45);
+  font-size: 13px; font-weight: 600;
+}
+
+/* 진행 단계. 가운데로 모으고, 현재 단계에만 브라스 점을 찍는다 — 글자 굵기만으로는
+   세 단계 중 어디인지 한눈에 안 잡힌다. */
+body.page-payment.tone-light .paysteps {
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  padding: 22px 48px 8px;
+  font-weight: 700;
+  color: rgba(17, 18, 20, .35);
+}
+body.page-payment.tone-light .paysteps li + li::before { background: rgba(17, 18, 20, .2); }
+body.page-payment.tone-light .paysteps .ps-done { color: rgba(17, 18, 20, .35); }
+body.page-payment.tone-light .paysteps .ps-current { color: var(--ink); }
+body.page-payment.tone-light .paysteps .ps-current::after {
+  content: '';
+  order: -1;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brass);
+}
+
+body.page-payment.tone-light .paylayout {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 48px 100px;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 56px;
+}
+
+/* ---- 주문 정보 (좌측) ---- */
+body.page-payment.tone-light .orderhead {
+  gap: 22px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
+  margin-bottom: 28px;
+}
+body.page-payment.tone-light .poster {
+  width: 110px;
+  border: 0;
+  border-radius: var(--radius-poster);
+  background: var(--ink);
+}
+body.page-payment.tone-light .paytitle { font-size: 24px; color: var(--ink); }
+body.page-payment.tone-light .payspec div { gap: 14px; padding: 4px 0; }
+body.page-payment.tone-light .payspec dt { width: 44px; color: rgba(17, 18, 20, .5); font-weight: 600; }
+body.page-payment.tone-light .payspec dd { color: var(--ink); font-weight: 600; }
+
+body.page-payment.tone-light .payseats { border-top: 0; margin-bottom: 32px; }
+body.page-payment.tone-light .payseats li {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+  font-size: 14.5px;
+}
+body.page-payment.tone-light .payseats li:last-child { border-bottom: 0; }
+body.page-payment.tone-light .ps-seat { color: var(--ink); font-weight: 700; }
+/* 목업은 등급을 알약 없이 브라스 글자로만 둔다. 알약을 걷으면 좌석·등급·가격 세 열이
+   같은 무게로 읽혀 목록이 훨씬 조용해진다. 색은 --brass 가 아니라 --brass-ink 를 쓴다 —
+   원색은 아이보리 위에서 대비 1.73 이라 등급이 안 읽힌다. */
+body.page-payment.tone-light .ps-grade {
+  border: 0; padding: 0;
+  color: var(--brass-ink);
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+}
+body.page-payment.tone-light .ps-price { color: var(--ink); font-weight: 700; }
+body.page-payment.tone-light .payseats-fallback {
+  border-color: rgba(17, 18, 20, .08);
+  color: var(--ink);
+}
+
+/* ---- 결제 패널 (우측, sticky) ---- */
+body.page-payment.tone-light .paypanel {
+  top: 100px;
+  gap: 22px;
+  padding: 28px;
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: var(--ink);
+  color: var(--paper);
+}
+/* 타이머를 감싸던 테두리 상자를 걷는다. 다크 화면에서는 어두운 면 위 어두운 면이라
+   상자로 구분해야 했지만, 여기서는 패널 자체가 유일한 어두운 덩어리라 이미 구분된다. */
+body.page-payment.tone-light .paytimer {
+  grid-template-columns: 1fr;
+  grid-template-areas: "label" "clock" "note";
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+body.page-payment.tone-light .pt-label { font-size: 12.5px; font-weight: 700; color: rgba(248, 244, 236, .55); }
+body.page-payment.tone-light .pt-clock { font-size: 38px; letter-spacing: -.02em; color: var(--brass); }
+body.page-payment.tone-light .pt-note { font-size: 12.5px; color: rgba(248, 244, 236, .4); }
+
+/*
+   1분 미만.
+
+   종전에는 "색만 바꾸고 깜빡이지는 않는다 — 결제 정보를 입력하는 중에 화면이 깜빡이면
+   방해가 된다" 로 두었는데, 실제 결제 입력은 토스 결제창(별도 오버레이)에서 이뤄져서
+   이 타이머가 입력을 방해할 자리에 있지 않다. 마지막 1분을 색 변화만으로 알리는 건
+   화면을 안 보고 있던 사용자에게는 전달이 안 된다. 핸드오프대로 맥박을 넣는다.
+   모션을 끈 사용자에게는 아래 prefers-reduced-motion 규칙이 색만 남긴다.
+*/
+@keyframes pay-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+body.page-payment.tone-light .paytimer--urgent { border: 0; background: none; }
+body.page-payment.tone-light .paytimer--urgent .pt-clock {
+  color: var(--rose);
+  animation: pay-pulse 1s ease-in-out infinite;
+}
+body.page-payment.tone-light .paytimer--dead { border: 0; background: none; }
+body.page-payment.tone-light .paytimer--dead .pt-clock { color: rgba(248, 244, 236, .55); font-size: 24px; }
+
+body.page-payment.tone-light .paytotal {
+  padding: 0;
+  border-bottom: 0;
+  border-top: 1px solid rgba(248, 244, 236, .12);
+}
+body.page-payment.tone-light .paytotal div { padding: 22px 0 0; }
+body.page-payment.tone-light .paytotal dt { font-size: 14px; font-weight: 600; color: rgba(248, 244, 236, .6); }
+/* 총액은 브라스가 아니라 아이보리로 둔다. 브라스는 이 패널에서 남은 시간과 결제
+   버튼이 이미 쓰고 있어서, 총액까지 같은 색이면 셋이 서로 강조를 나눠 갖는다. */
+body.page-payment.tone-light .paytotal dd { font-size: 26px; color: var(--paper); }
+
+body.page-payment.tone-light .payno { font-size: 12px; color: rgba(248, 244, 236, .35); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-payment.tone-light .paytimer--urgent .pt-clock { animation: none; }
+}
+
+/* ---- 결제 결과 화면(완료 · 실패 · 자동환불) ---- */
+/* 결과 화면에서는 이 부품들이 어두운 패널이 아니라 밝은 카드 안에 놓인다 —
+   위에서 패널용으로 잡은 어두운 배경 전제(총액 아이보리 등)를 되돌린다. */
+body.page-payment.tone-light .paydone {
+  background: #fff;
+  border: 1px solid rgba(17, 18, 20, .1);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 18px 44px rgba(17, 18, 20, .10);
+}
+body.page-payment.tone-light .paydone-icon {
+  background: rgba(233, 180, 76, .16);
+  border-color: var(--brass-ink);
+  color: var(--brass-ink);
+}
+body.page-payment.tone-light .paydone-icon--fail {
+  background: rgba(242, 109, 109, .12);
+  border-color: var(--rose);
+  color: var(--rose);
+}
+body.page-payment.tone-light .paydone-lead { color: var(--ink); }
+body.page-payment.tone-light .payfail-code,
+body.page-payment.tone-light .payfail-reason { color: rgba(17, 18, 20, .55); }
+/* 결과 화면에서는 이 블록 위에 헤드라인·사유·오류코드가 먼저 오고, 그 마지막 줄의
+   아래 여백이 6px 뿐이라 포스터가 글자에 바싹 붙는다. 여기서 위 간격을 낸다.
+   아래쪽 구분선은 뺀다 — 바로 다음이 "좌석" 머리글이라 선이 두 겹으로 보인다. */
+body.page-payment.tone-light .paydone .orderhead {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-top: 24px;
+}
+body.page-payment.tone-light .paydone .paytotal {
+  border-top: 1px solid rgba(17, 18, 20, .1);
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
+}
+body.page-payment.tone-light .paydone .paytotal div { padding: 12px 0; }
+body.page-payment.tone-light .paydone .paytotal dt { color: rgba(17, 18, 20, .5); }
+body.page-payment.tone-light .paydone .paytotal dd { color: var(--ink); font-size: 22px; }
+body.page-payment.tone-light .paydone .payno { color: rgba(17, 18, 20, .45); }
+
+/* ---- 결제 버튼 ---- */
+body.page-payment.tone-light .paybtn {
+  border: 0; border-radius: 999px;
+  background: var(--brass); color: var(--ink);
+  padding: 16px; font-size: 16px; font-weight: 800;
+  transition: background .2s, transform .15s;
+}
+body.page-payment.tone-light .paybtn:not(:disabled):hover {
+  background: #f2c874;
+  transform: scale(1.015);
+}
+body.page-payment.tone-light .paybtn:disabled {
+  background: rgba(248, 244, 236, .12); color: rgba(248, 244, 236, .45);
+}
+/* 결제할 수 없는 상태의 이동 링크. 주요 액션이 아니라 테두리만 쓴다 — 어두운 패널
+   안이므로 아이보리 계열 테두리다. */
+body.page-payment.tone-light .paybtn--ghost {
+  background: none; color: var(--paper);
+  border: 1px solid rgba(248, 244, 236, .28);
+}
+body.page-payment.tone-light .paybtn--ghost:hover {
+  background: rgba(248, 244, 236, .08);
+  border-color: rgba(248, 244, 236, .45);
+  transform: none;
+}
+/* 결과 화면의 버튼들은 밝은 카드 안에 있다. */
+body.page-payment.tone-light .paydone .paybtn--ghost {
+  color: var(--ink);
+  border-color: rgba(17, 18, 20, .18);
+}
+body.page-payment.tone-light .paydone .paybtn--ghost:hover {
+  background: rgba(17, 18, 20, .05);
+  border-color: rgba(17, 18, 20, .35);
+}
+
+@media (max-width: 860px) {
+  body.page-payment.tone-light .masthead { padding: 16px 20px; }
+  body.page-payment.tone-light .paysteps { padding: 18px 20px 8px; }
+  body.page-payment.tone-light .paylayout { padding: 24px 20px 72px; gap: 32px; }
+}
+
 @media (max-width: 860px) {
   body.page-detail.tone-light .masthead { padding: 16px 20px; }
   body.page-detail.tone-light .detail { padding: 28px 20px 72px; gap: 28px; }
