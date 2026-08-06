@@ -8,9 +8,16 @@
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
     <th:block th:replace="~{fragment/head :: meta(${seo})}"></th:block>
 </head>
-<body class="page-list">
+<body class="page-list tone-light">
 <div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='공공데이터 기반 공연 예매', showAuthNav=true)}"></header>
+
+    <!--
+        헤더는 홈과 마찬가지로 화면 폭을 꽉 채우고(아래 가로선이 끝까지 이어진다),
+        본문만 이 안쪽 컨테이너가 가운데로 모은다. 헤더까지 .wrap 폭에 갇혀 있으면
+        홈에서 목록으로 넘어오는 순간 헤더 폭과 구분선 길이가 눈에 띄게 바뀐다.
+    -->
+    <div class="listinner">
 
     <button type="button" class="mobile-filter-btn" id="mobileFilterOpen">
         필터
@@ -225,6 +232,7 @@
         <a class="pager-nav" th:if="${result.page + 1 < result.totalPages}"
            th:href="@{/performances(genre=${genre},month=${month},dayOfWeek=${dayOfWeek},timeSlot=${timeSlot},status=${status},venue=${venue},area=${area},keyword=${keyword},sort=${sort},page=${result.totalPages - 1})}">»</a>
     </nav>
+    </div>
 </div>
 
 <script>

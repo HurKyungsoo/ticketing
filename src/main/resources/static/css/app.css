@@ -2626,3 +2626,233 @@ body.page-detail .pf-wish:disabled { opacity: .6; cursor: default; }
   color: var(--brass); border-color: var(--brass);
   background: rgba(255, 201, 64, .08);
 }
+
+/* ==================================================================
+   라이트 톤 공통 기반 — 극장 예매 UI 톤앤무드 리디자인(2026-08-06)
+
+   홈이 먼저 라이트로 넘어갔지만(body.page-home), 그 규칙은 히어로·에디토리얼처럼
+   홈에만 있는 것과 섞여 있어 그대로 못 쓴다. 목록·상세·좌석도·결제가 차례로
+   넘어오면서 매번 복제하게 될 것들(배경·헤더·인증 버튼·카드)만 여기 모은다.
+
+   왜 body 기본값을 뒤집지 않고 옵트인 클래스로 가는가: 로그인·회원가입·마이페이지·
+   관리자·에러 화면은 이번 리디자인 범위가 아니라 다크로 남는다. 기본값을 라이트로
+   뒤집으면 그 화면들이 전부 흰 배경에 흰 글씨가 된다(--paper 를 본문색으로 쓴다).
+   범위 밖 화면을 안 건드리려면 켜는 쪽이 맞다.
+
+   page-home 에는 이 클래스를 안 단다 — 이미 자기 블록에서 같은 값을 정하고 있어
+   두 번 칠할 이유가 없고, 홈은 이번 작업에서 손대지 않는다.
+   ================================================================== */
+body.tone-light {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* 헤더. 다크 화면의 .masthead 와 같은 sticky blur 바인데 명암만 뒤집는다. */
+body.tone-light .masthead {
+  background: rgba(248, 244, 236, .86);
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  backdrop-filter: saturate(160%) blur(10px);
+}
+body.tone-light .masthead h1 { color: var(--ink); }
+body.tone-light .masthead .logo-mark { color: var(--ink); }
+/* 부제 태그는 감춘다. 홈이 이미 그렇게 두고 있어서, 남겨두면 홈에서 넘어오는 순간
+   헤더에 없던 회색 문구가 하나 생긴다. 목업도 로고+내비만 둔다. */
+body.tone-light .masthead .tag { display: none; }
+body.tone-light .masthead .authnav { color: var(--ink); }
+body.tone-light .masthead .authnav .who { color: var(--ink); }
+body.tone-light .masthead .authnav a { color: var(--ink); transition: color .2s; }
+body.tone-light .masthead .authnav a:hover { color: var(--brass-dim); }
+body.tone-light .masthead .linklike { color: var(--ink); }
+body.tone-light .masthead .linklike:hover { color: var(--brass-dim); }
+body.tone-light .masthead .navdivider { background: rgba(17, 18, 20, .18); }
+
+/* .authbtns a 는 body.page-list/.page-detail 쪽 다크용 규칙이 color 를 !important 로
+   박고 있어(--paper) 스코프를 하나 더 얹는 것만으로는 못 이긴다. 홈에서 로그인 링크가
+   라이트 배경에 흰 글씨로 사라졌던 것과 같은 자리다. 여기서도 !important 로 되받는다. */
+body.tone-light .authbtns a {
+  color: var(--ink) !important;
+  border-color: rgba(17, 18, 20, .16) !important;
+}
+body.tone-light .authbtns a:hover {
+  border-color: var(--brass) !important;
+  background: rgba(233, 180, 76, .08);
+}
+body.tone-light .masthead .btn-signup {
+  background: var(--ink); color: var(--paper) !important;
+  border-color: var(--ink) !important;
+  font-weight: 700;
+  transition: transform .2s, background .2s;
+}
+body.tone-light .masthead .btn-signup:hover {
+  background: #292a2d !important; border-color: #292a2d !important;
+  transform: translateY(-1px);
+}
+
+/* 라이트 배경 위 공통 카드. 목록·찜 목록이 같은 마크업(.card)을 쓰므로 여기 둔다.
+   포스터는 테두리 대신 모서리만 각지게(--radius-poster: 6px) — 아이보리 배경에서는
+   1px 테두리가 포스터 가장자리를 지저분하게 만든다. */
+body.tone-light .card .poster {
+  border: 0;
+  border-radius: var(--radius-poster);
+  background: var(--ink);
+}
+/* 다크용 shimmer 는 어두운 회색 그라디언트라 라이트 배경에서 눈에 띄게 튄다.
+   포스터 자리는 어차피 --ink 로 채워져 있어 로딩 중에도 빈칸으로 안 보인다. */
+body.tone-light .card .poster::before { animation: none; background: none; }
+/* 가장자리를 눌러 액자처럼 보이게 하던 inset shadow 도 뺀다 — 다크 배경에서는
+   포스터와 배경의 경계를 만들어 줬지만, 라이트 배경에서는 포스터 아래쪽만
+   검게 그을린 것처럼 보인다. */
+body.tone-light .card .poster::after { display: none; }
+body.tone-light .card .poster.no-img { background: var(--ink); }
+body.tone-light .card h3 { color: var(--ink); }
+body.tone-light .card:hover h3 { color: var(--brass-dim); }
+body.tone-light .card .meta { color: rgba(17, 18, 20, .55); }
+/* 공연장·기간 앞 핀/달력 아이콘은 뺀다. data URI 안에 --mute(#B6B0A7)가 문자열로
+   박혀 있어 라이트 배경에서는 거의 안 보이는데, 색을 맞추려면 아이콘마다 data URI 를
+   한 벌 더 두어야 한다. 목업도 아이콘 없이 두 줄로 두고 있어 그쪽을 따른다. */
+body.tone-light .card .m-venue::before,
+body.tone-light .card .m-date::before { display: none; }
+/* 배지는 포스터(다크) 위에 얹히므로 어두운 판 그대로 두되, 글자를 브라스로 올려
+   포스터 이미지와 안 섞이게 한다. */
+body.tone-light .card-badge {
+  background: rgba(17, 18, 20, .75);
+  color: var(--brass);
+  border: 0;
+  font-weight: 700;
+}
+
+body.tone-light .empty-state { color: rgba(17, 18, 20, .55); }
+body.tone-light .empty-state code {
+  background: rgba(17, 18, 20, .06);
+  color: var(--ink);
+}
+
+/* ==================================================================
+   공연 목록 — 라이트 톤
+
+   위 공통 기반에 없는, 이 화면에만 있는 것(필터 패널·결과바·페이저)을 덮는다.
+   마크업은 그대로다 — 목업과 구조가 이미 같아서 색·모양만 바꾸면 된다.
+   ================================================================== */
+
+/* 헤더를 화면 폭만큼 늘리기 위해 .wrap 에서 폭·여백을 걷어내고, 본문 폭은 안쪽
+   .listinner 가 잡는다(홈이 쓰는 방식과 같다). 값은 목업 그대로. */
+body.page-list.tone-light .wrap { max-width: none; margin: 0; padding: 0; }
+body.page-list.tone-light .masthead {
+  margin: 0 0 0;
+  padding: 22px 48px;
+}
+body.page-list.tone-light .listinner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 32px 48px 100px;
+}
+
+/* 필터 패널의 카드(어두운 면 + 테두리)를 없애고 배경에 그대로 얹는다. 다크에서는
+   면을 하나 띄워야 필터 영역이 구분됐지만, 라이트에서는 아이보리 위에 밝은 카드가
+   겹쳐 경계가 오히려 흐려진다. 구분은 아래 결과바의 가로선이 맡는다. */
+body.page-list.tone-light .filterpanel {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 26px;
+}
+body.page-list.tone-light .fp-close { color: rgba(17, 18, 20, .45); }
+body.page-list.tone-light .fp-keyword {
+  background: #fff;
+  border-color: rgba(17, 18, 20, .1);
+  max-width: 520px;
+  margin-bottom: 22px;
+}
+body.page-list.tone-light .fp-keyword:focus-within { border-color: var(--brass); }
+body.page-list.tone-light .fp-keyword input { color: var(--ink); }
+body.page-list.tone-light .fp-keyword input::placeholder { color: rgba(17, 18, 20, .4); }
+body.page-list.tone-light .fp-label,
+body.page-list.tone-light .fp-grouplabel,
+body.page-list.tone-light .fp-hint { color: rgba(17, 18, 20, .5); }
+
+/* 필터 pill. 선택된 것은 브라스가 아니라 잉크로 채운다 — 이 화면에서 브라스는
+   결과 건수와 예매 CTA 가 쓰는 색이고, 필터는 "지금 어디를 보고 있나" 표시라
+   강조 단계가 한 칸 아래다. 라이트 배경에서 잉크 채움이 가장 또렷하기도 하다. */
+body.page-list.tone-light .cattab {
+  border-color: rgba(17, 18, 20, .16);
+  color: rgba(17, 18, 20, .7);
+  font-weight: 700;
+}
+body.page-list.tone-light .cattab:hover { border-color: var(--brass); color: var(--ink); }
+body.page-list.tone-light .cattab.active {
+  background: var(--ink); border-color: var(--ink);
+  color: var(--paper);
+}
+body.page-list.tone-light .fp-dropdowns select,
+body.page-list.tone-light .sortform select {
+  color: var(--ink);
+  border-color: rgba(17, 18, 20, .16);
+  font-weight: 600;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23111214'/%3E%3C/svg%3E");
+}
+body.page-list.tone-light .fp-dropdowns select:hover,
+body.page-list.tone-light .sortform select:hover { border-color: var(--brass); }
+body.page-list.tone-light .fp-dropdowns select option,
+body.page-list.tone-light .sortform select option { background: #fff; color: var(--ink); }
+
+body.page-list.tone-light .mobile-filter-btn {
+  background: #fff;
+  border-color: rgba(17, 18, 20, .16);
+  color: var(--ink);
+}
+body.page-list.tone-light .mobile-filter-btn em { color: rgba(17, 18, 20, .5); }
+
+/* 결과바. 위아래 가로선으로 필터와 결과를 가른다(목업의 result bar). */
+body.page-list.tone-light .resultbar {
+  padding: 16px 0;
+  border-top: 1px solid rgba(17, 18, 20, .1);
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
+  margin-bottom: 28px;
+}
+body.page-list.tone-light .resultcount { color: var(--ink); font-size: 14.5px; font-weight: 700; }
+/* 건수 숫자만 브라스. --brass 원색은 아이보리 배경에서 대비 1.7 로 못 읽는다 —
+   같은 계열의 어두운 쪽(--brass-dim, 대비 3.6)을 쓴다. */
+body.page-list.tone-light .resultcount strong { color: var(--brass-dim); }
+body.page-list.tone-light .resultreset {
+  color: rgba(17, 18, 20, .5);
+  border-bottom-color: rgba(17, 18, 20, .25);
+}
+body.page-list.tone-light .resultreset:hover { color: var(--brass-dim); border-color: var(--brass-dim); }
+
+body.page-list.tone-light .emptyreset {
+  border-color: rgba(17, 18, 20, .16);
+  color: var(--ink);
+}
+body.page-list.tone-light .emptyreset:hover { border-color: var(--brass); background: rgba(233, 180, 76, .08); }
+
+/* 페이저. 현재 페이지는 필터 pill 과 같은 언어(잉크 채움)로 둔다. */
+body.page-list.tone-light .pager-nav,
+body.page-list.tone-light .pager-num {
+  border: 0;
+  min-width: 36px; height: 36px;
+  color: rgba(17, 18, 20, .65);
+  font-weight: 700;
+}
+body.page-list.tone-light .pager-nav:hover,
+body.page-list.tone-light .pager-num:hover {
+  background: rgba(17, 18, 20, .06);
+  color: var(--ink);
+}
+body.page-list.tone-light .pager-num.active {
+  background: var(--ink); color: var(--paper);
+}
+body.page-list.tone-light .pager-num.active:hover { background: var(--ink); color: var(--paper); }
+
+@media (max-width: 860px) {
+  body.page-list.tone-light .masthead { padding: 16px 20px; }
+  body.page-list.tone-light .listinner { padding: 24px 20px 72px; }
+  /* 좁은 화면의 필터는 오른쪽에서 밀려 나오는 시트라 배경 위에 떠 있어야 한다 —
+     위에서 배경을 없앴으므로 시트로 쓸 때만 다시 면을 깔아준다. */
+  body.page-list.tone-light .filterpanel {
+    background: var(--paper);
+    padding: 24px 20px;
+  }
+}
