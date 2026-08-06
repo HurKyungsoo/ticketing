@@ -9,9 +9,13 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
+<body class="page-mypage tone-light">
 <div class="wrap">
-    <header th:replace="~{fragment/header :: masthead(tag='마이페이지 · 예매 내역', showAuthNav=false)}"></header>
+    <header th:replace="~{fragment/header :: masthead(tag='마이페이지', showAuthNav=false)}"></header>
+
+    <!-- 헤더는 화면 폭을 꽉 채우고 본문만 이 안쪽 컨테이너가 가운데로 모은다
+         (목록·상세와 같은 처리). -->
+    <div class="mypageinner">
 
     <nav class="mypagetabs">
         <a th:href="@{/mypage/reservations}" class="active">예매 내역</a>
@@ -79,7 +83,8 @@
 
     <div class="empty-state" th:if="${reservations.isEmpty()}">
         <p>예매 내역이 없습니다.</p>
-        <p><a th:href="@{/}" style="color:var(--brass)">공연 보러 가기</a></p>
+        <p><a class="emptyreset" th:href="@{/}">공연 보러 가기</a></p>
+    </div>
     </div>
 </div>
 

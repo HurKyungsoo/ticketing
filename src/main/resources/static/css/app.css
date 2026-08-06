@@ -2847,11 +2847,17 @@ body.page-list.tone-light .resultreset {
 }
 body.page-list.tone-light .resultreset:hover { color: var(--brass-ink); border-color: var(--brass-ink); }
 
-body.page-list.tone-light .emptyreset {
-  border-color: rgba(17, 18, 20, .16);
-  color: var(--ink);
+/* 빈 화면의 출구 버튼. 다크 규칙은 body.page-list 안에만 있어서 목록·찜 목록에서만
+   모양이 잡혔는데, 마이페이지 예매 내역의 빈 화면도 같은 버튼을 쓴다. 라이트 쪽은
+   스코프 없이 tone-light 아래 두어 어느 화면에서든 같은 모양이 나오게 한다. */
+body.tone-light .emptyreset {
+  display: inline-block; margin-top: 16px;
+  padding: 10px 22px;
+  border: 1px solid rgba(17, 18, 20, .16); border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  transition: border-color .12s, background .12s;
 }
-body.page-list.tone-light .emptyreset:hover { border-color: var(--brass); background: rgba(233, 180, 76, .08); }
+body.tone-light .emptyreset:hover { border-color: var(--brass); background: rgba(233, 180, 76, .08); }
 
 /* 페이저. 현재 페이지는 필터 pill 과 같은 언어(잉크 채움)로 둔다. */
 body.page-list.tone-light .pager-nav,
@@ -3263,6 +3269,178 @@ body.page-seatmap.tone-light .bookbar .inner button:not(:disabled):hover { trans
 
 @media (max-width: 860px) {
   body.page-seatmap.tone-light .masthead { padding: 14px 20px; }
+}
+
+/* ==================================================================
+   마이페이지(예매 내역 · 찜한 공연) — 라이트 톤
+
+   핸드오프는 예매 내역만 다루지만 찜한 공연도 같이 넘긴다. 둘은 같은 상단 탭으로
+   오가는 한 화면의 두 면이라, 한쪽만 바꾸면 **탭을 누르는 순간 테마가 뒤집힌다** —
+   앱 안에서 톤이 갈리는 자리 중 가장 나쁜 자리다. 찜한 공연은 목록과 같은
+   .card/.grid 를 쓰므로 위 공통 기반이 대부분 처리하고, 여기서는 탭만 맞추면 된다.
+   ================================================================== */
+body.page-mypage.tone-light .wrap { max-width: none; margin: 0; padding: 0; }
+body.page-mypage.tone-light .masthead { margin: 0; padding: 20px 48px; }
+/* 이 헤더의 부제("마이페이지 · 예매 내역")는 어느 탭인지까지 말해 주는데, 바로 아래
+   탭 줄이 같은 걸 더 크게 보여준다. 목업대로 "마이페이지"만 오른쪽에 조용히 둔다. */
+body.page-mypage.tone-light .masthead .tag {
+  display: inline;
+  margin-left: auto;
+  font-size: 14px; font-weight: 600; color: rgba(17, 18, 20, .5);
+}
+body.page-mypage.tone-light .mypageinner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+/*
+   상단 탭을 알약에서 밑줄로 바꾼다. 알약은 이 화면에서 필터 pill(목록)·상태 배지와
+   같은 모양이라 "누르면 화면이 바뀌는 탭"으로 안 읽혔다. 밑줄 탭은 그 셋 어디와도
+   안 겹치고, 활성 표시가 글자 바로 밑에 붙어 어느 면을 보고 있는지가 분명하다.
+*/
+body.page-mypage.tone-light .mypagetabs {
+  gap: 28px;
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
+  margin-bottom: 28px;
+}
+body.page-mypage.tone-light .mypagetabs a {
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  font-size: 15px; font-weight: 700;
+  color: rgba(17, 18, 20, .4);
+  transition: color .15s, border-color .15s;
+}
+body.page-mypage.tone-light .mypagetabs a:hover { color: var(--ink); }
+body.page-mypage.tone-light .mypagetabs a.active {
+  color: var(--ink);
+  font-weight: 800;
+  border-bottom-color: var(--ink);
+  background: none;
+}
+
+/* ---- 예매 카드 ---- */
+body.page-mypage.tone-light .reslist { gap: 14px; }
+body.page-mypage.tone-light .resrow {
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid rgba(17, 18, 20, .1);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color .2s, transform .2s;
+}
+/* 카드 전체가 눌리는 영역이라(.resinfo) hover 를 카드에 준다. 목록 카드와 같은
+   언어(살짝 떠오름)를 쓰되, 여기는 카드에 테두리가 있으니 그 색으로도 알린다. */
+body.page-mypage.tone-light .resrow:hover {
+  border-color: var(--brass);
+  transform: translateY(-2px);
+}
+body.page-mypage.tone-light .restitle { font-size: 16.5px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+body.page-mypage.tone-light .resinfo:hover .restitle { color: var(--ink); }
+body.page-mypage.tone-light .resinfo:focus-visible { outline-color: var(--ink); }
+body.page-mypage.tone-light .resmeta { font-size: 13.5px; color: rgba(17, 18, 20, .55); margin-bottom: 6px; }
+body.page-mypage.tone-light .resno { font-size: 12.5px; color: rgba(17, 18, 20, .4); }
+
+/* 액션 줄. 다크에서는 세로로 쌓아 오른쪽 끝에 붙였는데, 카드가 밝아지면서 배지와
+   버튼이 한 줄에 나란히 있어도 안 복잡해 보인다(목업도 한 줄이다). */
+body.page-mypage.tone-light .resaction { flex-direction: row; align-items: center; gap: 10px; }
+
+/*
+   상태 배지. 다크에서는 테두리 + 글자색만 썼는데 라이트에서는 옅은 틴트 채움이
+   더 또렷하다. 네 상태를 색으로 가르되 글자색은 전부 대비 4.5 를 넘긴 값을 쓴다 —
+   틴트 배경이 거의 흰색에 가까워서 배경이 아니라 페이지 대비로 계산해야 한다.
+*/
+body.page-mypage.tone-light .badge {
+  border: 0;
+  padding: 6px 12px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0;
+  background: rgba(17, 18, 20, .06);
+  color: rgba(17, 18, 20, .45);
+}
+body.page-mypage.tone-light .badge-PENDING {
+  background: rgba(233, 180, 76, .18);
+  color: var(--brass-ink);
+}
+body.page-mypage.tone-light .badge-CONFIRMED {
+  background: rgba(17, 18, 20, .08);
+  color: var(--ink);
+}
+body.page-mypage.tone-light .badge-CANCELED {
+  background: rgba(242, 109, 109, .14);
+  color: #B23A3A;
+  opacity: 1;
+}
+body.page-mypage.tone-light .badge-EXPIRED {
+  background: rgba(17, 18, 20, .06);
+  color: rgba(17, 18, 20, .45);
+  opacity: 1;
+}
+
+body.page-mypage.tone-light .btn-pay,
+body.page-mypage.tone-light .btn-cancel,
+body.page-mypage.tone-light .btn-delete {
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13px;
+  /* 핸드오프가 못 박아 둔 값. 없으면 "취소"·"삭제" 두 글자가 세로로 접힌다. */
+  white-space: nowrap;
+  flex: none;
+}
+body.page-mypage.tone-light .btn-pay { background: var(--brass); color: var(--ink); font-weight: 800; }
+body.page-mypage.tone-light .btn-pay:hover { background: #f2c874; }
+body.page-mypage.tone-light .btn-cancel,
+body.page-mypage.tone-light .btn-delete {
+  border: 1px solid rgba(17, 18, 20, .16);
+  font-weight: 700;
+}
+body.page-mypage.tone-light .btn-cancel { color: var(--ink); }
+body.page-mypage.tone-light .btn-cancel:hover { border-color: var(--rose); color: #B23A3A; }
+body.page-mypage.tone-light .btn-delete { color: rgba(17, 18, 20, .5); }
+body.page-mypage.tone-light .btn-delete:hover { border-color: rgba(17, 18, 20, .4); color: var(--ink); }
+
+/* ---- 예매 요약 팝업 ---- */
+body.page-mypage.tone-light .resmodal {
+  background: var(--paper);
+  border-color: rgba(17, 18, 20, .12);
+  box-shadow: 0 24px 60px rgba(17, 18, 20, .22);
+}
+/*
+   닫기 버튼은 포스터 오른쪽 위에 겹쳐 놓인다. 다크에서는 아이콘이 밝은색(--mute)이라
+   어떤 포스터 위에서도 보였는데, 라이트에 맞춰 어둡게 바꾸면 어두운 포스터 위에서
+   그대로 사라진다(실제로 사라졌다). 포스터 이미지는 공연마다 달라서 아이콘 색만으로는
+   어느 쪽으로 골라도 절반은 안 보인다 — 아이콘 뒤에 판을 깔아 배경과 무관하게 만든다.
+*/
+body.page-mypage.tone-light .resmodal-close {
+  width: 28px; height: 28px;
+  padding: 0;
+  align-items: center; justify-content: center;
+  border-radius: 999px;
+  background: rgba(248, 244, 236, .92);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(17, 18, 20, .25);
+}
+body.page-mypage.tone-light .resmodal-close:hover { background: #fff; color: var(--ink); }
+/* 포스터 자리는 어두운 채로 둔다 — 포스터가 곧 이미지라 밝은 판을 깔면 흰 여백이
+   포스터의 일부처럼 보인다(목록·상세 카드와 같은 처리). */
+body.page-mypage.tone-light .resmodal-poster { border: 0; background: var(--ink); }
+body.page-mypage.tone-light .resmodal-body h3 { color: var(--ink); }
+body.page-mypage.tone-light .resmodal-spec div { border-top-color: rgba(17, 18, 20, .1); }
+body.page-mypage.tone-light .resmodal-spec dt { color: rgba(17, 18, 20, .5); }
+body.page-mypage.tone-light .resmodal-spec dd { color: var(--ink); }
+
+@media (max-width: 720px) {
+  /* 좁은 화면에서는 정보 블록 아래로 액션 줄이 내려간다(다크 규칙 그대로).
+     그때 배지와 버튼이 양끝으로 갈리도록 폭을 채운다. */
+  body.page-mypage.tone-light .resaction { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 560px) {
+  body.page-mypage.tone-light .masthead { padding: 16px 20px; }
+  body.page-mypage.tone-light .mypageinner { padding: 24px 20px 60px; }
+  body.page-mypage.tone-light .mypagetabs { gap: 20px; }
 }
 
 /* ==================================================================

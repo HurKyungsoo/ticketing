@@ -7,10 +7,14 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<!-- 목록·홈과 같은 카드를 쓰므로 page-list 스코프를 함께 단다. -->
-<body class="page-list">
+<!-- 목록·홈과 같은 카드를 쓰므로 page-list 스코프를 함께 단다.
+     page-mypage 는 예매 내역과 공유하는 것(헤더·상단 탭·안쪽 컨테이너)에 쓴다 —
+     두 화면은 같은 탭으로 오가는 한 화면의 두 면이라 그 부분이 어긋나면 안 된다. -->
+<body class="page-list page-mypage tone-light">
 <div class="wrap">
-    <header th:replace="~{fragment/header :: masthead(tag='마이페이지 · 찜한 공연', showAuthNav=false)}"></header>
+    <header th:replace="~{fragment/header :: masthead(tag='마이페이지', showAuthNav=false)}"></header>
+
+    <div class="mypageinner">
 
     <nav class="mypagetabs">
         <a th:href="@{/mypage/reservations}">예매 내역</a>
@@ -45,6 +49,7 @@
         <p>찜한 공연이 없습니다.</p>
         <p>공연 상세에서 <strong>찜하기</strong>를 누르면 여기에 모입니다.</p>
         <a class="emptyreset" th:href="@{/}">공연 보러 가기</a>
+    </div>
     </div>
 </div>
 </body>
