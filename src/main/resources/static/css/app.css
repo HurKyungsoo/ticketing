@@ -94,6 +94,12 @@
   --radius: 14px;
   --radius-sm: 10px;
   --radius-xs: 6px;
+  /* 극장 예매 UI 톤앤무드 리디자인(2026-08-06) 전용 — 라이트 배경 화면(홈 등)의 포스터는
+     기존 카드보다 더 각지게(6px), 다크 패널(요약 카드 등)은 더 크게(16px) 간다.
+     화면을 하나씩 이 톤으로 옮기는 동안에만 쓰이므로 전환이 끝나면 --radius 계열로
+     정리할 수 있다. */
+  --radius-poster: 6px;
+  --radius-panel: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -158,6 +164,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 13px; color: var(--mute);
 }
 .masthead .authnav a { color: var(--brass); }
+.masthead .navdivider { flex: none; width: 1px; height: 16px; background: var(--line-strong); }
 .masthead .authnav form { margin: 0; }
 .masthead .authnav .linklike {
   background: none; border: 0; padding: 0;
@@ -2118,195 +2125,354 @@ body.page-payment .paydone-actions .paybtn { flex: 1; }
 }
 
 /* ==================================================================
-   홈 (섹션형 둘러보기)
+   홈 (섹션형 둘러보기) — 극장 예매 UI 톤앤무드 리디자인(2026-08-06)
 
    목록(/performances)이 조건을 걸어 찾는 화면이라면, 홈은 뭐가 있나 훑는 화면이다.
-   카드·그리드는 목록과 같은 규칙을 그대로 쓰므로(body.page-list 스코프를 공유한다)
-   여기에는 홈에만 있는 것 — 히어로, 장르 바, 섹션 머리 — 만 적는다.
+   이 리디자인부터 홈은 본문을 라이트(--paper)로 두고 히어로·에디토리얼 밴드만
+   다크(--ink)로 가는 새 톤을 쓴다 — 다른 화면은 각자의 순서가 오기 전까지 기존
+   다크 톤 그대로다. 그래서 아래 규칙은 전부 body.page-home 스코프 안에서만
+   .card/.grid 를 오버라이드한다(body.page-list 쪽 원본 다크 카드 규칙은 그대로 두고,
+   /performances 목록은 이번 커밋에서 안 건드린다).
    ================================================================== */
+body.page-home { background: var(--paper); color: var(--ink); }
+body.page-home .wrap { max-width: none; margin: 0; padding: 0; }
 
-/* 히어로. 배경 이미지나 캐러셀 없이 여백과 타이포만으로 세운다 —
-   포스터가 바로 아래 줄줄이 오는데 위에도 이미지를 깔면 시선 둘 곳이 없어진다. */
+/* 헤더. 다른 화면의 .masthead(다크·상시 blur 바)와 달리 라이트 배경 위 sticky blur. */
+body.page-home .masthead {
+  margin: 0;
+  padding: 22px 48px;
+  background: rgba(248, 244, 236, .86);
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  backdrop-filter: saturate(160%) blur(10px);
+}
+body.page-home .masthead h1 { color: var(--ink); }
+body.page-home .masthead .logo-mark { color: var(--ink); width: 30px; height: 19px; }
+/* 부제 태그는 홈에서는 헤더를 가볍게 두려고 뺀다(다른 화면은 계속 보여준다). */
+body.page-home .masthead .tag { display: none; }
+body.page-home .masthead .authnav { color: var(--ink); gap: 20px; font-size: 14.5px; font-weight: 600; }
+body.page-home .masthead .authnav .who { color: var(--ink); }
+body.page-home .masthead .authnav a { color: var(--ink); transition: color .2s; }
+body.page-home .masthead .authnav a:hover { color: var(--brass-dim); }
+body.page-home .masthead .linklike { color: var(--ink); }
+body.page-home .masthead .linklike:hover { color: var(--brass-dim); }
+body.page-home .masthead .navdivider { background: rgba(17, 18, 20, .18); }
+/* .authbtns a 는 body.page-list .authbtns a { color: var(--paper) !important; ... }
+   (다크 화면용, 알약 아웃라인) 규칙을 !important 로 깔고 있어 page-home 스코프여도
+   그냥 덮어쓰지 못한다 — 로그인 링크가 라이트 배경에 흰 글자로 거의 안 보이던 버그가
+   여기서 났다. 홈 전용으로 색·테두리를 다시 !important 로 눌러 이긴다. */
+body.page-home .authbtns a {
+  color: var(--ink) !important;
+  border-color: rgba(17, 18, 20, .16) !important;
+}
+body.page-home .authbtns a:hover {
+  border-color: var(--brass) !important;
+  background: rgba(233, 180, 76, .08);
+}
+body.page-home .masthead .btn-signup {
+  background: var(--ink); color: var(--paper) !important;
+  padding: 9px 18px; border-radius: 999px; font-weight: 700;
+  border-color: var(--ink) !important;
+  transition: transform .2s, background .2s;
+}
+body.page-home .masthead .btn-signup:hover {
+  background: #292a2d !important; border-color: #292a2d !important;
+  transform: translateY(-1px);
+}
+
+/* 히어로. 다크 풀블리드 + 미세한 그레인 텍스처(무대 조명 아래 객석 질감). 좌측 헤드라인/검색,
+   우측 큰 숫자 통계를 2단으로 놓는다 — 숫자를 오른쪽에 크게 두면 "많이 모았다"가 카피 없이
+   바로 읽힌다. */
 body.page-home .hero {
   position: relative;
   overflow: hidden;
-  min-height: 330px;
-  display: grid;
-  align-content: center;
-  padding: 56px 56px 44px;
-  margin: 0 0 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(135deg, rgba(233, 180, 76, .20), rgba(99, 183, 175, .10) 44%, rgba(141, 122, 174, .14)),
-    linear-gradient(180deg, rgba(35, 36, 40, .94), rgba(26, 27, 30, .98));
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .34);
-  text-align: left;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 96px 48px 84px;
+  margin: 0;
 }
 body.page-home .hero::before {
   content: "";
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgba(17, 18, 20, .02), rgba(17, 18, 20, .55)),
-    repeating-linear-gradient(90deg, transparent 0 42px, rgba(248, 244, 236, .035) 42px 43px);
+  inset: -10%;
+  opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: hero-grain 1.5s steps(4) infinite;
   pointer-events: none;
 }
-body.page-home .hero > * {
+@keyframes hero-grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -2%); }
+  20% { transform: translate(-3%, 1%); }
+  30% { transform: translate(2%, -3%); }
+  40% { transform: translate(-2%, 3%); }
+  50% { transform: translate(3%, 1%); }
+  60% { transform: translate(-1%, 2%); }
+  70% { transform: translate(1%, -1%); }
+  80% { transform: translate(-3%, -2%); }
+  90% { transform: translate(2%, 2%); }
+}
+body.page-home .hero-inner {
   position: relative;
-  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.3fr .9fr;
+  gap: 64px;
+  align-items: end;
+}
+body.page-home .hero-kicker {
+  font-size: 14px; font-weight: 700; letter-spacing: .14em;
+  color: var(--brass); text-transform: uppercase;
+  margin: 0 0 22px;
 }
 body.page-home .hero h2 {
   font-family: var(--display);
   max-width: none;
-  font-size: clamp(34px, 4.6vw, 52px);
-  line-height: 1.1;
-  font-weight: 850;
-  /* 자간은 글자가 커질수록 좁혀야 시각적으로 고르게 보인다(옵티컬 사이징) — 종전엔
-     이 화면에서 가장 큰 글자인데 자간이 0 이라, 더 작은 다른 제목들(-0.02em)보다
-     오히려 헐렁해 보이는 게 거꾸로였다. */
-  letter-spacing: -0.03em;
-  margin: 0 0 14px;
-  white-space: nowrap;
-}
-body.page-home .hero-sub {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 4px;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -.03em;
   margin: 0 0 28px;
-  padding: 7px 13px;
-  border: 1px solid rgba(248, 244, 236, .14);
-  border-radius: 999px;
-  background: rgba(17, 18, 20, .34);
-  font-size: 14px;
-  color: var(--mute);
+  white-space: normal;
 }
-body.page-home .hero-sub strong { color: var(--brass); font-weight: 700; }
+body.page-home .hero-stat {
+  text-align: right;
+  border-left: 1px solid rgba(248, 244, 236, .18);
+  padding-left: 40px;
+}
+body.page-home .hero-stat p { margin: 0; font-size: 14px; font-weight: 600; color: rgba(248, 244, 236, .55); }
+body.page-home .hero-stat strong {
+  display: block;
+  margin: 6px 0;
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 800; letter-spacing: -.03em;
+  color: var(--brass);
+  font-variant-numeric: tabular-nums;
+}
+/* hero-sub 는 구 버전(알약형 통계 배지)의 이름을 이번 리디자인에서는 우측 큰 숫자로
+   대체했다 — 마크업이 hero-stat 으로 바뀌었으므로 이 클래스는 더 안 쓰인다. */
 
-/* 히어로 진입 애니메이션. prefers-reduced-motion 은 위쪽의 전역 규칙
-   (* { transition: none !important; animation: none !important; })이 이미
-   무력화하므로 여기서 따로 분기하지 않아도 된다. */
+/* 히어로 진입 애니메이션. prefers-reduced-motion 은 전역 규칙(* { animation: none !important })이
+   이미 무력화하므로 여기서 따로 분기하지 않는다. */
 @keyframes hero-fade-up {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: none; }
 }
+body.page-home .hero-kicker,
 body.page-home .hero h2,
-body.page-home .hero-sub,
-body.page-home .hero-search {
-  animation: hero-fade-up .5s ease both;
+body.page-home .hero-search,
+body.page-home .hero-stat {
+  animation: hero-fade-up .7s ease both;
 }
-body.page-home .hero-sub { animation-delay: .08s; }
-body.page-home .hero-search { animation-delay: .16s; }
+body.page-home .hero h2 { animation-delay: .08s; }
+body.page-home .hero-search { animation-delay: .18s; }
+body.page-home .hero-stat { animation-delay: .26s; }
 
-/* 검색창. 목록 필터 패널의 .fp-keyword 와 같은 모양이되 홈에서는 주요 액션이라 더 크다. */
+/* 검색창. 흰 알약이 아니라 다크 히어로 위 밑줄형 — 무대 조명 아래 대사창 같은 인상. */
 body.page-home .hero-search {
-  display: flex; align-items: center; gap: 10px;
-  max-width: 600px; margin: 0;
-  padding: 6px 6px 6px 18px;
-  background: rgba(248, 244, 236, .96);
-  border: 1px solid rgba(248, 244, 236, .78); border-radius: 999px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, .28);
-  transition: border-color .12s, box-shadow .12s, transform .12s;
+  display: flex; align-items: center; gap: 14px;
+  max-width: 520px; margin: 0;
+  padding-bottom: 14px;
+  border-bottom: 2px solid rgba(248, 244, 236, .35);
+  transition: border-color .25s;
 }
-body.page-home .hero-search:focus-within {
-  border-color: var(--brass);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, .34), 0 0 0 4px rgba(233, 180, 76, .16);
-  transform: translateY(-1px);
-}
+body.page-home .hero-search:focus-within { border-color: var(--brass); }
 body.page-home .hero-search svg { flex: none; }
 body.page-home .hero-search input {
   flex: 1; min-width: 0;
   background: none; border: 0; outline: none;
-  font: inherit; font-size: 15px; color: var(--ink);
+  font: inherit; font-size: 17px; color: var(--paper);
 }
+body.page-home .hero-search input::placeholder { color: rgba(248, 244, 236, .5); }
 body.page-home .hero-search button {
   flex: none;
-  padding: 11px 24px;
-  background: #111214; color: var(--paper);
+  padding: 10px 22px;
+  background: var(--brass); color: var(--ink);
   border: 0; border-radius: 999px;
-  font: inherit; font-size: 14px; font-weight: 700;
+  font: inherit; font-size: 14.5px; font-weight: 700;
   cursor: pointer;
-  transition: filter .12s;
+  transition: transform .2s, background .2s;
 }
-body.page-home .hero-search button:hover { filter: brightness(1.08); }
+body.page-home .hero-search button:hover { background: #f2c874; transform: scale(1.04); }
 
-/* 장르 바로가기. 목록의 필터 칩(.cattab)과 같은 알약 모양을 쓰되, 여기서는 라디오가
-   아니라 링크라 건수를 붙여 어디로 가는지 미리 보여준다. */
+/* 장르 바로가기. 라이트 배경 위 알약 — 아웃라인 기본, hover 시 브라스 라인 + 살짝 뜬다. */
 body.page-home .genrenav {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 0 0 46px;
-  justify-content: flex-start;
+  display: flex; flex-wrap: wrap; gap: 10px;
+  max-width: 1240px; margin: 0 auto;
+  padding: 26px 48px;
+  overflow-x: auto;
 }
 body.page-home .genrenav a {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 15px;
-  border: 1px solid var(--line-strong); border-radius: 999px;
-  background: rgba(248, 244, 236, .04);
-  font-size: 13px; color: var(--paper);
-  transition: border-color .12s, color .12s, background .12s, transform .12s;
+  display: inline-flex; align-items: center; gap: 8px;
+  flex: none;
+  padding: 10px 18px;
+  border: 1px solid rgba(17, 18, 20, .16); border-radius: 999px;
+  color: var(--ink); font-weight: 700; font-size: 14px;
+  transition: border-color .2s, transform .2s;
 }
-body.page-home .genrenav a:hover {
-  border-color: var(--teal);
-  background: rgba(99, 183, 175, .10);
-  color: var(--paper);
-  transform: translateY(-1px);
-}
+body.page-home .genrenav a:hover { border-color: var(--brass); transform: translateY(-2px); }
 body.page-home .genrenav em {
-  font-style: normal; font-size: 12px; opacity: 1;
-  color: var(--teal);
+  font-style: normal; font-weight: 600; opacity: .5;
 }
 
-/* 섹션. 제목 줄과 카드 사이 간격이 섹션 사이 간격보다 뚜렷하게 좁아야
-   "이 카드들이 이 제목에 속한다"가 읽힌다. */
+/* 섹션 공통(카드형 · 에디토리얼형 모두). 제목 줄과 카드 사이 간격이 섹션 사이
+   간격보다 뚜렷하게 좁아야 "이 카드들이 이 제목에 속한다"가 읽힌다. */
 body.page-home .homesec {
-  margin-bottom: 64px;
-  padding-top: 4px;
+  max-width: 1240px; margin: 0 auto;
+  padding: 36px 48px 20px;
 }
 body.page-home .hs-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; margin-bottom: 20px;
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; margin-bottom: 26px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
 }
 body.page-home .hs-title h2 {
   font-family: var(--display);
-  font-size: 26px; font-weight: 750; letter-spacing: -0.015em;
-  margin: 0 0 4px;
+  font-size: 26px; font-weight: 800; letter-spacing: -.02em;
+  margin: 0 0 6px;
+  color: var(--ink);
 }
-body.page-home .hs-title p { margin: 0; font-size: 13px; color: var(--mute); }
+body.page-home .hs-title p { margin: 0; font-size: 14px; color: rgba(17, 18, 20, .55); }
 body.page-home .hs-more {
   flex: none;
-  font-size: 13px; color: var(--mute);
-  border-bottom: 1px solid var(--line-strong);
-  transition: color .12s, border-color .12s;
+  font-size: 14px; font-weight: 700; color: var(--ink);
+  border-bottom: 0;
+  transition: color .2s;
 }
-body.page-home .hs-more:hover { color: var(--brass); border-color: var(--brass); }
+body.page-home .hs-more:hover { color: var(--brass-dim); }
 
-body.page-home .allmore { text-align: center; margin: 0; }
-body.page-home .allmore a {
-  display: inline-block;
-  padding: 12px 28px;
-  border: 1px solid var(--line-strong); border-radius: 999px;
-  font-size: 14px; color: var(--paper);
-  transition: border-color .12s, background .12s;
+/* 카드형 섹션(곧 막을 내려요 / 새로 들어온 공연) — 가로 슬라이드. 그리드로 줄바꿈하는
+   대신 카드를 옆으로 죽 늘어놓고 가로 스크롤한다 — 6장을 다 펼치면 세로로 길어져
+   에디토리얼 밴드까지 가기 전에 스크롤이 지루해지므로, 한눈에 4장 정도 보여주고
+   나머지는 옆으로 밀어서 보게 한다. 스냅으로 카드 경계에서 멈춘다. */
+body.page-home .railwrap { position: relative; }
+body.page-home .homesec .grid {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  margin-bottom: -4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-body.page-home .allmore a:hover { border-color: var(--brass); background: rgba(255, 201, 64, .08); }
+body.page-home .homesec .grid::-webkit-scrollbar { width: 0; height: 0; display: none; }
+body.page-home .homesec .card {
+  flex: none;
+  width: 240px;
+  scroll-snap-align: start;
+  gap: 14px; transition: transform .25s;
+}
+
+/* 좌우 화살표. 포스터(3:4) 세로 중앙 즈음에 오도록 %로 근사한다 — 카드가 포스터+제목+
+   메타로 이어져 실제 포스터 중앙은 전체 높이의 절반보다 위(37%쯤)다. */
+body.page-home .railnav {
+  position: absolute; top: 37%; transform: translateY(-50%);
+  width: 40px; height: 40px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(17, 18, 20, .12); border-radius: 999px;
+  background: rgba(248, 244, 236, .92);
+  color: var(--ink); font-size: 20px; line-height: 1;
+  box-shadow: 0 8px 20px rgba(17, 18, 20, .14);
+  cursor: pointer; z-index: 2;
+  transition: background .2s, opacity .15s, transform .2s;
+}
+body.page-home .railnav:hover { background: #fff; transform: translateY(-50%) scale(1.06); }
+body.page-home .railnav--prev { left: -8px; }
+body.page-home .railnav--next { right: -8px; }
+/* 스크립트가 양 끝에서 disabled 를 걸어 "더 없다"를 알려준다. JS 가 없으면(느린 3자
+   스크립트 차단 등) disabled 가 안 걸릴 뿐 버튼 자체는 항상 눌려서 스크롤은 된다. */
+body.page-home .railnav:disabled { opacity: 0; pointer-events: none; }
 
 @media (max-width: 860px) {
-  body.page-home .hero {
-    min-height: 0;
-    padding: 34px 20px 24px;
-    border-radius: var(--radius-sm);
-  }
-  body.page-home .hero h2 {
-    font-size: 32px;
-    white-space: normal;
-  }
-  /* 좁은 화면에서 버튼까지 한 줄에 넣으면 입력 칸이 글자 몇 개 폭으로 눌린다.
-     돋보기 아이콘이 이미 검색창임을 알려주므로 버튼 글자를 줄인다. */
-  body.page-home .hero-search { padding-left: 14px; }
-  body.page-home .hero-search button { padding: 11px 16px; }
-  body.page-home .genrenav { padding-bottom: 34px; }
-  body.page-home .homesec { margin-bottom: 40px; }
+  body.page-home .railnav { display: none; }
+}
+body.page-home .homesec .card:hover { transform: translateY(-6px); }
+body.page-home .homesec .card .poster {
+  border: 0; border-radius: var(--radius-poster);
+  background: var(--ink);
+}
+body.page-home .homesec .card .poster::after { display: none; }
+body.page-home .homesec .card h3 { color: var(--ink); font-size: 16px; letter-spacing: -.01em; }
+body.page-home .homesec .card:hover h3 { color: var(--brass-dim); }
+body.page-home .homesec .card .meta { color: rgba(17, 18, 20, .55); }
+body.page-home .homesec .card .m-venue::before,
+body.page-home .homesec .card .m-date::before { display: none; }
+body.page-home .homesec .card-badge {
+  background: rgba(17, 18, 20, .75); color: var(--brass);
+  border: 0;
+}
+
+/* 에디토리얼 밴드(가운데 섹션 — "N월 공연") — 다크 풀블리드, 3열, 카드 사이 1px 구분선. */
+body.page-home .homesec--editorial {
+  max-width: none; padding: 0;
+  background: var(--ink); color: var(--paper);
+  margin: 56px 0 0;
+}
+body.page-home .homesec--editorial .hs-inner { max-width: 1240px; margin: 0 auto; padding: 56px 48px; }
+body.page-home .homesec--editorial .hs-head { border-bottom: 0; margin-bottom: 30px; padding-bottom: 0; }
+body.page-home .homesec--editorial .hs-title h2 { color: var(--paper); }
+body.page-home .homesec--editorial .hs-title p { color: rgba(248, 244, 236, .5); }
+body.page-home .homesec--editorial .hs-more { color: var(--brass); }
+body.page-home .homesec--editorial .hs-more:hover { opacity: .7; color: var(--brass); }
+body.page-home .editorial-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: rgba(248, 244, 236, .14);
+  border-radius: 10px; overflow: hidden;
+}
+body.page-home .editorial-card {
+  display: flex; flex-direction: column; gap: 16px;
+  background: var(--ink); padding: 26px;
+  transition: background .2s;
+}
+body.page-home .editorial-card:hover { background: #1c1d20; }
+body.page-home .editorial-card .ec-image {
+  position: relative;
+  aspect-ratio: 16 / 10; border-radius: 4px; overflow: hidden;
+  background: #1a1b1e;
+}
+body.page-home .editorial-card .ec-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.page-home .editorial-card .ec-cat {
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--brass); margin: 0 0 8px;
+}
+body.page-home .editorial-card h3 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 6px; color: var(--paper); }
+body.page-home .editorial-card .ec-meta { font-size: 13px; color: rgba(248, 244, 236, .5); margin: 0; }
+
+/* 카드형 섹션과 같은 IntersectionObserver 리빌을 쓴다(home.html 스크립트가
+   .editorial-grid/.editorial-card 도 같이 관찰한다) — 클래스를 .grid/.card 와
+   공유하지 않는 이유는 그 두 클래스가 이미 body.page-list 쪽 다른 grid-template-columns
+   규칙을 갖고 있어(4열) 여기 3열+구분선 디자인과 충돌하기 때문이다. */
+body.page-home .editorial-grid.reveal .editorial-card {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+body.page-home .editorial-grid.reveal .editorial-card.is-visible { opacity: 1; transform: none; }
+
+body.page-home .allmore { text-align: center; max-width: 1240px; margin: 0 auto; padding: 44px 48px 60px; }
+body.page-home .allmore a {
+  display: inline-block;
+  padding: 0;
+  border: 0; border-bottom: 2px solid var(--brass);
+  border-radius: 0;
+  font-size: 15px; font-weight: 700; color: var(--ink);
+  transition: letter-spacing .2s;
+}
+body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
+
+@media (max-width: 860px) {
+  body.page-home .masthead { padding: 16px 20px; }
+  body.page-home .hero { padding: 48px 20px 36px; }
+  body.page-home .hero-inner { grid-template-columns: 1fr; gap: 28px; align-items: start; }
+  body.page-home .hero-stat { text-align: left; border-left: 0; padding-left: 0; }
+  body.page-home .hero h2 { font-size: 32px; white-space: normal; }
+  body.page-home .genrenav { padding: 20px; }
+  body.page-home .homesec { padding: 28px 20px 16px; }
+  body.page-home .homesec .card { width: 180px; }
+  body.page-home .homesec--editorial .hs-inner { padding: 40px 20px; }
+  body.page-home .editorial-grid { grid-template-columns: 1fr; }
 }
 
 /* ==================================================================

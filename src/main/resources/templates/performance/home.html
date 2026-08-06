@@ -11,30 +11,35 @@
 <!--
     page-list 스코프를 함께 단다. 카드·그리드·포스터 폴백 스타일이 전부 body.page-list 로
     묶여 있는데 홈도 같은 카드를 쓰기 때문이다 — 60여 줄을 복제하느니 스코프를 공유한다.
-    page-home 은 홈에만 있는 것(히어로·장르 바·섹션 머리)에 쓴다.
+    page-home 은 홈에만 있는 것(히어로·장르 바·섹션 머리·라이트 톤 오버라이드)에 쓴다.
 -->
 <body class="page-list page-home">
 <div class="wrap">
     <header th:replace="~{fragment/header :: masthead(tag='공공데이터 기반 공연 예매', showAuthNav=true)}"></header>
 
-    <!-- 검색은 홈의 주요 동선이라 히어로 안에 둔다. 목록 화면의 필터 패널에도 같은 입력이
-         있지만, 홈에 들어온 사람은 아직 필터를 열 이유를 모른다. -->
+    <!-- 히어로. 검색은 홈의 주요 동선이라 여기 둔다 — 목록 화면 필터 패널에도 같은
+         입력이 있지만, 홈에 들어온 사람은 아직 필터를 열 이유를 모른다. -->
     <section class="hero">
-        <h2>오늘, 어떤 무대를 보고 싶으세요?</h2>
-        <p class="hero-sub">
-            전국 진행·예정작
-            <strong th:text="${#numbers.formatInteger(home.total,0,'COMMA')}">878</strong>건을
-            공공데이터로 모았습니다
-        </p>
-        <form class="hero-search" th:action="@{/performances}" method="get">
-            <!-- 검색으로 넘어갈 때도 홈과 같은 범위(진행·예정작)를 유지한다. 이게 없으면
-                 목록의 기본값에 기대게 되는데, 기본값이 바뀌면 홈 숫자와 조용히 어긋난다. -->
-            <input type="hidden" name="status" value="ongoing">
-            <label class="sr-only" for="heroKeyword">공연 검색</label>
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="#6B6480" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="#6B6480" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <input type="text" id="heroKeyword" name="keyword" placeholder="공연명, 아티스트로 검색">
-            <button type="submit">검색</button>
-        </form>
+        <div class="hero-inner">
+            <div>
+                <p class="hero-kicker">Public Data Ticketing</p>
+                <h2>오늘,<br>어떤 무대를<br>보고 싶으세요?</h2>
+                <form class="hero-search" th:action="@{/performances}" method="get">
+                    <!-- 검색으로 넘어갈 때도 홈과 같은 범위(진행·예정작)를 유지한다. 이게 없으면
+                         목록의 기본값에 기대게 되는데, 기본값이 바뀌면 홈 숫자와 조용히 어긋난다. -->
+                    <input type="hidden" name="status" value="ongoing">
+                    <label class="sr-only" for="heroKeyword">공연 검색</label>
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="text" id="heroKeyword" name="keyword" placeholder="공연명, 아티스트로 검색">
+                    <button type="submit">검색</button>
+                </form>
+            </div>
+            <div class="hero-stat">
+                <p>전국 진행·예정작</p>
+                <strong th:text="${#numbers.formatInteger(home.total,0,'COMMA')}">878</strong>
+                <p>건을 공공데이터로 모았습니다</p>
+            </div>
+        </div>
     </section>
 
     <!-- 장르 바로가기. 건수는 홈 상단의 총계와 같은 기준(진행·예정작)으로 세어져 있어
@@ -47,33 +52,62 @@
         </a>
     </nav>
 
-    <!-- 섹션이 비면(수집 직후 등) 제목만 남아 빈 칸이 되므로 통째로 감춘다. -->
-    <section class="homesec" th:each="s : ${home.sections}" th:if="${!s.items.isEmpty()}">
-        <div class="hs-head">
-            <div class="hs-title">
-                <h2 th:text="${s.title}">곧 막을 내려요</h2>
-                <p th:text="${s.subtitle}">예매할 수 있는 날이 얼마 남지 않았습니다</p>
-            </div>
-            <a class="hs-more" th:href="@{${s.moreUrl}}">전체 보기</a>
-        </div>
-
-        <!-- 카드 마크업은 목록(list.html)과 같다. 제목이 메타보다 먼저 오는 순서도 같은
-             이유로 지킨다 — 스크린리더가 어느 공연인지 모른 채 공연장부터 읽으면 안 된다. -->
-        <div class="grid">
-            <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
-                <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
-                    <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
-                    <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
-                         onerror="this.remove(); this.parentElement.classList.add('no-img')">
-                    <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
+    <!-- 섹션이 비면(수집 직후 등) 제목만 남아 빈 칸이 되므로 통째로 감춘다.
+         가운데(두 번째) 섹션만 다크 에디토리얼 밴드로 — 앞뒤 카드형 섹션 사이에
+         리듬을 준다. 세 섹션 다 같은 모양이면 스크롤이 늘어질수록 지루해진다. -->
+    <section th:each="s, iterStat : ${home.sections}" th:if="${!s.items.isEmpty()}"
+              th:classappend="${iterStat.index == 1} ? 'homesec--editorial' : ''"
+              class="homesec">
+        <div th:classappend="${iterStat.index == 1} ? 'hs-inner' : ''">
+            <div class="hs-head">
+                <div class="hs-title">
+                    <h2 th:text="${s.title}">곧 막을 내려요</h2>
+                    <p th:text="${s.subtitle}">예매할 수 있는 날이 얼마 남지 않았습니다</p>
                 </div>
-                <h3 th:text="${p.title}">공연명</h3>
-                <p class="meta">
-                    <span class="m-venue" th:text="${p.venue}">공연장</span>
-                    <span class="m-date"
-                          th:text="|${#temporals.format(p.startDate, 'yyyy.MM.dd')} – ${#temporals.format(p.endDate, 'yyyy.MM.dd')}|">2026.07.08 – 2026.08.30</span>
-                </p>
-            </a>
+                <a class="hs-more" th:href="@{${s.moreUrl}}">전체 보기 →</a>
+            </div>
+
+            <!-- 카드형(첫/셋째 섹션) — 가로 슬라이드. 카드 마크업은 목록(list.html)과 같다 —
+                 제목이 메타보다 먼저 오는 순서도 같은 이유로 지킨다(스크린리더가 공연장부터
+                 읽으면 안 된다). 좌우 화살표는 트랙패드/터치 없이 마우스만 있는 사용자를 위한
+                 것 — .railwrap 스크립트가 스크롤 위치를 보고 양 끝에서 알아서 숨긴다. -->
+            <div class="railwrap" th:if="${iterStat.index != 1}">
+                <button type="button" class="railnav railnav--prev" aria-label="이전 공연 보기">‹</button>
+                <div class="grid">
+                    <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
+                        <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
+                            <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                            <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
+                                 onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                            <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
+                        </div>
+                        <h3 th:text="${p.title}">공연명</h3>
+                        <p class="meta">
+                            <span class="m-venue" th:text="${p.venue}">공연장</span>
+                            <span class="m-date"
+                                  th:text="|${#temporals.format(p.startDate, 'yyyy.MM.dd')} – ${#temporals.format(p.endDate, 'yyyy.MM.dd')}|">2026.07.08 – 2026.08.30</span>
+                        </p>
+                    </a>
+                </div>
+                <button type="button" class="railnav railnav--next" aria-label="다음 공연 보기">›</button>
+            </div>
+
+            <!-- 에디토리얼 밴드(가운데 섹션). 넓은 이미지 + 장르 라벨 + 제목 + 공연장·기간
+                 한 줄. 6개(HOME_SECTION_SIZE)라 3열 그리드가 정확히 2행으로 꽉 찬다. -->
+            <div class="editorial-grid" th:if="${iterStat.index == 1}">
+                <a class="editorial-card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
+                    <div class="ec-image">
+                        <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
+                             onerror="this.remove()">
+                    </div>
+                    <div>
+                        <p class="ec-cat" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">뮤지컬</p>
+                        <h3 th:text="${p.title}">공연명</h3>
+                        <p class="ec-meta"
+                           th:text="|${p.venue} · ${#temporals.format(p.startDate, 'MM.dd')}–${#temporals.format(p.endDate, 'MM.dd')}|">세종문화회관 대극장 · 08.01–08.31</p>
+                    </div>
+                </a>
+            </div>
         </div>
     </section>
 
@@ -97,8 +131,11 @@
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (!('IntersectionObserver' in window)) return;
 
-    // 섹션마다(곧 막을 내려요 / N월 공연 / 새로 들어온 공연) .grid 가 하나씩 있다.
-    var grids = document.querySelectorAll('.grid');
+    // 섹션마다(곧 막을 내려요 / N월 공연(에디토리얼) / 새로 들어온 공연) 그리드가 하나씩
+    // 있다 — 카드형은 .grid/.card, 에디토리얼은 .editorial-grid/.editorial-card 로
+    // 클래스 이름이 다르다(같이 쓰면 4열 카드 그리드 규칙과 specificity 가 충돌해
+    // 에디토리얼의 3열 레이아웃이 깨진다). 둘 다 같은 리빌 로직으로 관찰한다.
+    var grids = document.querySelectorAll('.grid, .editorial-grid');
     if (!grids.length) return;
 
     var io = new IntersectionObserver(function (entries) {
@@ -112,7 +149,33 @@
 
     grids.forEach(function (grid) {
         grid.classList.add('reveal');
-        grid.querySelectorAll('.card').forEach(function (card) { io.observe(card); });
+        grid.querySelectorAll('.card, .editorial-card').forEach(function (card) { io.observe(card); });
+    });
+})();
+
+(function () {
+    // 가로 슬라이드 좌우 화살표. 트랙패드/터치가 없는 마우스 사용자를 위한 보조 이동
+    // 수단이다 — 스크롤 자체는 CSS overflow-x 만으로도 되지만, 넘길 방법이 안 보이면
+    // 아무도 안 써본다. 양 끝에 닿으면 그쪽 버튼을 숨겨서 "더 없다"를 알려준다.
+    document.querySelectorAll('.railwrap').forEach(function (rail) {
+        var grid = rail.querySelector('.grid');
+        var prev = rail.querySelector('.railnav--prev');
+        var next = rail.querySelector('.railnav--next');
+        if (!grid || !prev || !next) return;
+
+        function update() {
+            var max = grid.scrollWidth - grid.clientWidth;
+            prev.disabled = grid.scrollLeft <= 1;
+            next.disabled = grid.scrollLeft >= max - 1;
+        }
+        function page(dir) {
+            grid.scrollBy({ left: dir * grid.clientWidth * 0.9, behavior: 'smooth' });
+        }
+        prev.addEventListener('click', function () { page(-1); });
+        next.addEventListener('click', function () { page(1); });
+        grid.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        update();
     });
 })();
 </script>
