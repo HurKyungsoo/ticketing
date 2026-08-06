@@ -65,11 +65,13 @@
     const gradeLabels = /*[[${gradeLabels}]]*/ [];
     const gradeAmounts = /*[[${gradeAmounts}]]*/ [];
 
-    const brass = '#C9A227';
-    const brassDim = '#8A7220';
-    const rose = '#C4566B';
-    const mute = '#6B6480';
-    const line = 'rgba(242, 237, 228, 0.14)';
+    // app.css 의 --brass / --brass-dim / --rose / --mute / --line 과 같은 값이어야 한다.
+    // 개편 이전 팔레트(보라 섞인 회색 #6B6480 등)가 여기만 그대로 남아 있었다.
+    const brass = '#E9B44C';
+    const brassDim = '#B58A38';
+    const rose = '#F26D6D';
+    const mute = '#B6B0A7';
+    const line = 'rgba(248, 244, 236, 0.14)';
 
     Chart.defaults.color = mute;
     // 차트는 캔버스라 CSS 변수를 못 읽어 스택을 문자열로 다시 적는다. app.css 의 --body 와 같아야 한다.

@@ -1,6 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 44" width="200" height="44" role="img" aria-label="객석 — 공연 예매">
-  <rect x="1.5" y="9.5" width="41" height="25" rx="5" fill="none" stroke="#C9A227" stroke-width="2"/>
-  <rect x="8" y="17" width="9" height="10" rx="2" fill="#C9A227"/>
-  <line x1="30" y1="14" x2="30" y2="30" stroke="#C9A227" stroke-width="1.6" stroke-dasharray="3 3" stroke-linecap="round"/>
-  <text x="56" y="22" dominant-baseline="central" font-family="Gowun Batang, Nanum Myeongjo, serif" font-size="22" font-weight="700" fill="#F2EDE4" letter-spacing="2">객석</text>
+  <!--
+    README 상단 로고. 색은 app.css 의 :root 토큰과 같아야 한다 —
+    --brass #E9B44C / --paper #F8F4EC. (개편 전 값 #C9A227 / #F2EDE4 가 남아 있었다.)
+
+    글꼴도 같이 바꿨다. app.css 가 "명조체를 버리고 Pretendard 하나로 통일"하면서
+    한글 자간도 좁혔는데, 이 파일만 Gowun Batang 명조 + letter-spacing 2 로 남아 있어
+    화면 로고와 README 로고가 서로 다른 서체였다.
+
+    다만 이 SVG 는 GitHub 에서 렌더되므로 Pretendard 가 없을 가능성이 높다.
+    글자를 패스로 변환하면 확실하지만 수정이 어려워지므로, 폴백이 무난한
+    sans-serif 스택으로 두고 자간만 맞춘다.
+  -->
+  <rect x="1.5" y="9.5" width="41" height="25" rx="5" fill="none" stroke="#E9B44C" stroke-width="2"/>
+  <rect x="8" y="17" width="9" height="10" rx="2" fill="#E9B44C"/>
+  <line x1="30" y1="14" x2="30" y2="30" stroke="#E9B44C" stroke-width="1.6" stroke-dasharray="3 3" stroke-linecap="round"/>
+  <text x="56" y="22" dominant-baseline="central"
+        font-family="Pretendard Variable, Pretendard, -apple-system, Malgun Gothic, sans-serif"
+        font-size="22" font-weight="800" fill="#F8F4EC" letter-spacing="-0.5">객석</text>
 </svg>

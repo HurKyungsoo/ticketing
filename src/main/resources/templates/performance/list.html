@@ -38,7 +38,10 @@
         <input type="hidden" name="page" value="0">
 
         <label class="fp-keyword">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#6B6480" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="#6B6480" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <!-- currentColor 로 두어 .fp-keyword 의 글자색을 따라간다. 종전엔 개편 전 팔레트의
+                 보라 회색(#6B6480)이 박혀 있어서, 라이트 톤으로 바꾼 뒤에도 이 아이콘만
+                 옛 색으로 남아 있었다. -->
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:rgba(17,18,20,.45)"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11.5 11.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             <input type="text" name="keyword" placeholder="공연명, 아티스트로 검색" th:value="${keyword}">
         </label>
 
