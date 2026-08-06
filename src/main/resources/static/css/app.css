@@ -2428,12 +2428,24 @@ body.page-home .editorial-card {
   transition: background .2s;
 }
 body.page-home .editorial-card:hover { background: #1c1d20; }
+/* 실제 포스터는 세로(3:4)가 대부분이라, 16:10 가로 프레임에 object-fit:cover 를 쓰면
+   위아래(제목·얼굴 등)가 크게 잘려나간다. 포스터는 안 잘리게 통째로 보여주고(contain),
+   남는 좌우 여백은 같은 이미지를 흐리게 확대한 배경으로 채운다 — 검은 여백만 남는
+   것보다 완성도 있어 보인다(실서비스 포스터 배너의 흔한 처리). */
 body.page-home .editorial-card .ec-image {
   position: relative;
   aspect-ratio: 16 / 10; border-radius: 4px; overflow: hidden;
   background: #1a1b1e;
 }
-body.page-home .editorial-card .ec-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.page-home .editorial-card .ec-image .ec-backdrop {
+  position: absolute; inset: -10%;
+  background-size: cover; background-position: center;
+  filter: blur(20px) brightness(.55); transform: scale(1.1);
+}
+body.page-home .editorial-card .ec-image img {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%; object-fit: contain; display: block;
+}
 body.page-home .editorial-card .ec-cat {
   font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--brass); margin: 0 0 8px;

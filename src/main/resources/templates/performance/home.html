@@ -97,6 +97,11 @@
             <div class="editorial-grid" th:if="${iterStat.index == 1}">
                 <a class="editorial-card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
                     <div class="ec-image">
+                        <!-- 포스터는 세로가 대부분이라 16:10 프레임을 못 채운다 — 남는 좌우는
+                             같은 이미지를 흐리게 확대한 배경으로 채운다(아래 img 는 잘리지
+                             않게 object-fit:contain). -->
+                        <div th:if="${p.posterUrl != null}" class="ec-backdrop"
+                             th:style="'background-image:url(' + @{/img/poster(u=${p.posterUrl})} + ')'"></div>
                         <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                              onerror="this.remove()">
                     </div>
