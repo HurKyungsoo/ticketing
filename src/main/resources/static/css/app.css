@@ -1537,8 +1537,20 @@ body.page-list .card:hover { transform: translateY(-4px); }
 body.page-list .card:hover .poster img { transform: scale(1.04); }
 body.page-list .card:hover h3 { color: var(--brass); }
 
+/*
+   z-index 는 반드시 포스터 이미지(z-index:1)보다 위여야 한다.
+
+   종전엔 배지도 1 이었는데, 같은 값이면 DOM 에서 뒤에 오는 쪽이 위에 그려진다 —
+   마크업이 배지 → img 순이라 **포스터가 실제로 있는 카드에서는 배지가 통째로
+   이미지 뒤에 깔려 안 보였다.** 포스터가 없는 카드(폴백)만 배지가 보였고, 로컬
+   시드가 대부분 폴백이라 화면으로는 오래 안 드러났다. 실데이터가 붙은 홈·목록·찜
+   세 화면 모두 같은 증상이었다.
+
+   2 가 아니라 3 인 이유는 .poster::after(가장자리 inset 그림자)가 이미 2 를 쓰기
+   때문이다 — 2 로 두면 이번엔 그 그림자가 배지 위에 얹힌다.
+*/
 body.page-list .card-badge {
-  position: absolute; top: 10px; left: 10px; z-index: 1;
+  position: absolute; top: 10px; left: 10px; z-index: 3;
   background: rgba(17, 18, 20, .72); color: var(--paper);
   backdrop-filter: blur(4px);
   font-size: 12px; font-weight: 500;
