@@ -2846,6 +2846,204 @@ body.page-list.tone-light .pager-num.active {
 }
 body.page-list.tone-light .pager-num.active:hover { background: var(--ink); color: var(--paper); }
 
+/* ==================================================================
+   공연 상세 — 라이트 톤
+
+   포스터·요약 카드가 있는 왼쪽 sticky 칸과 정보/회차/규정이 흐르는 오른쪽 본문.
+   구조는 그대로 두고 명암만 뒤집는다. 이 화면에서 어두운 면은 딱 둘 —
+   포스터와 요약 카드다. 예매로 가는 길(최저가 → 회차 선택하기)만 어둡게 묶어서
+   아이보리 본문 위에서 그 덩어리가 먼저 눈에 들어오게 한다.
+   ================================================================== */
+
+/* 목록과 같은 이유로 헤더를 화면 폭까지 늘린다. 목록은 안쪽 컨테이너를 새로
+   넣었지만 여기는 .detail 이 이미 유일한 본문 블록이라 그 역할을 겸한다. */
+body.page-detail.tone-light .wrap { max-width: none; margin: 0; padding: 0; }
+body.page-detail.tone-light .masthead { margin: 0; padding: 22px 48px; }
+body.page-detail.tone-light .detail {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 44px 48px 100px;
+  gap: 56px;
+}
+/* 목업은 좌측 칸을 top:44px 로 붙이는데, 그건 목업 헤더가 고정이 아니라서다.
+   이 프로젝트 헤더는 sticky(높이 63px)라 44px 로 두면 포스터 윗부분이 헤더 밑으로
+   말려 들어간다. 헤더 높이 + 목업의 44px 만큼 내린다. */
+body.page-detail.tone-light .detail > div:first-child { top: 88px; }
+
+/* 포스터. 다크에서는 배경과 안 붙게 테두리·바깥 그림자·가장자리 inset 을 겹쳐 줬는데,
+   아이보리 위에서는 셋 다 때가 탄 것처럼 보인다. 모서리만 남긴다. */
+body.page-detail.tone-light .poster {
+  border: 0;
+  border-radius: 10px;
+  box-shadow: none;
+  background: var(--ink);
+}
+body.page-detail.tone-light .poster::after { display: none; }
+/* 배지는 어두운 포스터 위에 얹히므로 목록 카드와 같은 규칙(브라스 글자)으로 맞춘다.
+   .poster .card-badge 는 선택자가 하나 더 길어 body.tone-light .card-badge 를 이기므로
+   여기서 다시 적어야 한다. */
+body.page-detail.tone-light .poster .card-badge {
+  background: rgba(17, 18, 20, .75);
+  color: var(--brass);
+  border: 0;
+  font-weight: 700;
+}
+
+/* 요약 카드. 다크 화면에서는 어두운 면 위 어두운 면이라 테두리로 구분했고 CTA 도
+   외곽선이었다. 라이트에서는 카드 자체가 유일한 어두운 덩어리라 구분이 이미 되고,
+   그 안에서는 브라스 채움 CTA 가 화면 전체의 단일 주요 액션으로 읽힌다. */
+body.page-detail.tone-light .summarycard {
+  border: 0;
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--ink);
+  color: var(--paper);
+}
+body.page-detail.tone-light .sc-row + .sc-row { margin-top: 14px; }
+body.page-detail.tone-light .sc-label { font-size: 12.5px; font-weight: 600; color: rgba(248, 244, 236, .55); }
+body.page-detail.tone-light .sc-price { font-size: 20px; color: var(--brass); }
+body.page-detail.tone-light .sc-next { font-size: 14px; font-weight: 700; color: var(--paper); }
+body.page-detail.tone-light .sc-cta {
+  margin-top: 18px;
+  padding: 13px;
+  border: 0; border-radius: 999px;
+  background: var(--brass); color: var(--ink);
+  font-size: 14.5px; font-weight: 800;
+  transition: background .2s, transform .2s;
+}
+body.page-detail.tone-light .sc-cta:hover {
+  background: #f2c874; color: var(--ink);
+  transform: scale(1.02);
+}
+
+/* 찜·공유. 둘이 한 줄을 반씩 나눠 갖는다 — 성격이 같은 보조 액션이라 크기도 같아야
+   하고, 폭이 고정되면 위 CTA 의 알약과 아래에서 한 덩어리로 읽힌다. */
+body.page-detail.tone-light .pf-actions { gap: 10px; margin: 18px 0 0; flex-wrap: nowrap; }
+body.page-detail.tone-light .pf-actions button {
+  flex: 1;
+  justify-content: center;
+  padding: 11px;
+  border-color: rgba(17, 18, 20, .16);
+  color: var(--ink);
+  font-size: 13.5px; font-weight: 700;
+}
+body.page-detail.tone-light .pf-actions button:hover {
+  border-color: var(--brass); color: var(--brass-dim);
+}
+
+body.page-detail.tone-light h2 {
+  font-size: 34px;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 0 0 32px;
+}
+
+/* 섹션 머리("공연 정보"/"공연 소개"/"회차 선택"/"취소·환불 규정"). 본문보다 작고
+   흐리되 자간을 벌려 라벨로 읽히게 한다 — 본문 제목이 아니라 구획 표시다. */
+body.tone-light .detail-heading {
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .06em;
+  color: rgba(17, 18, 20, .45);
+  margin: 0 0 16px;
+}
+
+body.page-detail.tone-light .spec { border-top: 0; margin: 0 0 40px; }
+body.page-detail.tone-light .spec div {
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+}
+/* 마지막 행의 밑줄은 뺀다. 규정 목록도 같은 처리를 하는데, 줄이 하나 남으면
+   목록이 끝난 게 아니라 뒤가 잘린 것처럼 보인다. */
+body.page-detail.tone-light .spec div:last-child { border-bottom: 0; }
+body.page-detail.tone-light .spec dt {
+  width: 100px;
+  font-size: 14px; color: rgba(17, 18, 20, .5);
+}
+body.page-detail.tone-light .spec dd { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+
+body.tone-light .map-link { color: var(--brass-dim); border-bottom-color: var(--brass-dim); }
+body.tone-light .venue-map { border-color: rgba(17, 18, 20, .12); }
+
+body.page-detail.tone-light .description {
+  font-size: 15px; line-height: 1.75;
+  color: rgba(17, 18, 20, .75);
+  margin: 0 0 44px;
+}
+
+/* 회차. 날짜 칸을 96px → 64px 로 줄인다 — "8/7 (금)" 이면 충분하고, 남은 폭은
+   시각 알약이 한 줄에 더 들어가는 데 쓴다. */
+body.page-detail.tone-light .scheduledays { border-top: 0; margin-bottom: 44px; }
+body.page-detail.tone-light .scheduleday {
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+}
+body.page-detail.tone-light .scheduleday:last-child { border-bottom: 0; }
+/* 목업은 64px 인데 그건 예시가 "8/7" 한 자리 날짜뿐이라서다. 실제로는 8/20 처럼
+   두 자리 날이 오면 "(목)" 이 다음 줄로 접혀 그 행만 높이가 커진다. 가장 긴 조합
+   ("12/28 (월)")이 한 줄에 들어가는 폭으로 잡고 줄바꿈 자체를 막는다. */
+body.page-detail.tone-light .sd-date { width: 78px; white-space: nowrap; }
+body.page-detail.tone-light .sd-day { font-size: 16px; font-weight: 800; color: var(--ink); }
+body.page-detail.tone-light .sd-dow { font-size: 13px; color: rgba(17, 18, 20, .45); }
+body.page-detail.tone-light .scheduleday.soldout .sd-day,
+body.page-detail.tone-light .scheduleday.soldout .sd-dow { color: rgba(17, 18, 20, .35); opacity: 1; }
+
+body.page-detail.tone-light .sd-times { gap: 10px; }
+body.page-detail.tone-light .sd-times a {
+  border-color: rgba(17, 18, 20, .16);
+  border-radius: 999px;
+  color: var(--ink);
+  padding: 9px 16px;
+  font-size: 13.5px; font-weight: 700;
+}
+body.page-detail.tone-light .sd-times a:hover {
+  border-color: var(--brass); color: var(--ink);
+  background: rgba(233, 180, 76, .08);
+}
+body.page-detail.tone-light .sd-remain { color: rgba(17, 18, 20, .4); font-weight: 600; }
+body.page-detail.tone-light .sd-times a:hover .sd-remain { color: var(--brass-dim); }
+/* 매진 회차는 취소선으로 "있었지만 지금은 못 산다"를 그대로 보여준다. 흐리기만
+   하면 비활성인지 매진인지 구분이 안 된다. */
+body.page-detail.tone-light .sd-times a.soldout {
+  border-color: rgba(17, 18, 20, .1);
+  color: rgba(17, 18, 20, .35);
+  opacity: 1;
+  text-decoration: line-through;
+}
+body.page-detail.tone-light .sd-times a.soldout .sd-remain { color: inherit; }
+
+body.page-detail.tone-light .empty-inline { color: rgba(17, 18, 20, .5); }
+
+/* 취소·환불 규정은 결제 화면과 공용(스코프 없는 .refundpolicy)이라 tone-light 에 둔다.
+   결제가 라이트로 넘어올 때 그대로 따라온다. */
+body.tone-light .refundpolicy { border-top: 0; }
+body.tone-light .refundpolicy li {
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+  font-size: 13.5px;
+}
+body.tone-light .refundpolicy li:last-child { border-bottom: 0; }
+body.tone-light .rp-when { color: rgba(17, 18, 20, .6); }
+body.tone-light .rp-fee { color: var(--ink); font-weight: 700; }
+body.tone-light .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
+body.tone-light .refundnote { font-size: 13px; color: rgba(17, 18, 20, .5); }
+
+/* 공유 시트. 라이트 배경 위에 뜨는 창이라 면도 밝게 간다. */
+body.page-detail.tone-light .sharesheet {
+  background: var(--paper);
+  border-color: rgba(17, 18, 20, .12);
+  box-shadow: 0 24px 60px rgba(17, 18, 20, .22);
+}
+
+@media (max-width: 860px) {
+  body.page-detail.tone-light .masthead { padding: 16px 20px; }
+  body.page-detail.tone-light .detail { padding: 28px 20px 72px; gap: 28px; }
+  body.page-detail.tone-light h2 { font-size: 26px; }
+  /* 좁은 화면에서는 요약 카드가 숨겨지므로(위 다크 규칙 그대로) 찜·공유가 포스터
+     바로 밑에 오는데, 그때는 위 여백이 카드용으로 잡힌 18px 보다 넉넉해야 한다. */
+  body.page-detail.tone-light .pf-actions { margin-top: 16px; }
+}
+
 @media (max-width: 860px) {
   body.page-list.tone-light .masthead { padding: 16px 20px; }
   body.page-list.tone-light .listinner { padding: 24px 20px 72px; }
