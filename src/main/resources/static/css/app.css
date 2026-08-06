@@ -39,6 +39,18 @@
   --paper:      #F8F4EC;   /* 본문 (아이보리) */
   --brass:      #E9B44C;   /* 무대 조명 (웜 골드) */
   --brass-dim:  #B58A38;
+  /*
+     라이트 배경(--paper) 위에서 글자로 쓰는 브라스.
+
+     --brass 와 --brass-dim 은 둘 다 어두운 배경 위에 놓일 것을 전제로 고른 값이라
+     아이보리 위에서는 각각 대비 1.73 / 2.88 이다. 본문 텍스트 기준(WCAG 1.4.3 의 4.5)에
+     한참 못 미쳐서, 라이트 화면에서 강조하려고 브라스를 쓰면 오히려 안 읽힌다.
+     같은 색상(hue)을 유지하면서 명도만 내려 4.5 를 넘긴 값이다(측정 4.51).
+
+     채움색으로 쓸 때(브라스 버튼, 어두운 면 위 글자)는 계속 --brass 를 쓴다 —
+     그쪽은 배경이 어둡거나 자기가 배경이라 이 문제가 없다.
+  */
+  --brass-ink:  #8F6A15;
   --rose:       #F26D6D;   /* 매진 */
   --teal:       #63B7AF;
   --plum:       #8D7AAE;
@@ -866,6 +878,19 @@ a { color: inherit; text-decoration: none; }
   width: 13px; height: 13px; border-radius: 3px; display: inline-block;
   border: 0;
 }
+/* 좌석 상태 견본(선택함 · 결제 대기 · 판매 완료). 등급 견본(.legend-grade)과 같은 크기·모양을
+   쓰되, 고른 좌석의 표시 방식은 .seat.selected 와 반드시 같아야 해서 규칙을 따로 둔다. */
+.legend-sample { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+.legend-sample--selected { background: var(--paper); box-shadow: 0 0 0 2px var(--brass); }
+.legend-sample--held { background: var(--seat-held); }
+.legend-sample--sold { background: var(--seat-sold); }
+/* 라이트에서는 고른 좌석이 안쪽 잉크 링으로 바뀐다(.seat.selected 참고). 견본도 같이 뒤집는다. */
+body.tone-light .legend-sample--selected { box-shadow: inset 0 0 0 2px var(--ink); }
+/* 예매 불가 견본은 라이트 배경과 명도가 가까워서(그러라고 물린 색이다) 견본만 덩그러니
+   두면 빈 칸으로 보인다. 좌석은 격자 안에 있어 자리로 읽히지만 견본은 혼자 떠 있다. */
+body.tone-light .legend-sample--held,
+body.tone-light .legend-sample--sold { box-shadow: 0 0 0 1px rgba(17, 18, 20, .18); }
+
 .legend-grade.grade-VIP { background: var(--grade-vip); }
 .legend-grade.grade-R   { background: var(--grade-r); }
 .legend-grade.grade-S   { background: var(--grade-s); }
@@ -2662,9 +2687,9 @@ body.tone-light .masthead .tag { display: none; }
 body.tone-light .masthead .authnav { color: var(--ink); }
 body.tone-light .masthead .authnav .who { color: var(--ink); }
 body.tone-light .masthead .authnav a { color: var(--ink); transition: color .2s; }
-body.tone-light .masthead .authnav a:hover { color: var(--brass-dim); }
+body.tone-light .masthead .authnav a:hover { color: var(--brass-ink); }
 body.tone-light .masthead .linklike { color: var(--ink); }
-body.tone-light .masthead .linklike:hover { color: var(--brass-dim); }
+body.tone-light .masthead .linklike:hover { color: var(--brass-ink); }
 body.tone-light .masthead .navdivider { background: rgba(17, 18, 20, .18); }
 
 /* .authbtns a 는 body.page-list/.page-detail 쪽 다크용 규칙이 color 를 !important 로
@@ -2706,7 +2731,7 @@ body.tone-light .card .poster::before { animation: none; background: none; }
 body.tone-light .card .poster::after { display: none; }
 body.tone-light .card .poster.no-img { background: var(--ink); }
 body.tone-light .card h3 { color: var(--ink); }
-body.tone-light .card:hover h3 { color: var(--brass-dim); }
+body.tone-light .card:hover h3 { color: var(--brass-ink); }
 body.tone-light .card .meta { color: rgba(17, 18, 20, .55); }
 /* 공연장·기간 앞 핀/달력 아이콘은 뺀다. data URI 안에 --mute(#B6B0A7)가 문자열로
    박혀 있어 라이트 배경에서는 거의 안 보이는데, 색을 맞추려면 아이콘마다 data URI 를
@@ -2813,14 +2838,14 @@ body.page-list.tone-light .resultbar {
   margin-bottom: 28px;
 }
 body.page-list.tone-light .resultcount { color: var(--ink); font-size: 14.5px; font-weight: 700; }
-/* 건수 숫자만 브라스. --brass 원색은 아이보리 배경에서 대비 1.7 로 못 읽는다 —
-   같은 계열의 어두운 쪽(--brass-dim, 대비 3.6)을 쓴다. */
-body.page-list.tone-light .resultcount strong { color: var(--brass-dim); }
+/* 건수 숫자만 브라스. --brass 원색은 아이보리 배경에서 대비 1.73, --brass-dim 도 2.88 이라
+   둘 다 본문 글자로는 못 읽는다. 라이트 배경용으로 따로 잡은 --brass-ink(4.51)를 쓴다. */
+body.page-list.tone-light .resultcount strong { color: var(--brass-ink); }
 body.page-list.tone-light .resultreset {
   color: rgba(17, 18, 20, .5);
   border-bottom-color: rgba(17, 18, 20, .25);
 }
-body.page-list.tone-light .resultreset:hover { color: var(--brass-dim); border-color: var(--brass-dim); }
+body.page-list.tone-light .resultreset:hover { color: var(--brass-ink); border-color: var(--brass-ink); }
 
 body.page-list.tone-light .emptyreset {
   border-color: rgba(17, 18, 20, .16);
@@ -2928,7 +2953,7 @@ body.page-detail.tone-light .pf-actions button {
   font-size: 13.5px; font-weight: 700;
 }
 body.page-detail.tone-light .pf-actions button:hover {
-  border-color: var(--brass); color: var(--brass-dim);
+  border-color: var(--brass-ink); color: var(--brass-ink);
 }
 
 body.page-detail.tone-light h2 {
@@ -2961,7 +2986,7 @@ body.page-detail.tone-light .spec dt {
 }
 body.page-detail.tone-light .spec dd { font-size: 14.5px; font-weight: 700; color: var(--ink); }
 
-body.tone-light .map-link { color: var(--brass-dim); border-bottom-color: var(--brass-dim); }
+body.tone-light .map-link { color: var(--brass-ink); border-bottom-color: var(--brass-ink); }
 body.tone-light .venue-map { border-color: rgba(17, 18, 20, .12); }
 
 body.page-detail.tone-light .description {
@@ -3001,7 +3026,7 @@ body.page-detail.tone-light .sd-times a:hover {
   background: rgba(233, 180, 76, .08);
 }
 body.page-detail.tone-light .sd-remain { color: rgba(17, 18, 20, .4); font-weight: 600; }
-body.page-detail.tone-light .sd-times a:hover .sd-remain { color: var(--brass-dim); }
+body.page-detail.tone-light .sd-times a:hover .sd-remain { color: var(--brass-ink); }
 /* 매진 회차는 취소선으로 "있었지만 지금은 못 산다"를 그대로 보여준다. 흐리기만
    하면 비활성인지 매진인지 구분이 안 된다. */
 body.page-detail.tone-light .sd-times a.soldout {
@@ -3033,6 +3058,211 @@ body.page-detail.tone-light .sharesheet {
   background: var(--paper);
   border-color: rgba(17, 18, 20, .12);
   box-shadow: 0 24px 60px rgba(17, 18, 20, .22);
+}
+
+/* ==================================================================
+   좌석 배치도 — 라이트 톤
+
+   이 화면은 톤을 뒤집는 비용이 가장 크다. 다크 시절의 연출이 "어두운 객석 +
+   조명 받는 무대" 라는 전제 위에 서 있어서 — 무대의 빛무리, 좌석 hover 의 흰 링,
+   등급 팔레트까지 전부 배경이 어둡다는 가정을 깔고 있었다. 아이보리 위에서는
+   빛무리가 안 보이고 흰 링이 사라지고 밝은 등급색이 배경에 묻는다.
+   그래서 색만 바꾸는 게 아니라 그 셋을 각각 다시 정한다.
+   ================================================================== */
+
+/*
+   등급 팔레트를 라이트 배경용으로 다시 잡는다.
+
+   :root 의 원래 값은 어두운 배경(--ink) 위에서 3.0 을 넘도록 고른 것이라
+   방향이 반대다 — 아이보리 위에서는 VIP 가 1.97 까지 떨어져 좌석이 있는지조차
+   흐릿해진다. 색상(hue)은 그대로 두고(골드 → 시에나 → 청록 → 슬레이트) 명도만
+   내려서, 배경 대비 3.0 과 "등급이 올라갈수록 밝다"는 단조 관계를 둘 다 지킨다.
+
+   측정(배경 #F8F4EC 기준): VIP 3.34 / R 4.95 / S 6.11 / A 7.97.
+   인접 등급 간 비는 1.48 / 1.23 / 1.30 으로 다크 팔레트(1.70 / 1.31 / 1.20)와
+   같은 수준이고, 색상이 넷 다 달라서 흑백 출력·색각 이상에서도 순서가 남는다.
+
+   예매 불가 좌석은 다크에서 "배경 쪽으로 어둡게" 물렸던 것을 그대로 뒤집어
+   "배경 쪽으로 밝게" 물린다. 판매 완료가 결제 대기보다 더 물러나는 순서도 같다.
+*/
+body.tone-light {
+  --grade-vip: #A97F16;
+  --grade-r:   #9E5732;
+  --grade-s:   #3D6076;
+  --grade-a:   #4A4A55;
+  --seat-held: rgba(17, 18, 20, .26);
+  --seat-sold: rgba(17, 18, 20, .12);
+}
+
+body.page-seatmap.tone-light .masthead { padding: 20px 40px; margin-bottom: 0; }
+/* 좌석도 헤더의 부제는 "공연명 · 8/10(월) 11:00" 이라 어느 회차를 고르는 중인지
+   알려주는 유일한 표시다. 다른 화면과 달리 감추면 안 된다. */
+body.page-seatmap.tone-light .masthead .tag {
+  display: inline;
+  color: var(--ink);
+  font-size: 15px; font-weight: 700;
+}
+
+/* 인원수 + 연석 찾기 줄. 헤더 바로 밑에 붙는 두 번째 sticky 바라 헤더와 같은
+   반투명 아이보리로 둔다 — 다른 색이면 두 바가 층져 보인다. */
+body.page-seatmap.tone-light .partysize {
+  background: rgba(248, 244, 236, .86);
+  border-bottom: 1px solid rgba(17, 18, 20, .08);
+  color: rgba(17, 18, 20, .55);
+}
+body.page-seatmap.tone-light .partysize label { color: var(--ink); }
+body.page-seatmap.tone-light .partysize select {
+  background: #fff; color: var(--ink);
+  border-color: rgba(17, 18, 20, .16);
+}
+body.page-seatmap.tone-light .partysize .hint { color: rgba(17, 18, 20, .5); }
+
+body.page-seatmap.tone-light .zoomtoggle {
+  background: none; color: var(--ink);
+  border-color: rgba(17, 18, 20, .18);
+  font-weight: 700;
+}
+body.page-seatmap.tone-light .zoomtoggle:hover { border-color: var(--brass-ink); }
+body.page-seatmap.tone-light .zoomtoggle[aria-pressed="true"] {
+  background: var(--ink); color: var(--paper);
+  border-color: var(--ink);
+}
+/* 좌석이 누르기엔 작은 홀에서 확대를 주요 액션으로 올리는 상태. 브라스 채움이라
+   라이트에서도 그대로 읽히지만, 어두운 배경을 전제로 깔았던 글로우는 뺀다. */
+body.page-seatmap.tone-light .zoomtoggle--suggest {
+  background: var(--brass); border-color: var(--brass); color: var(--ink);
+  box-shadow: none;
+}
+
+/*
+   무대. 다크에서는 브라스 빛무리와 아래로 퍼지는 조명 빔으로 그렸는데, 빛은 어두운
+   배경이 있어야 빛으로 보인다 — 아이보리 위에서는 누런 얼룩이 된다. 목업대로
+   어두운 알약 한 줄로 바꾸고 빔(::after)은 없앤다. 이제 무대는 "빛나는 것" 이 아니라
+   "객석이 향하는 기준선" 으로 읽힌다.
+*/
+body.page-seatmap.tone-light .stage {
+  width: 70%;
+  max-width: 520px;
+  height: auto;
+  margin: 8px auto 40px;
+  padding: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--brass);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  padding-left: calc(12px + .14em);
+}
+body.page-seatmap.tone-light .stage::after { display: none; }
+
+/* 층 머릿글 · 구역 이름 */
+body.page-seatmap.tone-light .bandname { color: var(--ink); }
+body.page-seatmap.tone-light .bandname em { color: rgba(17, 18, 20, .5); }
+body.page-seatmap.tone-light .bandname em b { color: var(--brass-ink); }
+body.page-seatmap.tone-light .floorname { color: rgba(17, 18, 20, .45); }
+
+/* 층 바로가기 */
+body.page-seatmap.tone-light .floornav {
+  background: #fff;
+  border-color: rgba(17, 18, 20, .12);
+}
+body.page-seatmap.tone-light .floorchip { color: rgba(17, 18, 20, .7); }
+body.page-seatmap.tone-light .floorchip:hover { background: rgba(17, 18, 20, .06); }
+body.page-seatmap.tone-light .floorchip.active,
+body.page-seatmap.tone-light .floorchip[aria-current="true"] {
+  background: var(--ink); color: var(--paper);
+}
+body.page-seatmap.tone-light .floorchip b { color: var(--brass-ink); font-weight: 700; }
+body.page-seatmap.tone-light .floorchip i { color: rgba(17, 18, 20, .45); }
+body.page-seatmap.tone-light .floorchip.active b,
+body.page-seatmap.tone-light .floorchip[aria-current="true"] b { color: var(--brass); }
+body.page-seatmap.tone-light .floorchip.active i,
+body.page-seatmap.tone-light .floorchip[aria-current="true"] i { color: rgba(248, 244, 236, .55); }
+
+/* 행 번호. 가로 스크롤 때 좌석이 뒤로 지나가는 걸 가리는 배경이라 페이지 배경과
+   같은 색이어야 한다 — --ink 로 두면 라이트 화면에 검은 띠가 세로로 남는다. */
+body.page-seatmap.tone-light .row .rowlabel {
+  background: var(--paper);
+  color: rgba(17, 18, 20, .4);
+}
+
+/*
+   좌석 hover. 다크에서는 아이보리 링으로 들어올렸는데 배경이 아이보리가 되면서
+   링이 배경에 그대로 묻는다. 잉크 링으로 뒤집고, 목업이 쓰는 확대(scale)를 같이 준다 —
+   호 오프셋(--arc-y)을 유지한 채로 겹쳐야 hover 때 좌석이 평평한 자리로 안 튄다.
+*/
+body.page-seatmap.tone-light .seat:hover:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(var(--arc-y)) scale(1.18);
+  box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.1)) rgba(17, 18, 20, .35);
+}
+/* 브라스 아웃라인은 아이보리 위에서 대비 1.73 이라 초점이 어디 있는지 안 보인다. */
+body.page-seatmap.tone-light .seat:focus-visible { outline-color: var(--ink); }
+
+/*
+   고른 좌석. 다크에서는 아이보리 채움 + 브라스 링이었는데 라이트에서는 채움이
+   배경과 같은 색이 되고 링마저 1.73 이라 고른 좌석이 통째로 사라진다.
+   목업대로 아이보리 채움 + 잉크 안쪽 링으로 바꾼다 — 안쪽 링이라 좌석 자리를
+   넘지 않아서, 좌석이 11px 까지 작아지는 홀에서도 옆 좌석과 안 겹친다.
+*/
+body.page-seatmap.tone-light .seat.selected {
+  --seat-fill: var(--paper);
+  box-shadow: inset 0 0 0 max(2px, calc(var(--seat-size) * 0.14)) var(--ink);
+}
+body.page-seatmap.tone-light .seat.selected:hover {
+  box-shadow: inset 0 0 0 max(2px, calc(var(--seat-size) * 0.14)) var(--ink);
+}
+
+/* 툴팁은 어두운 판 그대로 둔다 — 라이트 배경 위에 뜨는 작은 말풍선은 어두워야
+   본문과 안 섞인다. 테두리만 배경 대비가 나오는 색으로 바꾼다. */
+body.page-seatmap.tone-light .seat::after { border-color: var(--ink); }
+body.page-seatmap.tone-light .seat::before { border-top-color: var(--ink); }
+
+/* 미니맵. 확대 모드에서 홀 전체를 보여주는 패널이라 본문 위에 떠 있다. */
+body.page-seatmap.tone-light .minimap {
+  background: rgba(248, 244, 236, .92);
+  border-color: rgba(17, 18, 20, .16);
+  box-shadow: 0 10px 30px rgba(17, 18, 20, .18);
+}
+/* 등급 블록 위 글자. 라이트 팔레트는 넷 다 어두운 쪽이라 R 도 아이보리 글자가 맞는다
+   (잉크로 두면 3.47 로 4.5 미달). VIP 만 아직 밝아서 잉크가 낫다(5.16). */
+body.page-seatmap.tone-light .minimap-zone.grade-R { color: var(--paper); }
+/* 지금 보고 있는 범위 표시. 검은 테두리 글로우는 밝은 패널에서 때처럼 보인다. */
+body.page-seatmap.tone-light .minimap-view {
+  border-color: var(--ink);
+  background: rgba(17, 18, 20, .12);
+  box-shadow: 0 0 0 1px rgba(248, 244, 236, .8);
+}
+
+/* 좌석 상태 범례(본문 맨 아래). 예매 바 안의 가격표와 달리 이건 라이트 배경 위다. */
+body.page-seatmap.tone-light .seatstatus .legend-row { color: rgba(17, 18, 20, .6); font-weight: 600; }
+
+/*
+   예매 바는 목업대로 어두운 채로 둔다.
+
+   그래서 문제가 하나 생긴다 — 바 안의 가격표 견본(.legend-grade)은 좌석과 같은
+   --grade-* 를 써야 하는데(견본과 좌석이 다른 규칙으로 그려지면 범례를 보고 지도를
+   못 읽는다), 위에서 그 팔레트를 라이트 배경용으로 어둡게 내렸다. 어두운 바 위의
+   어두운 견본은 S 2.82 / A 2.16 으로 잘 안 보인다.
+   색을 갈라 두 벌로 만드는 대신 견본에 얇은 링을 둘러 어느 면 위에서든 윤곽이
+   남게 한다 — 색 정보는 그대로 두고 가시성만 보탠다.
+*/
+body.page-seatmap.tone-light .bookbar .legend-grade {
+  box-shadow: 0 0 0 1px rgba(248, 244, 236, .45);
+}
+/* 예매 CTA 는 목업의 알약 모양으로. 바가 어두우니 브라스 채움은 그대로 읽힌다. */
+body.page-seatmap.tone-light .bookbar .inner button {
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-size: 14.5px; font-weight: 800;
+  transition: transform .15s;
+}
+body.page-seatmap.tone-light .bookbar .inner button:not(:disabled):hover { transform: scale(1.03); }
+
+@media (max-width: 860px) {
+  body.page-seatmap.tone-light .masthead { padding: 14px 20px; }
 }
 
 @media (max-width: 860px) {
