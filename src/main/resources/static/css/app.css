@@ -2099,6 +2099,18 @@ body.page-payment .paytotal dd {
   color: var(--brass); margin: 0;
 }
 
+/* 테스트 즉시 결제 폼. 버튼 하나만 들고 있으므로 패널의 세로 간격(gap)이 폼 때문에
+   한 칸 더 생기지 않도록 자기 여백을 갖지 않는다. */
+body.page-payment .payform { margin: 0; display: contents; }
+/* 테스트 모드 안내. 결제 버튼 바로 아래에 붙어서 "이건 진짜 결제가 아니다"를 누르기 전에
+   알린다 — 눌러서 확정된 뒤에 알면 늦다. */
+body.page-payment .paytestnote {
+  margin: -10px 0 0;
+  font-size: 12px; line-height: 1.5;
+  color: var(--brass);
+  text-align: center;
+}
+
 /* 결제 전까지는 내부 식별자일 뿐이라 총액·버튼보다 눈에 띄면 안 된다. */
 body.page-payment .payno {
   margin: 0; text-align: center;

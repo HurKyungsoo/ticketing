@@ -64,6 +64,9 @@ public class PaymentController {
         model.addAttribute("remainingSeconds", remainingSeconds);
         model.addAttribute("payable", payable);
         model.addAttribute("tossClientKey", tossProperties.getClientKey());
+        // 켜져 있으면 화면이 토스 SDK 를 아예 안 부르고 즉시 확정 폼을 그린다
+        // (MockPaymentController 참고). 로컬 프로파일에서만 true 다.
+        model.addAttribute("mockPayment", tossProperties.isMockEnabled());
         return "reservation/payment";
     }
 

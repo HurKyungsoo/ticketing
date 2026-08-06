@@ -6,7 +6,9 @@
     <title>결제하기</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
-    <script src="https://js.tosspayments.com/v2/standard"></script>
+    <!-- 테스트 모드에서는 토스 SDK 를 받지 않는다. 받아 봐야 쓰지 않고, 아래 결제 요청
+         스크립트도 통째로 안 그려진다. -->
+    <script th:unless="${mockPayment}" src="https://js.tosspayments.com/v2/standard"></script>
 </head>
 <body class="page-payment tone-light">
 <div class="wrap">
@@ -107,7 +109,24 @@
                 </div>
             </dl>
 
-            <button type="button" id="payBtn" class="paybtn" th:if="${payable}">카드로 결제하기</button>
+            <!-- 실제 결제. 아래 스크립트가 이 버튼에 토스 결제창을 붙인다. -->
+            <button type="button" id="payBtn" class="paybtn"
+                    th:if="${payable and !mockPayment}">카드로 결제하기</button>
+
+            <!--
+                테스트 즉시 결제. 상태를 바꾸므로 GET 링크가 아니라 폼 POST 다
+                (Thymeleaf 가 CSRF 토큰을 자동으로 실어 보낸다). 버튼 id 는 그대로 payBtn 이라
+                아래 카운트다운이 만료 시 이 버튼도 똑같이 비활성화한다.
+            -->
+            <form th:if="${payable and mockPayment}" class="payform"
+                  th:action="@{/reservations/{no}/payment/mock-confirm(no=${reservation.reservationNo})}"
+                  method="post">
+                <button type="submit" id="payBtn" class="paybtn">카드로 결제하기</button>
+            </form>
+            <p class="paytestnote" th:if="${payable and mockPayment}">
+                테스트 모드 — 결제창 없이 바로 확정됩니다. 실제 결제는 일어나지 않습니다.
+            </p>
+
             <a class="paybtn paybtn--ghost" th:unless="${payable}" th:href="@{/mypage/reservations}">예매 내역으로</a>
 
             <!-- 결제 전까지는 내부 식별자일 뿐이라 총액·버튼보다 눈에 띄면 안 된다. -->
@@ -165,7 +184,14 @@
         }, 1000);
     })();
 
-    /* ---------------- 토스 결제 요청 ---------------- */
+</script>
+
+<!--
+    토스 결제 요청. 테스트 모드에서는 통째로 안 그린다 — 위에서 SDK 를 안 받았으므로
+    TossPayments() 호출이 ReferenceError 로 터진다. 카운트다운 스크립트와 한 덩어리로
+    두면 th:if 를 걸 수 없어서 script 를 나눴다(카운트다운은 두 모드에서 다 필요하다).
+-->
+<script th:if="${!mockPayment}" th:inline="javascript">
     (function () {
         const payBtn = document.getElementById('payBtn');
         if (!payBtn) return;
