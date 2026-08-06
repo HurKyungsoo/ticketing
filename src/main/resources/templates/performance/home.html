@@ -93,7 +93,8 @@
             </div>
 
             <!-- 에디토리얼 밴드(가운데 섹션). 넓은 이미지 + 장르 라벨 + 제목 + 공연장·기간
-                 한 줄. 6개(HOME_SECTION_SIZE)라 3열 그리드가 정확히 2행으로 꽉 찬다. -->
+                 한 줄. 6개(HOME_BAND_SIZE)라 3열 그리드가 정확히 2행으로 꽉 찬다 —
+                 이 값이 3의 배수가 아니면 마지막 줄이 빈다. -->
             <div class="editorial-grid" th:if="${iterStat.index == 1}">
                 <a class="editorial-card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
                     <div class="ec-image">

@@ -105,13 +105,29 @@ public class PerformanceListService {
 
     /**
      * 홈 섹션 한 덩어리. moreUrl 은 "전체 보기"가 갈 목록 화면 주소로, <b>그 섹션을 만든 조건과
-     * 같은 조건</b>이어야 한다 — 어긋나면 6개를 보고 눌렀는데 다른 목록이 나온다.
+     * 같은 조건</b>이어야 한다 — 어긋나면 홈에서 본 것과 다른 목록이 나온다.
      */
     public record HomeSection(String title, String subtitle, String moreUrl, List<PerformanceListRow> items) {}
 
     public record Home(List<HomeSection> sections, List<Option> categories, long total) {}
 
-    private static final int HOME_SECTION_SIZE = 6;
+    /**
+     * 가로 슬라이드 섹션(첫째·셋째)에 담는 개수.
+     *
+     * <p>줄바꿈 없이 옆으로 미는 방식이라 개수가 늘어도 세로 길이는 그대로다 — 화면에는
+     * 네 장 남짓 보이고 나머지는 밀어서 본다. 그래서 아래 밴드와 달리 열 수의 배수일
+     * 필요가 없다.
+     */
+    private static final int HOME_RAIL_SIZE = 10;
+
+    /**
+     * 에디토리얼 밴드(가운데 섹션)에 담는 개수.
+     *
+     * <p>이쪽은 슬라이드가 아니라 <b>3열 그리드</b>라 3의 배수여야 마지막 줄이 안 빈다.
+     * 슬라이드 개수와 한 상수를 같이 쓰다가 분리했다 — 슬라이드를 10 으로 올리면 밴드는
+     * 3행 + 1장이 되어 마지막 줄에 한 장만 덩그러니 남는다.
+     */
+    private static final int HOME_BAND_SIZE = 6;
 
     public Home home() {
         LocalDate today = LocalDate.now();
@@ -119,13 +135,13 @@ public class PerformanceListService {
 
         List<HomeSection> sections = new ArrayList<>();
         sections.add(section("곧 막을 내려요", "예매할 수 있는 날이 얼마 남지 않았습니다",
-                "/performances?status=ongoing&sort=closing",
+                "/performances?status=ongoing&sort=closing", HOME_RAIL_SIZE,
                 f -> f.setSort(Sort.CLOSING.code())));
         sections.add(section(month + "월 공연", "이번 달에 열리는 회차가 있는 공연",
-                "/performances?status=ongoing&month=" + month,
+                "/performances?status=ongoing&month=" + month, HOME_BAND_SIZE,
                 f -> f.setMonth(month)));
         sections.add(section("새로 들어온 공연", "가장 최근에 등록된 순서",
-                "/performances?status=ongoing&sort=newest",
+                "/performances?status=ongoing&sort=newest", HOME_RAIL_SIZE,
                 f -> f.setSort(Sort.NEWEST.code())));
 
         // 장르 칩 건수도 진행·예정작 기준으로 센다 — 홈에서 장르를 누르면 그 상태로 넘어가므로
@@ -143,11 +159,11 @@ public class PerformanceListService {
         return filter;
     }
 
-    private HomeSection section(String title, String subtitle, String moreUrl,
+    private HomeSection section(String title, String subtitle, String moreUrl, int size,
                                  Consumer<PerformanceFilter> tune) {
         PerformanceFilter filter = ongoingBase(LocalDate.now());
         filter.setOffset(0);
-        filter.setLimit(HOME_SECTION_SIZE);
+        filter.setLimit(size);
         tune.accept(filter);
         return new HomeSection(title, subtitle, moreUrl, performanceMapper.selectPerformances(filter));
     }
