@@ -7,3 +7,10 @@ out/
 *.log
 .claude/settings.local.json
 /data/
+
+# 배포 환경변수. docker-compose 가 같은 디렉터리의 .env 를 자동으로 읽는데, 여기엔 DB
+# 비밀번호와 토스·카카오·네이버 시크릿이 전부 들어간다 — 한 번 커밋되면 히스토리에서
+# 지우기 어렵다. 예시 파일(.env.example)만 커밋한다.
+.env
+.env.*
+!.env.example

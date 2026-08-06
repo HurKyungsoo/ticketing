@@ -1,0 +1,87 @@
+# EC2 배포용. 로컬(docker-compose.yml)과 나뉘어 있는 이유는 두 가지다.
+#
+# 1) 로컬 파일은 db(3306)·redis(6379) 포트를 호스트에 공개한다. 로컬에서는 앱을 컨테이너
+#    밖(bootRun)에서 띄우고 DB·Redis 만 컨테이너로 쓰는 흐름이라 필요한 설정이다.
+#    EC2 에서는 앱도 같은 compose 네트워크 안에 있어 서비스명으로 붙으므로 공개할 이유가
+#    없다 — 공개하면 보안그룹 설정 하나만 어긋나도 DB 가 인터넷에 열린다.
+#    compose 의 ports 는 오버라이드 파일로 "제거"가 안 되고 합쳐지기만 해서(사양상 concat)
+#    상속하지 않고 독립 파일로 뒀다.
+#
+# 2) 앱을 8080 이 아니라 80 으로 내보낸다. Cloudflare 프록시가 오리진을 찾아가는 기본
+#    포트가 80/443 이기 때문이다.
+#
+# 실행:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# 환경변수는 같은 디렉터리의 .env 에서 읽는다(파일은 커밋하지 말 것 — .gitignore 확인).
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ticket
+      MARIADB_USER: ${DB_USER:?DB_USER 를 .env 에 설정할 것}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 를 .env 에 설정할 것}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD 를 .env 에 설정할 것}
+    # ports 를 두지 않는다 — app 이 같은 네트워크에서 서비스명 db 로 붙는다.
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/ticket?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATA_REDIS_HOST: redis
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      PUBLICDATA_SERVICE_KEY: ${PUBLICDATA_SERVICE_KEY}
+      KOPIS_SERVICE_KEY: ${KOPIS_SERVICE_KEY}
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_JS_KEY: ${KAKAO_JS_KEY}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
+      NAVER_MAP_CLIENT_ID: ${NAVER_MAP_CLIENT_ID}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      # TOSS_MOCK 은 여기에 두지 않는다. prod 프로파일에서 켜지면 MockPaymentGuard 가
+      # 기동을 거부한다 — 결제 없이 예매가 확정되는 경로라 조용히 넘어가면 안 된다.
+    ports:
+      # 왼쪽이 EC2 의 포트다. Cloudflare 프록시는 오리진의 80(평문)/443(TLS)으로 붙는다.
+      - "80:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 40s
+      retries: 5
+
+volumes:
+  db-data:
