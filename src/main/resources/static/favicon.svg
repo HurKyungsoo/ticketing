@@ -1,8 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="객석">
-  <rect width="48" height="48" rx="10" fill="#17122B"/>
-  <rect x="8" y="15" width="32" height="18" rx="4" fill="none" stroke="#C9A227" stroke-width="2.4"/>
-  <rect x="13" y="20" width="8" height="8" rx="2" fill="#C9A227"/>
-  <line x1="30" y1="18" x2="30" y2="30" stroke="#C9A227" stroke-width="1.8" stroke-dasharray="2.5 2.5" stroke-linecap="round"/>
-  <circle cx="30" cy="15" r="3" fill="#17122B"/>
-  <circle cx="30" cy="33" r="3" fill="#17122B"/>
+  <!--
+    헤더 로고(fragment/header.html 의 인라인 SVG)와 같은 마크 — 좌석 프레임 + 좌석 하나 + 점선.
+    색은 :root 토큰을 그대로 쓴다: --ink #111214 / --brass #E9B44C.
+    (종전 파비콘은 #17122B / #C9A227 로, 보라 섞인 남색을 쓰던 개편 이전 팔레트가 남아 있었다.)
+
+    화면이 라이트 톤이지만 타일은 잉크로 채운다. 파비콘은 브라우저 탭·북마크바 위에 놓이는데
+    그 배경색은 사용자 테마마다 달라서, 아이보리 타일로 두면 밝은 테마에서 탭 배경에 묻는다.
+    채운 어두운 타일은 밝은 쪽에서도 어두운 쪽에서도 윤곽이 남는다.
+  -->
+  <rect width="48" height="48" rx="10" fill="#111214"/>
+  <rect x="8" y="15" width="32" height="18" rx="4" fill="none" stroke="#E9B44C" stroke-width="2.6"/>
+  <rect x="13" y="20" width="8" height="8" rx="2" fill="#E9B44C"/>
+  <line x1="30" y1="19" x2="30" y2="29" stroke="#E9B44C" stroke-width="1.9" stroke-dasharray="1.3 1.3" stroke-linecap="round"/>
 </svg>
