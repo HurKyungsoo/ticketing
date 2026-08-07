@@ -6,6 +6,7 @@ import com.portfolio.ticket.domain.Wishlist;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.NotificationService;
 import com.portfolio.ticket.service.ReservationService;
+import com.portfolio.ticket.service.ShareMetaView;
 import com.portfolio.ticket.service.WishlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class MyPageController {
     private final ReservationService reservationService;
     private final WishlistService wishlistService;
     private final NotificationService notificationService;
+    private final ShareMetaView shareMetaView;
 
     @GetMapping("/mypage/reservations")
     public String reservations(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
@@ -32,6 +36,14 @@ public class MyPageController {
         model.addAttribute("reservations", reservations);
         // 결제 가능 여부(선점 만료) 판단을 템플릿에서 하기 위해 기준 시각을 그대로 넘긴다.
         model.addAttribute("now", LocalDateTime.now());
+        // 예매 건 팝업의 「이 공연 공유하기」. 예매마다 공연이 다르므로 건별로 만들어 둔다.
+        // 새 조회는 없다 — 공연·회차는 목록을 그리느라 이미 가져온 것이다.
+        model.addAttribute("shareMetas", reservations.stream().collect(Collectors.toMap(
+                Reservation::getReservationNo,
+                r -> shareMetaView.shareMetaOf(r.getSchedule().getPerformance(), r.getSchedule().getShowAt()),
+                (a, b) -> a,
+                LinkedHashMap::new)));
+        shareMetaView.addKakaoJsKey(model);
         addUnreadCount(principal, model);
         return "member/reservations";
     }

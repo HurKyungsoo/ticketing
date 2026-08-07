@@ -3555,6 +3555,29 @@ body.page-mypage.tone-light .resmodal-spec div { border-top-color: rgba(17, 18, 
 body.page-mypage.tone-light .resmodal-spec dt { color: rgba(17, 18, 20, .5); }
 body.page-mypage.tone-light .resmodal-spec dd { color: var(--ink); }
 
+/* 「이 공연 공유하기」. 이 팝업은 예매 내용을 확인하는 자리라 공유는 부수적인 행동이다 —
+   채운 버튼으로 두면 팝업을 여는 순간 눈이 그쪽으로 먼저 간다. 정보 목록과 선으로만
+   나누고 폭을 채워서, 찾으면 바로 보이되 먼저 읽히지는 않게 뒀다. */
+body.page-mypage.tone-light .resmodal-share {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+  border: 0;
+  border-top: 1px solid rgba(17, 18, 20, .1);
+  background: none;
+  font-family: inherit;
+  font-size: 14px; font-weight: 700;
+  color: rgba(17, 18, 20, .55);
+  cursor: pointer;
+  transition: color .15s, background .15s;
+}
+body.page-mypage.tone-light .resmodal-share:hover,
+body.page-mypage.tone-light .resmodal-share:focus-visible {
+  background: rgba(17, 18, 20, .04);
+  color: var(--ink);
+}
+
 @media (max-width: 720px) {
   /* 좁은 화면에서는 정보 블록 아래로 액션 줄이 내려간다(다크 규칙 그대로).
      그때 배지와 버튼이 양끝으로 갈리도록 폭을 채운다. */

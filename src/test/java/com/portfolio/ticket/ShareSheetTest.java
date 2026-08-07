@@ -1,9 +1,15 @@
 package com.portfolio.ticket;
 
+import com.portfolio.ticket.domain.Member;
+import com.portfolio.ticket.domain.MemberRole;
 import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceCategory;
+import com.portfolio.ticket.domain.PerformanceSchedule;
+import com.portfolio.ticket.domain.Reservation;
+import com.portfolio.ticket.domain.ReservationStatus;
 import com.portfolio.ticket.domain.SourceType;
 import com.portfolio.ticket.repository.*;
+import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.SeoView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,8 +22,13 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,6 +48,7 @@ class ShareSheetTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired SeoView seoView;
+    @Autowired MemberRepository memberRepository;
     @Autowired NotificationRepository notificationRepository;
     @Autowired WishlistRepository wishlistRepository;
     @Autowired PerformanceRepository performanceRepository;
@@ -56,6 +68,7 @@ class ShareSheetTest {
         reservationRepository.deleteAll();
         scheduleRepository.deleteAll();
         performanceRepository.deleteAll();
+        memberRepository.deleteAll();
 
         performance = performanceRepository.save(Performance.builder()
                 .externalId("SHARE-" + System.nanoTime())
@@ -150,6 +163,64 @@ class ShareSheetTest {
         assertThat(meta.jsonLd())
                 .as("로그인해야 보이는 화면이라 구조화 데이터를 만들 이유가 없다")
                 .isNull();
+    }
+
+    /**
+     * 예매 내역은 건마다 공연이 다르므로 행에 payload 를 실어 두고, 팝업을 열 때 시트로 옮긴다.
+     * 그 payload 에 <b>예매번호나 좌석이 섞이면 안 된다</b> — 이 화면은 그 둘을 바로 옆에
+     * 그리고 있어서(`.resno`/`.resmeta`) 복사해 넣기 가장 쉬운 자리다.
+     */
+    @DisplayName("예매 내역 행의 공유 payload 에 예매번호·좌석이 들어가지 않는다")
+    @Test
+    void reservationRowShareCarriesNoPrivateData() throws Exception {
+        Member member = memberRepository.save(Member.builder()
+                .loginId("sharer-" + System.nanoTime())
+                .password("{noop}pw").nickname("sharer")
+                .role(MemberRole.USER).createdAt(LocalDateTime.now())
+                .build());
+        PerformanceSchedule schedule = scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(performance)
+                .showAt(LocalDateTime.now().plusDays(3).withHour(19).withMinute(0).withSecond(0).withNano(0))
+                .totalSeats(10).remainingSeats(10)
+                .build());
+        String reservationNo = "SHARE" + System.nanoTime() % 100_000_000L;
+        String seatSummary = "1층 3열 12번 VIP";
+        reservationRepository.save(Reservation.builder()
+                .reservationNo(reservationNo)
+                .memberId(member.getId())
+                .schedule(schedule)
+                .seatSummary(seatSummary)
+                .status(ReservationStatus.CONFIRMED)
+                .amount(75_000)
+                .createdAt(LocalDateTime.now())
+                .holdExpiresAt(LocalDateTime.now().plusMinutes(10))
+                .build());
+
+        String html = mockMvc.perform(get("/mypage/reservations").with(user(new CustomUserDetails(member))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        List<String> shareValues = shareAttributeValues(html);
+        assertThat(shareValues).as("행에 공유 payload 가 실려야 한다").isNotEmpty();
+        assertThat(shareValues)
+                .as("예매번호가 카톡 카드로 나가면 안 된다")
+                .noneMatch(v -> v.contains(reservationNo));
+        assertThat(shareValues)
+                .as("좌석도 마찬가지다 — 받는 사람에게 쓸모도 없다(그 자리는 이미 팔렸다)")
+                .noneMatch(v -> v.contains("3열") || v.contains("12번"));
+        assertThat(shareValues)
+                .as("링크는 공연 상세를 가리켜야 한다")
+                .anyMatch(v -> v.endsWith("/performances/" + performance.getId()));
+    }
+
+    /** {@code data-share-*} 속성값만 뽑아낸다. 페이지 본문에는 예매번호가 정상적으로 있으므로 구분해야 한다. */
+    private List<String> shareAttributeValues(String html) {
+        Matcher m = Pattern.compile("data-share-[a-z]+=\"([^\"]*)\"").matcher(html);
+        List<String> values = new ArrayList<>();
+        while (m.find()) {
+            values.add(m.group(1));
+        }
+        return values;
     }
 
     private String renderDetail() throws Exception {

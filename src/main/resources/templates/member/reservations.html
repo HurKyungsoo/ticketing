@@ -31,11 +31,16 @@
                  취소·만료 건도 똑같이 눌리게 둔다 — 그때 뭘 봤었는지 확인하는 것도 유효한
                  용도라 상태로 막을 이유가 없다. -->
             <div class="resinfo" role="button" tabindex="0"
+                 th:with="share=${shareMetas.get(r.reservationNo)}"
                  th:attr="data-title=${r.schedule.performance.title},
                           data-venue=${r.schedule.performance.venue},
                           data-datetime=${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')},
                           data-seat=${r.seatSummary},
-                          data-poster=${r.schedule.performance.posterUrl != null} ? @{/img/poster(u=${r.schedule.performance.posterUrl})}">
+                          data-poster=${r.schedule.performance.posterUrl != null} ? @{/img/poster(u=${r.schedule.performance.posterUrl})},
+                          data-share-url=${share.canonicalUrl},
+                          data-share-title=${share.title},
+                          data-share-description=${share.description},
+                          data-share-image=${share.imageUrl}">
                 <p class="restitle" th:text="${r.schedule.performance.title}">공연명</p>
                 <p class="resmeta">
                     <span th:text="${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
@@ -108,8 +113,30 @@
             <div><dt>일시</dt><dd id="resModalDatetime">-</dd></div>
             <div><dt>좌석</dt><dd id="resModalSeat">-</dd></div>
         </dl>
+
+        <!--
+            「이 공연 공유하기」. data-* 는 팝업을 열 때 그 행의 값으로 갈아끼운다 — 팝업이
+            화면에 하나뿐인 것과 같은 이유다(예매 건수만큼 시트를 복제할 이유가 없다).
+
+            공유되는 건 예매가 아니라 공연이다 — 링크는 공연 상세를 가리키고 예매번호·좌석은
+            안 들어간다. 이 팝업에는 좌석이 떠 있지만 그건 본인 확인용이라 밖으로 나가면 안 된다.
+
+            누르면 이 팝업을 닫고 공유 시트를 연다. 겹쳐 띄우지 않는 이유는 둘 다 같은
+            z-index(70/71)를 쓰는 dialog 라, 포개면 어두운 배경이 두 겹으로 깔리고 어느 쪽이
+            위인지가 DOM 순서에 의존하게 된다.
+        -->
+        <button type="button" class="resmodal-share" id="shareBtn"
+                aria-haspopup="dialog" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
+                      fill="currentColor"/>
+            </svg>
+            이 공연 공유하기
+        </button>
     </div>
 </div>
+
+<th:block th:replace="~{fragment/sharesheet :: sheet}"></th:block>
 
 <script th:inline="javascript">
     const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
@@ -184,6 +211,7 @@
         const venueEl = document.getElementById('resModalVenue');
         const datetimeEl = document.getElementById('resModalDatetime');
         const seatEl = document.getElementById('resModalSeat');
+        const shareBtn = document.getElementById('shareBtn');
         if (!modal) return;
 
         function openModal(trigger) {
@@ -209,6 +237,17 @@
                 posterFallback.textContent = trigger.dataset.title.charAt(0);
             }
 
+            // 공유 시트는 화면에 하나뿐이라(#shareBtn 도 하나) 어느 예매를 눌렀는지에 따라
+            // payload 를 갈아끼운다. 시트 스크립트는 이 dataset 만 읽으므로 여기서 채워 두면 된다.
+            if (shareBtn) {
+                shareBtn.dataset.url = trigger.dataset.shareUrl;
+                shareBtn.dataset.title = trigger.dataset.shareTitle;
+                shareBtn.dataset.description = trigger.dataset.shareDescription || '';
+                // 포스터가 없는 공연은 서버가 imageUrl 을 안 내려준다(속성 자체가 없다).
+                // 빈 문자열로 두면 시트가 이미지 없는 텍스트형 카드로 보낸다.
+                shareBtn.dataset.image = trigger.dataset.shareImage || '';
+            }
+
             backdrop.classList.add('open');
             modal.classList.add('open');
         }
@@ -228,7 +267,18 @@
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
         });
+
+        // 공유 시트를 열면서 이 팝업은 닫는다. 시트를 여는 건 시트 조각이 붙인 별도 리스너이고,
+        // 이건 팝업만 닫는다 — 서로 다른 요소를 건드리므로 둘 중 어느 쪽이 먼저 돌든 결과가 같다
+        // (이 스크립트가 조각보다 앞에 있어 실제로는 이쪽이 먼저 등록된다).
+        // Esc 는 위 핸들러가 이미 닫힌 팝업을 무시하므로 시트만 닫힌다.
+        if (shareBtn) shareBtn.addEventListener('click', closeModal);
     })();
 </script>
+
+<!-- 공유 시트가 안내(링크 복사됨 / 공유 실패)에 window.__toast 를 쓴다. 반드시 앞에 와야 한다. -->
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+<th:block th:replace="~{fragment/sharesheet :: sheetScript}"></th:block>
+<th:block th:replace="~{fragment/sharesheet :: sdk}"></th:block>
 </body>
 </html>
