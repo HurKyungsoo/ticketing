@@ -41,16 +41,36 @@
                           data-share-title=${share.title},
                           data-share-description=${share.description},
                           data-share-image=${share.imageUrl}">
-                <p class="restitle" th:text="${r.schedule.performance.title}">공연명</p>
-                <p class="resmeta">
-                    <span th:text="${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
-                    <span th:text="${r.seatSummary}">좌석</span> ·
-                    <span th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
-                </p>
-                <p class="resno">
-                    예매번호 <span th:text="${r.reservationNo}">번호</span> ·
-                    <span th:text="${#temporals.format(r.createdAt, 'yyyy.M.d HH:mm')}">예매일</span>
-                </p>
+                <!--
+                    포스터 썸네일. 목록을 훑을 때 제목보다 그림이 먼저 걸려서 "그 공연"을 빨리 찾는다.
+
+                    alt 는 비운다(장식). 바로 옆에 같은 공연명이 글자로 있어서 alt 를 채우면
+                    스크린리더가 제목을 두 번 읽는다.
+
+                    포스터가 없는 공연은(수집분에 꽤 있다) 목록 카드와 같은 폴백 —
+                    그라데이션 + 공연명 첫 글자. 이미지 로딩이 실패할 때도 onerror 로 같은 자리로 온다.
+                -->
+                <div class="resthumb" th:classappend="${r.schedule.performance.posterUrl == null} ? 'no-img'"
+                     aria-hidden="true">
+                    <img th:if="${r.schedule.performance.posterUrl != null}"
+                         th:src="@{/img/poster(u=${r.schedule.performance.posterUrl})}" alt="" loading="lazy"
+                         onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                    <span class="resthumb-fallback"
+                          th:text="${#strings.substring(r.schedule.performance.title, 0, 1)}">공</span>
+                </div>
+
+                <div class="restext">
+                    <p class="restitle" th:text="${r.schedule.performance.title}">공연명</p>
+                    <p class="resmeta">
+                        <span th:text="${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
+                        <span th:text="${r.seatSummary}">좌석</span> ·
+                        <span th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
+                    </p>
+                    <p class="resno">
+                        예매번호 <span th:text="${r.reservationNo}">번호</span> ·
+                        <span th:text="${#temporals.format(r.createdAt, 'yyyy.M.d HH:mm')}">예매일</span>
+                    </p>
+                </div>
             </div>
 
             <div class="resaction">

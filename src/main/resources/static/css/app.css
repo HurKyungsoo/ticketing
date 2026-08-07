@@ -1281,7 +1281,30 @@ body.page-error { background: var(--paper); color: var(--ink); }
 }
 /* 클릭하면 포스터+정보+좌석 팝업(.resmodal)이 뜬다. cursor/hover/focus-visible 로 눌리는
    영역이라는 걸 알려준다 — 옆 .resaction(취소·결제하기 버튼)은 그대로 각자 동작한다. */
-.resinfo { flex: 1; min-width: 0; cursor: pointer; border-radius: var(--radius-xs); }
+.resinfo { flex: 1; min-width: 0; cursor: pointer; border-radius: var(--radius-xs); display: flex; gap: 16px; align-items: center; }
+/* 글자 칸. min-width:0 이 있어야 긴 공연명이 flex 칸을 밀어내지 않고 제자리에서 줄바꿈된다. */
+.restext { min-width: 0; flex: 1; }
+/* 포스터 썸네일. 실제 포스터가 3:4 라 그 비율을 그대로 쓴다 — cover 로 잘라 넣으면
+   제목이 큼직하게 박힌 포스터가 많아 위아래가 날아간다. */
+.resthumb {
+  flex: none;
+  position: relative;
+  width: 54px; aspect-ratio: 3 / 4;
+  border-radius: var(--radius-poster);
+  overflow: hidden;
+  background: var(--ink);
+}
+.resthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 포스터가 없을 때만 보인다. 목록 카드(.posterfallback)와 같은 발상이되 54px 이라
+   첫 글자만 남긴다. */
+.resthumb-fallback { display: none; }
+.resthumb.no-img { background: linear-gradient(140deg, #2a2b2f, #17181b); }
+.resthumb.no-img .resthumb-fallback {
+  display: flex; align-items: center; justify-content: center;
+  position: absolute; inset: 0;
+  font-family: var(--display); font-size: 20px; font-weight: 700;
+  color: rgba(248, 244, 236, .5);
+}
 .resinfo:hover .restitle { color: var(--brass); }
 .resinfo:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
 .restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; transition: color .12s; }
