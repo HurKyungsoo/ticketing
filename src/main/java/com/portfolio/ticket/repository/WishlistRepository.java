@@ -41,4 +41,7 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from Wishlist w where w.performance.id = :performanceId")
     int deleteByPerformanceId(@Param("performanceId") Long performanceId);
+
+    /** 이 공연을 찜해 둔 사람들. 회차가 열렸을 때 알림 대상을 찾는 데 쓴다. */
+    List<Wishlist> findByPerformanceId(Long performanceId);
 }

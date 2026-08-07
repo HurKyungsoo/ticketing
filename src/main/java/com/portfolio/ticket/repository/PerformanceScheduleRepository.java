@@ -16,6 +16,13 @@ public interface PerformanceScheduleRepository extends JpaRepository<Performance
     List<PerformanceSchedule> findByPerformanceIdOrderByShowAtAsc(Long performanceId);
 
     /**
+     * 앞으로 열리는 회차가 하나라도 있는지. 회차 오픈 알림이 "없다가 생겼다"를 판정하는 데 쓴다.
+     * 목록을 읽어 세지 않는 이유는 topUpSchedules 의 max 조회와 같다 — 공연당 회차가 최대
+     * 90개라, 동기화가 공연마다 그 행 수를 다 읽으면 배치가 그만큼 무거워진다.
+     */
+    boolean existsByPerformanceIdAndShowAtAfter(Long performanceId, LocalDateTime at);
+
+    /**
      * 회차 보충(topUpSchedules) 시 "어디까지 이미 있나"를 확인하는 용도. 공연의 전체 회차
      * 컬렉션을 로딩해 스트림으로 max 를 구하면 매 동기화마다 공연 하나당 조회 하나씩 늘어난다
      * (회차가 늘어날수록 그 행 수도 커진다) — 집계 쿼리 하나로 대신한다.

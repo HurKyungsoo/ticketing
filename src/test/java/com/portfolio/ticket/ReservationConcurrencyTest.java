@@ -89,6 +89,7 @@ class ReservationConcurrencyTest {
 
     @Autowired ReservationFacade reservationFacade;
     @Autowired WishlistRepository wishlistRepository;
+    @Autowired NotificationRepository notificationRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -104,6 +105,7 @@ class ReservationConcurrencyTest {
         // FK 가 seat.reservation_id 로 옮겨졌으므로, 좌석을 먼저 지우지 않고 예매를 지우면
         // 좌석이 아직 예매를 참조하고 있어 제약 위반이 난다.
         // 찜은 공연을 FK 로 참조하므로 공연보다 먼저 지워야 한다.
+        notificationRepository.deleteAll();
         wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();

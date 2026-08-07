@@ -70,8 +70,13 @@
                     상태를 클래스와 속성 두 곳에 두면 한쪽만 갱신되는 순간 보이는 것과
                     읽히는 것이 갈린다.
                 -->
+                <!-- data-notify-on-open: 지금 예매할 회차가 없는 공연이라, 찜해 두면 회차가
+                     열릴 때 알림이 간다(NotificationService). 찜 직후 안내 문구를 그 경우에만
+                     바꾸려고 서버 판단을 그대로 내려보낸다 — 화면에서 다시 세면 아래 회차 목록의
+                     판단과 갈릴 수 있다. -->
                 <button type="button" class="pf-wish" id="wishBtn"
-                        th:attr="data-performance-id=${performance.id}, aria-pressed=${wishlisted}">
+                        th:attr="data-performance-id=${performance.id}, aria-pressed=${wishlisted},
+                                 data-notify-on-open=${scheduleDays.isEmpty() and !performanceEnded}">
                     <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
                         <path d="M8 14S1.5 10.2 1.5 5.9A3.4 3.4 0 0 1 8 4.3a3.4 3.4 0 0 1 6.5 1.6C14.5 10.2 8 14 8 14Z"
                               fill="currentColor" class="wish-fill"/>
@@ -233,13 +238,17 @@
             <!--
                 회차가 비었을 때 "왜"를 말해준다. 예전엔 두 경우(공연이 끝남 / 그 외)를
                 구분 없이 "예매 가능한 회차가 없습니다" 한 줄로 덮었는데, 안 끝난 공연에서
-                이 문구를 보면 오류인지 매진인지 알 길이 없었다. 종료일이 지났으면 그게
-                이유다. 안 지났는데도 회차가 비면(정상 흐름에서는 나오지 않아야 하는 상태다 —
-                동기화가 항상 종료일까지 회차를 채워 두므로) 오류로 짚어서 문의하게 한다.
+                이 문구를 보면 오류인지 매진인지 알 길이 없었다. 종료일이 지났으면 그게 이유다.
+
+                안 지났는데 회차가 비는 건 원본에 회차 정보가 아직 없는 경우다. 예전에는
+                "불러오지 못했습니다"라고 오류처럼 말했는데, 실제로는 오류가 아니고 사용자가
+                할 수 있는 일도 없었다. 이제는 찜해 두면 회차가 열릴 때 알림이 가므로
+                (NotificationService) 그 다음 행동을 안내한다.
             -->
             <p class="empty-inline" th:if="${scheduleDays.isEmpty() and performanceEnded}">공연이 종료되었습니다.</p>
             <p class="empty-inline" th:if="${scheduleDays.isEmpty() and !performanceEnded}">
-                예매 가능한 회차를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
+                아직 예매 가능한 회차가 없습니다.
+                <strong>찜하기</strong>를 눌러 두면 회차가 열릴 때 알려드릴게요.
             </p>
 
             <!--
@@ -372,6 +381,18 @@
         wishBtn.querySelector('.wish-label').textContent = wishlisted ? '찜함' : '찜하기';
     }
 
+    /**
+     * 찜 결과 안내. 지금 예매할 회차가 없는 공연이면 찜이 알림 신청을 겸하므로 그 사실을 알린다 —
+     * 안 그러면 사용자는 살 것도 없는 화면에서 찜을 왜 누르는지 알 수 없다.
+     * 해제 문구는 그대로 둔다. 해제할 때 무엇을 잃는지까지 말하면 되돌리라는 압박이 된다.
+     */
+    function wishToast(wishlisted) {
+        if (!wishlisted) return '찜을 해제했습니다';
+        return wishBtn.dataset.notifyOnOpen === 'true'
+            ? '찜했습니다. 예매 가능한 회차가 열리면 알려드릴게요'
+            : '찜한 공연에 담았습니다';
+    }
+
     /** 찜 토글을 시도한다. 비로그인 상태면 authRequired 만 true 로 반환하고 리다이렉트는 호출부가 처리한다. */
     async function toggleWishlist() {
         try {
@@ -412,7 +433,7 @@
         // 서버가 알려준 "호출 후 상태"를 그대로 반영한다. 화면에서 토글을 스스로 뒤집으면
         // 요청이 엇갈렸을 때 버튼 모양과 실제 저장 상태가 갈린다.
         render(result.data.wishlisted);
-        window.__toast(result.data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
+        window.__toast(wishToast(result.data.wishlisted));
     });
 
     /** 로그인하느라 이 화면을 떠났다가 돌아온 직후라면, 아까 누르려던 찜을 자동으로 이어간다.
@@ -426,7 +447,7 @@
         var result = await toggleWishlist();
         if (result.authRequired || !result.ok) return; // 다시 실패하면 버튼을 다시 누르게 둔다
         render(result.data.wishlisted);
-        window.__toast(result.data.wishlisted ? '찜한 공연에 담았습니다' : '찜을 해제했습니다');
+        window.__toast(wishToast(result.data.wishlisted));
     })();
 })();
 </script>

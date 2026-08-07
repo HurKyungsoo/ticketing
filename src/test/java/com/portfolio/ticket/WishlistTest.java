@@ -36,6 +36,7 @@ class WishlistTest {
 
     @Autowired WishlistService wishlistService;
     @Autowired WishlistRepository wishlistRepository;
+    @Autowired NotificationRepository notificationRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -47,6 +48,7 @@ class WishlistTest {
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();

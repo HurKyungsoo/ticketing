@@ -59,6 +59,7 @@ class SeatEnumColumnTest {
     @Autowired SeatMapper seatMapper;
     @Autowired MemberRepository memberRepository;
     @Autowired WishlistRepository wishlistRepository;
+    @Autowired NotificationRepository notificationRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -69,6 +70,7 @@ class SeatEnumColumnTest {
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();

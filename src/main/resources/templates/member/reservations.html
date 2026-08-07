@@ -17,10 +17,7 @@
          (목록·상세와 같은 처리). -->
     <div class="mypageinner">
 
-    <nav class="mypagetabs">
-        <a th:href="@{/mypage/reservations}" class="active">예매 내역</a>
-        <a th:href="@{/mypage/wishlist}">찜한 공연</a>
-    </nav>
+    <nav th:replace="~{fragment/mypagetabs :: tabs('reservations')}"></nav>
 
     <div class="reslist" th:if="${!reservations.isEmpty()}">
         <div class="resrow" th:each="r : ${reservations}">

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    마이페이지 상단 탭. active 는 'reservations' | 'wishlist' | 'notifications'.
+
+    세 화면이 각자 이 줄을 들고 있으면 탭을 하나 더 넣을 때마다 세 군데를 고쳐야 하고,
+    한 곳을 빠뜨리면 그 화면에서만 탭이 사라진다 — 실제로 알림 탭을 넣으면서 그럴 뻔했다.
+    안 읽은 수 배지도 세 화면 모두에 같은 값이 떠야 해서(MyPageController.addUnreadCount)
+    한 곳에서 그리는 편이 맞다.
+*/-->
+<nav class="mypagetabs" th:fragment="tabs(active)">
+    <a th:href="@{/mypage/reservations}" th:classappend="${active == 'reservations'} ? 'active'">예매 내역</a>
+    <a th:href="@{/mypage/wishlist}" th:classappend="${active == 'wishlist'} ? 'active'">찜한 공연</a>
+    <a th:href="@{/mypage/notifications}" th:classappend="${active == 'notifications'} ? 'active'">
+        알림
+        <!-- 0 이면 배지를 아예 안 그린다. "0" 을 띄우면 알림이 온 것처럼 눈에 띈다. -->
+        <span class="tabbadge" th:if="${unreadCount > 0}" th:text="${unreadCount}">3</span>
+    </a>
+</nav>
+</body>
+</html>

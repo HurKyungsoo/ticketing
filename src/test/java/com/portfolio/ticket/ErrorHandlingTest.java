@@ -41,6 +41,7 @@ class ErrorHandlingTest {
     @Autowired ReservationFacade reservationFacade;
     @Autowired MemberRepository memberRepository;
     @Autowired WishlistRepository wishlistRepository;
+    @Autowired NotificationRepository notificationRepository;
     @Autowired PerformanceRepository performanceRepository;
     @Autowired PerformanceScheduleRepository scheduleRepository;
     @Autowired SeatRepository seatRepository;
@@ -57,6 +58,7 @@ class ErrorHandlingTest {
     void setUp() {
         // 삭제 순서는 FK 방향을 따른다(좌석이 예매를 참조하므로 좌석부터).
         // 찜은 공연을 FK 로 참조하므로 공연보다 먼저 지워야 한다.
+        notificationRepository.deleteAll();
         wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();

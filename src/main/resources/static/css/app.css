@@ -3351,6 +3351,76 @@ body.page-mypage.tone-light .mypagetabs a.active {
   background: none;
 }
 
+/* 안 읽은 알림 수. 브라스가 아니라 로즈를 쓰는 건 "확인할 게 남았다"를 말하는 자리라
+   장식색(브라스)과 구분해야 해서다. #B23A3A 는 흰 배지 글씨 대비 5.9 로 읽힌다. */
+.mypagetabs .tabbadge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #B23A3A;
+  color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 18px;
+  text-align: center;
+  vertical-align: 1px;
+}
+
+/* ---- 알림 목록 ---- */
+body.page-mypage.tone-light .notilist { display: flex; flex-direction: column; gap: 10px; }
+body.page-mypage.tone-light .notirow {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid rgba(17, 18, 20, .1);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color .2s, transform .2s;
+}
+body.page-mypage.tone-light .notirow:hover {
+  border-color: rgba(17, 18, 20, .28);
+  transform: translateY(-1px);
+}
+/* 안 읽음은 왼쪽 굵은 선 + 점으로 표시한다. 배경색을 칠하는 방식은 카드가 흰색이라
+   대비를 얻으려면 색을 꽤 넣어야 하고, 그러면 목록이 알록달록해진다. */
+body.page-mypage.tone-light .notirow.unread {
+  border-left: 3px solid #B23A3A;
+  padding-left: 18px;
+}
+body.page-mypage.tone-light .notidot {
+  flex: none;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #B23A3A;
+}
+body.page-mypage.tone-light .notibody { flex: 1; min-width: 0; }
+body.page-mypage.tone-light .notitext {
+  margin: 0 0 4px;
+  font-size: 15px; color: var(--ink);
+}
+body.page-mypage.tone-light .notitext strong { font-weight: 800; }
+body.page-mypage.tone-light .notimeta {
+  margin: 0;
+  font-size: 13px; color: rgba(17, 18, 20, .5);
+}
+body.page-mypage.tone-light .notidivider { margin: 0 6px; }
+body.page-mypage.tone-light .notigo {
+  flex: none;
+  padding: 8px 16px;
+  border: 1px solid var(--ink); border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+body.page-mypage.tone-light .notirow:hover .notigo,
+body.page-mypage.tone-light .notigo:focus-visible { background: var(--ink); color: var(--paper); }
+
+@media (max-width: 640px) {
+  body.page-mypage.tone-light .notirow { flex-wrap: wrap; }
+  body.page-mypage.tone-light .notigo { margin-left: auto; }
+}
+
 /* ---- 예매 카드 ---- */
 body.page-mypage.tone-light .reslist { gap: 14px; }
 body.page-mypage.tone-light .resrow {

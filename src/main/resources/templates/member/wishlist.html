@@ -16,10 +16,7 @@
 
     <div class="mypageinner">
 
-    <nav class="mypagetabs">
-        <a th:href="@{/mypage/reservations}">예매 내역</a>
-        <a th:href="@{/mypage/wishlist}" class="active">찜한 공연</a>
-    </nav>
+    <nav th:replace="~{fragment/mypagetabs :: tabs('wishlist')}"></nav>
 
     <div class="grid" th:if="${!wishes.isEmpty()}">
         <!--

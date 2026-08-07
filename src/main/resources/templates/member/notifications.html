@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>마이페이지 - 알림</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<!-- 예매 내역과 같은 세로 목록이라 page-list 는 안 단다(그건 카드 그리드용이다). -->
+<body class="page-mypage tone-light">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='마이페이지', showAuthNav=false)}"></header>
+
+    <div class="mypageinner">
+
+    <nav th:replace="~{fragment/mypagetabs :: tabs('notifications')}"></nav>
+
+    <div class="notilist" th:if="${!notifications.isEmpty()}">
+        <!--
+            행 전체가 버튼이고, 누르면 읽음 처리 후 공연 상세로 간다(MyPageController.readNotification).
+            알림을 확인하는 것과 예매하러 가는 것이 사실상 같은 동작이라 둘을 나누지 않았다.
+
+            링크(<a>)가 아니라 form POST 인 이유: 처음엔 링크였는데, 목록을 열어 두기만 해도
+            알림이 읽음으로 바뀌었다 — 크롬이 링크를 미리 당겨왔기 때문이다(link prefetch).
+            상태를 바꾸는 건 GET 이면 안 된다. 자세한 건 컨트롤러 주석 참고.
+        -->
+        <form class="notirow" th:each="n : ${notifications}" method="post"
+              th:classappend="${n.unread} ? 'unread'"
+              th:action="@{/mypage/notifications/{id}/read(id=${n.id})}">
+            <span class="notidot" th:if="${n.unread}" aria-hidden="true"></span>
+            <div class="notibody">
+                <!-- 조사("의")가 공연명에 붙어야 해서 태그 사이에 공백을 두지 않는다.
+                     줄을 나누면 그 개행이 렌더링에서 한 칸으로 살아나 "공연 의"가 된다. -->
+                <p class="notitext"><strong th:text="${n.performance.title}">공연명</strong>의 예매 가능한 회차가 열렸습니다.</p>
+                <p class="notimeta">
+                    <span th:text="${n.performance.venue}">공연장</span>
+                    <span class="notidivider" aria-hidden="true">·</span>
+                    <span th:text="${#temporals.format(n.createdAt, 'yyyy.MM.dd HH:mm')}">2026.08.07 09:00</span>
+                </p>
+            </div>
+            <!-- 행 전체가 아니라 이 버튼만 누르는 영역이다. 행 전체를 버튼으로 만들면 안에
+                 있는 문단들이 버튼 라벨로 읽혀 스크린리더에서 한 덩어리가 된다. -->
+            <button type="submit" class="notigo">예매하기</button>
+        </form>
+    </div>
+
+    <div class="empty-state" th:if="${notifications.isEmpty()}">
+        <p>받은 알림이 없습니다.</p>
+        <p>공연을 <strong>찜해 두면</strong> 예매 가능한 회차가 열릴 때 여기로 알려드립니다.</p>
+        <a class="emptyreset" th:href="@{/mypage/wishlist}">찜한 공연 보기</a>
+    </div>
+    </div>
+</div>
+</body>
+</html>

@@ -38,9 +38,11 @@ class PerformanceScheduleSyncTest {
     @Autowired SeatHoldRepository seatHoldRepository;
     @Autowired ReservationRepository reservationRepository;
     @Autowired WishlistRepository wishlistRepository;
+    @Autowired NotificationRepository notificationRepository;
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
         wishlistRepository.deleteAll();
         seatHoldRepository.deleteAll();
         seatRepository.deleteAll();

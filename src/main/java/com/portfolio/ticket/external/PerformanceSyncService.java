@@ -6,10 +6,13 @@ import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatRepository;
+import com.portfolio.ticket.repository.NotificationRepository;
 import com.portfolio.ticket.repository.WishlistRepository;
+import com.portfolio.ticket.service.ScheduleOpenedEvent;
 import com.portfolio.ticket.service.SeatGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +70,8 @@ public class PerformanceSyncService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final WishlistRepository wishlistRepository;
+    private final NotificationRepository notificationRepository;
+    private final ApplicationEventPublisher events;
     private final SeatGenerator seatGenerator;
     private final PerformanceCategoryResolver categoryResolver;
     private final ShowTimeDistributionProperties showTimes;
@@ -148,6 +153,8 @@ public class PerformanceSyncService {
             // 찜도 공연을 FK 로 참조한다. 찜은 사용자가 만든 기록이지만 공연 자체가 사라지면
             // 가리킬 대상이 없다 — 금전·입장 권리가 걸린 예매와 달라서 함께 지운다.
             wishlistRepository.deleteByPerformanceId(performance.getId());
+            // 알림도 같은 이유로 공연을 FK 로 참조한다. 남겨두면 공연 삭제가 FK 제약에 막힌다.
+            notificationRepository.deleteByPerformanceId(performance.getId());
 
             // 좌석은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지 않는다.
             // 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로 함께 지워진다).
@@ -205,6 +212,10 @@ public class PerformanceSyncService {
                 seatGenerator.generate(schedule.getId(), performance.getVenueHallId(), performance.getVenue(),
                         performance.getTotalSeatCount(), performance.getBasePrice(), null);
             }
+            // 여기 오는 공연은 선정 조건상 예매 가능한 회차가 0 개였다(findIdsWithNoFutureSchedule).
+            // 증분 수집이 다시 안 다루는 공연이 대부분이라, 실제 0 → N 전이는 topUpSchedules 보다
+            // 이 경로에서 훨씬 자주 일어난다 — 알림을 여기 안 걸면 기능이 거의 안 돈다.
+            publishIfNewlyBookable(id, false);
             topped++;
         }
         if (topped > 0) {
@@ -246,6 +257,44 @@ public class PerformanceSyncService {
     }
 
     /**
+     * 회차를 보충하고, <b>없던 예매 가능 회차가 생겼으면</b> 알림 이벤트를 발행한다.
+     * 판정 규칙은 {@link #hasBookable} 참고.
+     */
+    private void topUpSchedules(Performance performance, ExternalPerformance external) {
+        boolean hadBookable = hasBookable(performance.getId());
+        topUpSchedulesInternal(performance, external);
+        publishIfNewlyBookable(performance.getId(), hadBookable);
+    }
+
+    /**
+     * 예매 가능한(아직 안 지난) 회차가 하나라도 있는지.
+     *
+     * <p>알림은 이 값이 <b>false 였다가 true 가 될 때만</b> 보낸다. 이미 예매할 수 있는
+     * 공연은 사용자가 언제든 들어가서 고를 수 있으므로 알림이 소음이 된다. 실제로 개발계
+     * 카탈로그의 74.9% 가 예매 가능한 회차 0 개였던 적이 있어(README 참고) 이 전이가
+     * 드물지 않다.
+     *
+     * <p>"회차를 새로 만들었는가"로 판정하지 않는 이유: 만든 회차가 이미 지난 시각일 수 있다
+     * (회차 생성이 19시 고정이라, 오늘 저녁에 도는 배치가 만든 오늘자 회차는 과거다).
+     * 그러면 사용자는 알림을 받고 들어와서 살 게 없는 화면을 본다.
+     */
+    private boolean hasBookable(Long performanceId) {
+        return scheduleRepository.existsByPerformanceIdAndShowAtAfter(performanceId, LocalDateTime.now());
+    }
+
+    /**
+     * 없던 예매 가능 회차가 생겼으면 알림 이벤트를 발행한다.
+     *
+     * <p>이벤트는 이 트랜잭션 안에서 발행되지만 받는 쪽은 커밋 후에만 돈다 —
+     * 이유는 {@link ScheduleOpenedEvent} 주석 참고.
+     */
+    private void publishIfNewlyBookable(Long performanceId, boolean hadBookable) {
+        if (!hadBookable && hasBookable(performanceId)) {
+            events.publishEvent(new ScheduleOpenedEvent(performanceId));
+        }
+    }
+
+    /**
      * 이미 있는 공연의 회차를 채운다. 첫 수집 때 종료일까지 다 만들어 두므로 보통은 할 일이
      * 없지만, 그 사이 원본의 공연 기간(endDate)이 늘어난 경우 마지막 회차 다음 날부터
      * 새 종료일까지의 빈 구간만 추가한다.
@@ -254,7 +303,7 @@ public class PerformanceSyncService {
      * 않는다 — (performance_id, showAt) 유니크 제약과도, 과거/판매 중인 회차를 보존해야
      * 한다는 규칙과도 맞는다.
      */
-    private void topUpSchedules(Performance performance, ExternalPerformance external) {
+    private void topUpSchedulesInternal(Performance performance, ExternalPerformance external) {
         // 공연의 전체 회차 컬렉션을 로딩해 스트림으로 max 를 구하면 회차가 쌓일수록(최대 90개)
         // 매 동기화·공연마다 그 행 수만큼 읽는 꼴이 된다. 집계 쿼리 하나로 대신한다.
         LocalDate lastScheduled = scheduleRepository.findMaxShowAtByPerformanceId(performance.getId())
