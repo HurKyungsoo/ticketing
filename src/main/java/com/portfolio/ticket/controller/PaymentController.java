@@ -121,7 +121,7 @@ public class PaymentController {
         // 방식(빈 리스트면 화면이 seatSummary 로 대체)으로 안전하게 둔다.
         model.addAttribute("seats", reservation.getSeats().stream()
                 .sorted(Comparator.comparing(Seat::getId)).toList());
-        // 「이 공연 공유하기」. 공유 대상은 예매가 아니라 공연이다(예매번호·좌석은 안 나간다).
+        // 「공유」. 공유 대상은 예매가 아니라 공연이다(예매번호·좌석은 안 나간다).
         shareMetaView.addPerformanceShare(model,
                 reservation.getSchedule().getPerformance(), reservation.getSchedule().getShowAt());
         return "reservation/payment-success";

@@ -36,7 +36,7 @@ public class MyPageController {
         model.addAttribute("reservations", reservations);
         // 결제 가능 여부(선점 만료) 판단을 템플릿에서 하기 위해 기준 시각을 그대로 넘긴다.
         model.addAttribute("now", LocalDateTime.now());
-        // 예매 건 팝업의 「이 공연 공유하기」. 예매마다 공연이 다르므로 건별로 만들어 둔다.
+        // 예매 건 팝업의 「공유」. 예매마다 공연이 다르므로 건별로 만들어 둔다.
         // 새 조회는 없다 — 공연·회차는 목록을 그리느라 이미 가져온 것이다.
         model.addAttribute("shareMetas", reservations.stream().collect(Collectors.toMap(
                 Reservation::getReservationNo,

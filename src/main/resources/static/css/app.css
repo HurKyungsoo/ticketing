@@ -3555,7 +3555,7 @@ body.page-mypage.tone-light .resmodal-spec div { border-top-color: rgba(17, 18, 
 body.page-mypage.tone-light .resmodal-spec dt { color: rgba(17, 18, 20, .5); }
 body.page-mypage.tone-light .resmodal-spec dd { color: var(--ink); }
 
-/* 「이 공연 공유하기」. 이 팝업은 예매 내용을 확인하는 자리라 공유는 부수적인 행동이다 —
+/* 「공유」. 이 팝업은 예매 내용을 확인하는 자리라 공유는 부수적인 행동이다 —
    채운 버튼으로 두면 팝업을 여는 순간 눈이 그쪽으로 먼저 간다. 정보 목록과 선으로만
    나누고 폭을 채워서, 찾으면 바로 보이되 먼저 읽히지는 않게 뒀다. */
 body.page-mypage.tone-light .resmodal-share {
@@ -3950,7 +3950,7 @@ body.page-payment.tone-light .paydone .paybtn--ghost:hover {
   border-color: rgba(17, 18, 20, .35);
 }
 
-/* ---- 「이 공연 공유하기」 ----
+/* ---- 「공유」 ----
    위 두 버튼(예매 내역 · 공연 더 보기)과 같은 줄에 안 두고 아래에 따로 둔다. 저 둘은
    "이제 어디로 갈까"(이동)이고 이건 "누구에게 알릴까"(공유)라 성격이 다르다 — 셋을
    나란히 놓으면 방금 결제를 마친 사람이 세 개 중 뭘 눌러야 하는지 고르게 된다.
