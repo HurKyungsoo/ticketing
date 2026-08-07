@@ -1367,16 +1367,10 @@ body.page-list .wrap, body.page-detail .wrap { max-width: 1120px; }
   border-color: var(--brass);
   background: rgba(255, 201, 64, 0.08);
 }
-/* 회원가입은 주요 액션이라 채운다. 다크 배경에서는 아이보리 판 + 잉크 글자로 뒤집는다. */
-.masthead .btn-signup {
-  background: var(--paper); color: var(--ink) !important;
-  border-color: var(--paper);
-  font-weight: 700;
-}
-.masthead .btn-signup:hover {
-  background: #fff; border-color: #fff;
-  transform: translateY(-1px);
-}
+/* 회원가입에 따로 줄 스타일이 없다 — 로그인과 같은 아웃라인 알약이다.
+   종전에는 채워서 주요 액션으로 세웠는데, 둘을 같은 모양으로 두기로 했다.
+   .btn-signup 클래스 자체는 남겨 둔다: 마크업(fragment/header)이 이미 쓰고 있고,
+   나중에 둘을 다시 가를 때 붙일 자리가 필요하다. */
 
 /* ---- 모바일 필터 토글 버튼 (기본 숨김, 860px 이하에서만 노출) ---- */
 body.page-list .mobile-filter-btn {
@@ -2258,13 +2252,6 @@ body.page-home .authbtns a:hover {
   border-color: var(--brass) !important;
   background: rgba(233, 180, 76, .08);
 }
-body.page-home .masthead .btn-signup {
-  background: var(--ink); color: var(--paper) !important;
-  border-color: var(--ink) !important;
-}
-body.page-home .masthead .btn-signup:hover {
-  background: #292a2d !important; border-color: #292a2d !important;
-}
 
 /* 히어로. 다크 풀블리드 + 미세한 그레인 텍스처(무대 조명 아래 객석 질감). 좌측 헤드라인/검색,
    우측 큰 숫자 통계를 2단으로 놓는다 — 숫자를 오른쪽에 크게 두면 "많이 모았다"가 카피 없이
@@ -2513,10 +2500,11 @@ body.page-home .hero-search button {
   transition: transform .2s, background .2s;
 }
 body.page-home .hero-search button:hover { background: #f2c874; transform: scale(1.04); }
-/* 눌린 순간 살짝 들어간다. 검색·회원가입처럼 "누르면 화면이 바뀌는" 버튼에만 준다 —
-   응답이 오기 전까지의 빈 시간을 메꿔서 눌린 게 맞는지 다시 누르는 걸 줄인다. */
-body.page-home .hero-search button:active,
-body.page-home .masthead .btn-signup:active { transform: scale(.94); }
+/* 눌린 순간 살짝 들어간다. 응답이 오기 전까지의 빈 시간을 메꿔서 눌린 게 맞는지
+   다시 누르는 걸 줄인다. 로그인·회원가입이 같은 모양이 됐으므로 둘 다 같이 반응해야
+   한다 — 하나만 눌리면 같아 보이는 버튼 둘이 다르게 행동하는 게 되어 더 이상하다. */
+body.page-home .hero-search button:active { transform: scale(.94); }
+.authbtns a:active { transform: scale(.94); }
 
 /* 장르 바로가기. 라이트 배경 위 알약 — 아웃라인 기본, hover 시 브라스 라인 + 살짝 뜬다. */
 body.page-home .genrenav {
@@ -2946,15 +2934,6 @@ body.tone-light .authbtns a {
 body.tone-light .authbtns a:hover {
   border-color: var(--brass) !important;
   background: rgba(233, 180, 76, .08);
-}
-/* 홈(body.page-home)과 같은 값이어야 한다 — 두 스코프가 갈려 있는 건 홈만 tone-light 를
-   안 달기 때문이지 디자인이 달라서가 아니다. 한쪽만 고치면 헤더가 화면마다 달라진다. */
-body.tone-light .masthead .btn-signup {
-  background: var(--ink); color: var(--paper) !important;
-  border-color: var(--ink) !important;
-}
-body.tone-light .masthead .btn-signup:hover {
-  background: #292a2d !important; border-color: #292a2d !important;
 }
 
 /* 라이트 배경 위 공통 카드. 목록·찜 목록이 같은 마크업(.card)을 쓰므로 여기 둔다.
