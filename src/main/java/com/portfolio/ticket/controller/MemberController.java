@@ -1,7 +1,9 @@
 package com.portfolio.ticket.controller;
 
+import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,14 +19,38 @@ public class MemberController {
 
     private final MemberService memberService;
 
+    /**
+     * 로그인 화면. <b>이미 로그인한 사람에게는 안 보여준다.</b>
+     *
+     * <p>마이페이지에서 뒤로가기를 누르면 여기로 온다 — 로그인하느라 거쳐온 주소가 히스토리에
+     * 남아 있기 때문이다. 그때 로그인 폼이 다시 뜨면 "로그인이 풀렸나" 싶어진다.
+     *
+     * <p>보내는 곳은 {@code returnTo} 가 있으면 그쪽이다. 헤더의 「로그인」으로 들어온
+     * 경우 그 값이 <b>로그인하기 직전에 보던 화면</b>이라, 뒤로가기의 원래 의미와 맞는다.
+     * 없으면 홈으로 보낸다.
+     */
     @GetMapping("/login")
-    public String loginForm() {
-        return "member/login";
+    public String loginForm(@AuthenticationPrincipal CustomUserDetails principal,
+                             @RequestParam(required = false) String returnTo) {
+        return principal == null ? "member/login" : "redirect:" + safeOrHome(returnTo);
     }
 
+    /** 회원가입도 같다 — 이미 계정이 있는 사람에게 가입 폼을 보여줄 이유가 없다. */
     @GetMapping("/signup")
-    public String signupForm() {
-        return "member/signup";
+    public String signupForm(@AuthenticationPrincipal CustomUserDetails principal,
+                              @RequestParam(required = false) String returnTo) {
+        return principal == null ? "member/signup" : "redirect:" + safeOrHome(returnTo);
+    }
+
+    /**
+     * 사이트 내부 경로만 허용한다 — 오픈 리다이렉트 방지.
+     * ({@code PostLoginRedirectHandler.isSafe} 와 같은 규칙이다. 그쪽은 로그인 성공 직후,
+     * 이쪽은 이미 로그인한 사람이 로그인 화면에 닿았을 때라 시점이 다르다.)
+     */
+    private String safeOrHome(String returnTo) {
+        boolean safe = returnTo != null && returnTo.startsWith("/")
+                && !returnTo.startsWith("//") && !returnTo.contains("://");
+        return safe ? returnTo : "/";
     }
 
     /**

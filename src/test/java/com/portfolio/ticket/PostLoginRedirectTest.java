@@ -6,6 +6,7 @@ import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceCategory;
 import com.portfolio.ticket.domain.SourceType;
 import com.portfolio.ticket.repository.*;
+import com.portfolio.ticket.security.CustomUserDetails;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +29,12 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * 로그인 후 어디로 보내는가.
@@ -201,6 +204,54 @@ class PostLoginRedirectTest {
 
         String login = mockMvc.perform(get("/login")).andReturn().getResponse().getContentAsString();
         assertThat(login).doesNotContain("/login?returnTo=");
+    }
+
+    /* ------------------------------------------------------------------
+     *  이미 로그인한 사람이 로그인 화면에 닿았을 때 (뒤로가기)
+     * ------------------------------------------------------------------ */
+
+    /**
+     * 마이페이지에서 뒤로가기를 누르면 로그인하느라 거쳐온 {@code /login} 이 히스토리에 남아
+     * 있어 여기로 온다. 그때 로그인 폼이 다시 뜨면 "로그인이 풀렸나" 싶어진다.
+     */
+    @DisplayName("이미 로그인했으면 로그인 화면 대신 홈으로 보낸다")
+    @Test
+    void loggedInUserSkipsLoginPage() throws Exception {
+        mockMvc.perform(get("/login").with(user(principal())))
+                .andExpect(redirectedUrl("/"));
+        mockMvc.perform(get("/signup").with(user(principal())))
+                .andExpect(redirectedUrl("/"));
+    }
+
+    /**
+     * 헤더의 「로그인」으로 들어왔다면 {@code returnTo} 가 <b>로그인하기 직전에 보던 화면</b>
+     * 이다. 뒤로가기의 원래 의미와 맞으므로 홈 대신 그쪽으로 보낸다.
+     */
+    @DisplayName("returnTo 가 있으면 그 화면으로 보낸다")
+    @Test
+    void loggedInUserGoesBackToWhereTheyWere() throws Exception {
+        mockMvc.perform(get("/login").param("returnTo", "/performances?genre=MUSICAL").with(user(principal())))
+                .andExpect(redirectedUrl("/performances?genre=MUSICAL"));
+    }
+
+    @DisplayName("이미 로그인했어도 바깥 주소로는 보내지 않는다")
+    @Test
+    void loggedInUserRejectsExternalReturnTo() throws Exception {
+        mockMvc.perform(get("/login").param("returnTo", "https://evil.example.com").with(user(principal())))
+                .andExpect(redirectedUrl("/"));
+    }
+
+    /** 비로그인은 그대로 로그인 폼을 봐야 한다 — 위 리다이렉트가 모두를 막으면 안 된다. */
+    @DisplayName("비로그인은 로그인 화면을 그대로 본다")
+    @Test
+    void anonymousStillSeesLoginForm() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("member/login"));
+    }
+
+    private CustomUserDetails principal() {
+        return new CustomUserDetails(memberRepository.findByLoginId(LOGIN_ID).orElseThrow());
     }
 
     /** 인증이 필요한 주소로 들어가 로그인으로 튕긴 뒤, 저장된 요청이 담긴 세션을 돌려준다. */
