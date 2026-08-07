@@ -2339,7 +2339,9 @@ body.page-home .hero-lights::after {
    JS 가 건드리지 않는다 — 둘을 같이 쓰면 서로 덮어쓴다. */
 body.page-home .hero-spotlight {
   position: absolute;
-  width: 640px; height: 640px;
+  /* 핸드오프 값은 640px 인데 히어로 높이(약 500px)보다 커서 조명이라기보다 배경이
+     통째로 밝아지는 것처럼 보였다. 커서 주변만 도는 크기로 줄인다. */
+  width: 380px; height: 380px;
   left: 0; top: 0;
   transform: translate(-50%, -50%);
   background: radial-gradient(circle,
