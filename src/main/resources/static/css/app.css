@@ -3001,6 +3001,11 @@ body.tone-light .detail-heading {
   color: rgba(17, 18, 20, .45);
   margin: 0 0 16px;
 }
+/* 위 단축 margin 이 .refund-heading 의 margin-top(56px)을 0 으로 되돌린다 — 다크 톤에서
+   같은 실수를 하고 남긴 경고(.detail-heading 뒤에 와야 한다)가 라이트 톤을 만들면서
+   그대로 재현됐다. 같은 특이도라 순서로 결정되므로 여기서 다시 준다.
+   안 주면 회차 목록 바로 밑에 "취소·환불 규정"이 붙어 같은 구획처럼 읽힌다. */
+body.tone-light .refund-heading { margin-top: 56px; }
 
 body.page-detail.tone-light .spec { border-top: 0; margin: 0 0 40px; }
 body.page-detail.tone-light .spec div {
