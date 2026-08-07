@@ -19,7 +19,12 @@ public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 30)
+    /**
+     * 폼 가입은 사용자가 정한 짧은 아이디지만, 소셜 가입은 {@code "<제공자>_<providerId>"} 다
+     * (CustomOAuth2UserService). {@link #providerId} 가 50 자까지이므로 여기는 최소 56 자가
+     * 필요하다 — 30 이던 시절 네이버 신규 가입이 "Data too long" 으로 전부 실패했다.
+     */
+    @Column(nullable = false, length = 64)
     private String loginId;
 
     /** BCrypt 인코딩된 값만 저장한다. */

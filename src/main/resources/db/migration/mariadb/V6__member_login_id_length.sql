@@ -1,0 +1,12 @@
+-- login_id 를 varchar(30) → varchar(64). (h2 쪽 V6 와 같은 내용, 문법만 다르다)
+--
+-- 소셜 가입은 login_id 를 "<제공자>_<providerId>" 로 만든다(CustomOAuth2UserService).
+-- provider_id 가 varchar(50) 이므로 login_id 는 "naver_"(6) + 50 = 최대 56 자가 되는데
+-- 30 이라 네이버 신규 가입이 통째로 실패했다("Data too long for column 'login_id'").
+--
+-- 카카오는 providerId 가 10 자리 안팎 숫자라 16 자로 들어가서 멀쩡했다 — 그래서 소셜
+-- 로그인이 "되는 것처럼" 보였고, 네이버로 처음 가입하는 사람만 오류를 봤다.
+--
+-- providerId 를 잘라 넣는 방식은 쓰지 않는다. 서로 다른 계정의 앞부분이 같으면
+-- login_id 가 충돌해(유니크 제약) 남의 계정으로 붙는 사고가 난다.
+alter table member modify column login_id varchar(64) not null;
