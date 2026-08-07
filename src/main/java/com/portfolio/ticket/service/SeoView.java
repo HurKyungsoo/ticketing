@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,6 +35,9 @@ public class SeoView {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    /** 공유 카드에 넣는 관람일시. 화면(payment-success 의 payspec)과 같은 표기를 쓴다. */
+    private static final DateTimeFormatter SHOW_AT =
+            DateTimeFormatter.ofPattern("yyyy.M.d(E) HH:mm", java.util.Locale.KOREAN);
 
     private final ObjectMapper objectMapper;
 
@@ -54,6 +58,44 @@ public class SeoView {
 
         return new Meta(performance.getTitle(), description, image, canonical,
                 jsonLdOf(performance, summary, canonical, image, description));
+    }
+
+    /**
+     * 예매 확정 화면에서 "이 공연 보러 간다"를 공유할 때 쓰는 메타.
+     *
+     * <p><b>공유 대상은 예매가 아니라 공연이다.</b> 링크는 예매 상세가 아니라 공연 상세를
+     * 가리키고, 예매번호·좌석은 어디에도 넣지 않는다 — 카톡 카드는 대화방 사람 전체가 보는데
+     * 그 둘은 본인 확인 수단이다. 받는 사람에게 쓸모도 없다(그 자리는 이미 팔렸다).
+     *
+     * <p>{@link #forPerformance} 와 달리 요약(최저가·가장 빠른 회차)을 안 받는다 — 그걸 구하려면
+     * 회차와 등급별 가격을 다시 조회해야 하는데 결제 완료 화면은 둘 다 쓰지 않는다. 대신 설명의
+     * 대체 문구에 <b>예매한 회차 시각</b>을 넣는다. 공유하는 사람이 실제로 가는 날이라 이 맥락엔
+     * 최저가보다 맞고, 이미 화면에 떠 있는 값이라 새 조회가 없다.
+     *
+     * <p>구조화 데이터(JSON-LD)는 만들지 않는다. 결제 완료는 로그인해야 보이는 화면이라
+     * 검색엔진이 올 일이 없다.
+     */
+    public Meta forPerformanceShare(Performance performance, LocalDateTime showAt, String baseUrl) {
+        return new Meta(
+                performance.getTitle(),
+                shareDescriptionOf(performance, showAt),
+                imageUrlOf(performance, baseUrl),
+                baseUrl + "/performances/" + performance.getId(),
+                null);
+    }
+
+    /** 줄거리가 있으면 그대로, 없으면 "공연장 · 관람일시"로 만든다({@link #descriptionOf} 와 같은 이유). */
+    private String shareDescriptionOf(Performance performance, LocalDateTime showAt) {
+        String raw = performance.getDescription();
+        if (raw != null && !raw.isBlank()) {
+            return truncate(raw.replaceAll("\\s+", " ").trim());
+        }
+        StringBuilder sb = new StringBuilder();
+        if (performance.getVenue() != null && !performance.getVenue().isBlank()) {
+            sb.append(performance.getVenue()).append(" · ");
+        }
+        sb.append(showAt.format(SHOW_AT));
+        return truncate(sb.toString());
     }
 
     /**

@@ -8,6 +8,7 @@ import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.ForbiddenException;
 import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.ReservationService;
+import com.portfolio.ticket.service.ShareMetaView;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -52,6 +53,7 @@ public class MockPaymentController {
 
     private final ReservationRepository reservationRepository;
     private final ReservationService reservationService;
+    private final ShareMetaView shareMetaView;
 
     /**
      * 즉시 확정. 상태를 바꾸므로 POST 다(CSRF 토큰은 폼이 함께 보낸다).
@@ -111,6 +113,10 @@ public class MockPaymentController {
         model.addAttribute("reservation", reservation);
         model.addAttribute("seats", reservation.getSeats().stream()
                 .sorted(Comparator.comparing(Seat::getId)).toList());
+        // 실제 결제 경로(PaymentController.success)와 같은 값을 넣어야 한다 — 여기만 빠지면
+        // 시트는 열리는데 공유할 내용이 비어 나가고, 테스트 모드에서 확인이 안 된다.
+        shareMetaView.addPerformanceShare(model,
+                reservation.getSchedule().getPerformance(), reservation.getSchedule().getShowAt());
         return "reservation/payment-success";
     }
 

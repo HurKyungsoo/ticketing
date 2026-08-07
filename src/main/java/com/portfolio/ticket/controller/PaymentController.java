@@ -12,6 +12,7 @@ import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.ForbiddenException;
 import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.ReservationService;
+import com.portfolio.ticket.service.ShareMetaView;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +39,7 @@ public class PaymentController {
     private final ReservationService reservationService;
     private final TossPaymentClient tossPaymentClient;
     private final TossProperties tossProperties;
+    private final ShareMetaView shareMetaView;
 
     @GetMapping
     public String paymentPage(@PathVariable String reservationNo,
@@ -119,6 +121,9 @@ public class PaymentController {
         // 방식(빈 리스트면 화면이 seatSummary 로 대체)으로 안전하게 둔다.
         model.addAttribute("seats", reservation.getSeats().stream()
                 .sorted(Comparator.comparing(Seat::getId)).toList());
+        // 「이 공연 공유하기」. 공유 대상은 예매가 아니라 공연이다(예매번호·좌석은 안 나간다).
+        shareMetaView.addPerformanceShare(model,
+                reservation.getSchedule().getPerformance(), reservation.getSchedule().getShowAt());
         return "reservation/payment-success";
     }
 

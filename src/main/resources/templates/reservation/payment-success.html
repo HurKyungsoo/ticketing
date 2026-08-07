@@ -75,7 +75,37 @@
             <a class="paybtn" th:href="@{/mypage/reservations}">예매 내역 보기</a>
             <a class="paybtn paybtn--ghost" th:href="@{/}">공연 더 보기</a>
         </div>
+
+        <!--
+            공유하기. 예매를 마친 직후가 "같이 갈래?"를 물어보기 가장 자연스러운 자리다.
+
+            **공유되는 건 예매가 아니라 공연이다** — data-* 는 전부 seo(SeoView.forPerformanceShare)
+            에서 오고 링크도 공연 상세를 가리킨다. 예매번호·좌석은 넣지 않는다. 카톡 카드는
+            대화방 사람 전체가 보는데 그 둘은 본인 확인 수단이고, 받는 사람에게 쓸모도 없다
+            (그 자리는 이미 팔렸다).
+
+            위 두 버튼과 나란히 두지 않고 줄을 나눈 이유: 저 둘은 "이제 어디로 갈까"(이동)이고
+            이건 "누구에게 알릴까"(공유)라 성격이 다르다. 셋을 한 줄에 늘어놓으면 방금 결제를
+            마친 사람이 세 개 중에 뭘 눌러야 하는지 고르게 된다.
+        -->
+        <button type="button" class="paydone-share" id="shareBtn"
+                th:attr="data-url=${seo.canonicalUrl}, data-title=${seo.title},
+                         data-description=${seo.description}, data-image=${seo.imageUrl}"
+                aria-haspopup="dialog" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M11 5.5a2 2 0 1 0-1.9-2.6L6 4.6a2 2 0 1 0 0 2.8l3.1 1.7a2 2 0 1 0 .5-1L6.5 6.4a2 2 0 0 0 0-.8l3.1-1.7c.36.38.86.6 1.4.6Z"
+                      fill="currentColor"/>
+            </svg>
+            이 공연 공유하기
+        </button>
     </div>
+
+    <th:block th:replace="~{fragment/sharesheet :: sheet}"></th:block>
 </div>
+
+<!-- 공유 시트가 안내(링크 복사됨 / 공유 실패)에 window.__toast 를 쓴다. 반드시 앞에 와야 한다. -->
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+<th:block th:replace="~{fragment/sharesheet :: sheetScript}"></th:block>
+<th:block th:replace="~{fragment/sharesheet :: sdk}"></th:block>
 </body>
 </html>

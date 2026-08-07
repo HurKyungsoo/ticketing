@@ -2562,16 +2562,21 @@ body.page-detail .pf-actions button svg { flex: none; }
    "공유하기" 를 누르면 뜨는 채널 선택 창(카카오톡 / 링크복사). 배경을 눌러도 뒤 화면을
    조작 못 하게 막는 게 맞는 화면이라 팝오버가 아니라 전체 화면 dialog 로 뒀다.
    기존 .fp-backdrop(모바일 필터 패널)과 같은 opacity/pointer-events 전환 방식이라
-   숨김에 display:none 대신 이 방식을 쓴다 — 열고 닫을 때 애니메이션이 붙는다. */
-body.page-detail .sharesheet-backdrop {
+   숨김에 display:none 대신 이 방식을 쓴다 — 열고 닫을 때 애니메이션이 붙는다.
+
+   body.page-detail 스코프를 뺐다(환불 규정을 결제 화면과 공용으로 만들 때와 같은 이유).
+   마크업이 fragment/sharesheet.html 로 빠져 결제 완료 화면도 쓰는데, 스코프가 남아 있으면
+   그 화면에서는 규칙이 하나도 안 걸려 **시트가 숨지 않고 본문 아래 그대로 펼쳐진다.**
+   클래스 이름이 .sharesheet- 로 고유해서 스코프 없이도 다른 화면과 겹치지 않는다. */
+.sharesheet-backdrop {
   position: fixed; inset: 0; z-index: 70;
   background: rgba(0, 0, 0, .55);
   opacity: 0; pointer-events: none;
   transition: opacity .18s ease;
 }
-body.page-detail .sharesheet-backdrop.open { opacity: 1; pointer-events: auto; }
+.sharesheet-backdrop.open { opacity: 1; pointer-events: auto; }
 
-body.page-detail .sharesheet {
+.sharesheet {
   position: fixed; top: 50%; left: 50%; z-index: 71;
   width: min(320px, calc(100vw - 40px));
   transform: translate(-50%, -50%) scale(.96);
@@ -2583,36 +2588,36 @@ body.page-detail .sharesheet {
   opacity: 0; pointer-events: none;
   transition: opacity .18s ease, transform .18s ease;
 }
-body.page-detail .sharesheet.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+.sharesheet.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
 
-body.page-detail .sharesheet-head {
+.sharesheet-head {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 24px;
 }
-body.page-detail .sharesheet-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--paper); }
-body.page-detail .sharesheet-close {
+.sharesheet-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--paper); }
+.sharesheet-close {
   display: flex; padding: 4px;
   background: none; border: none; color: var(--mute);
   cursor: pointer; transition: color .12s;
 }
-body.page-detail .sharesheet-close:hover { color: var(--paper); }
+.sharesheet-close:hover { color: var(--paper); }
 
-body.page-detail .sharesheet-options { display: flex; gap: 28px; justify-content: center; }
-body.page-detail .sharesheet-option {
+.sharesheet-options { display: flex; gap: 28px; justify-content: center; }
+.sharesheet-option {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   background: none; border: none; cursor: pointer;
   font: inherit; font-size: 13px; font-weight: 600; color: var(--paper);
 }
-body.page-detail .sharesheet-icon {
+.sharesheet-icon {
   width: 56px; height: 56px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   transition: transform .12s;
 }
-body.page-detail .sharesheet-option:hover .sharesheet-icon { transform: scale(1.06); }
+.sharesheet-option:hover .sharesheet-icon { transform: scale(1.06); }
 /* 카카오 브랜드 색(로그인 화면 .oauthbtn-kakao 와 같은 값). 링크복사는 브랜드가 없으니
    이 화면의 중립 표면색(--ink-raised)에 테두리만 준다. */
-body.page-detail .sharesheet-icon-kakao { background: #FEE500; }
-body.page-detail .sharesheet-icon-link {
+.sharesheet-icon-kakao { background: #FEE500; }
+.sharesheet-icon-link {
   background: var(--ink-raised); border: 1px solid var(--line-strong); color: var(--paper);
 }
 
@@ -3088,11 +3093,31 @@ body.tone-light .rp-fee { color: var(--ink); font-weight: 700; }
 body.tone-light .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
 body.tone-light .refundnote { font-size: 13px; color: rgba(17, 18, 20, .5); }
 
-/* 공유 시트. 라이트 배경 위에 뜨는 창이라 면도 밝게 간다. */
-body.page-detail.tone-light .sharesheet {
+/* 공유 시트. 라이트 배경 위에 뜨는 창이라 면도 밝게 간다.
+
+   **면만 밝히고 글자를 안 옮겨서 시트가 통째로 안 보이던 걸 고쳤다.** 기본 규칙은 어두운
+   면을 전제로 글자를 --paper(아이보리)로 두는데, 여기서 배경까지 --paper 로 바꾸니
+   아이보리 위 아이보리 — 대비 1.0 이 됐다. 열어도 제목("공유하기")도 채널 이름도 없고
+   아이콘 두 개만 떠 있는 창이 나온다. 아이콘은 자기 배경색을 갖고 있어 멀쩡히 보이므로
+   **화면이 깨진 게 아니라 그냥 비어 보여서** 이상하다는 생각조차 하기 어렵다.
+   같은 리디자인에서 --brass 를 글자에 그대로 쓴 것과 같은 종류의 실수다(트러블슈팅 표 참고).
+
+   page-detail 스코프도 뺐다 — 결제 완료 화면도 tone-light 이고 같은 시트를 쓴다. */
+body.tone-light .sharesheet {
   background: var(--paper);
   border-color: rgba(17, 18, 20, .12);
   box-shadow: 0 24px 60px rgba(17, 18, 20, .22);
+}
+body.tone-light .sharesheet-head h3 { color: var(--ink); }
+body.tone-light .sharesheet-close { color: rgba(17, 18, 20, .45); }
+body.tone-light .sharesheet-close:hover { color: var(--ink); }
+body.tone-light .sharesheet-option { color: var(--ink); }
+/* 링크복사 아이콘도 어두운 면 전제였다(--ink-raised 채움 + 아이보리 선). 밝은 시트
+   위에서는 검은 원이 되어 카카오 옵션보다 훨씬 무겁게 읽힌다 — 둘은 대등한 선택지다. */
+body.tone-light .sharesheet-icon-link {
+  background: rgba(17, 18, 20, .05);
+  border-color: rgba(17, 18, 20, .14);
+  color: var(--ink);
 }
 
 /* ==================================================================
@@ -3900,6 +3925,30 @@ body.page-payment.tone-light .paydone .paybtn--ghost {
 body.page-payment.tone-light .paydone .paybtn--ghost:hover {
   background: rgba(17, 18, 20, .05);
   border-color: rgba(17, 18, 20, .35);
+}
+
+/* ---- 「이 공연 공유하기」 ----
+   위 두 버튼(예매 내역 · 공연 더 보기)과 같은 줄에 안 두고 아래에 따로 둔다. 저 둘은
+   "이제 어디로 갈까"(이동)이고 이건 "누구에게 알릴까"(공유)라 성격이 다르다 — 셋을
+   나란히 놓으면 방금 결제를 마친 사람이 세 개 중 뭘 눌러야 하는지 고르게 된다.
+   그래서 알약 버튼이 아니라 글자 링크에 가까운 모양으로, 한 단계 낮춰 놓는다. */
+body.page-payment.tone-light .paydone-share {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  border: 0; border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  font-size: 14px; font-weight: 700;
+  color: rgba(17, 18, 20, .5);
+  cursor: pointer;
+  transition: color .15s, background .15s;
+}
+body.page-payment.tone-light .paydone-share:hover,
+body.page-payment.tone-light .paydone-share:focus-visible {
+  background: rgba(17, 18, 20, .04);
+  color: var(--ink);
 }
 
 @media (max-width: 860px) {

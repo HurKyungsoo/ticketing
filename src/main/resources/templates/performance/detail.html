@@ -103,44 +103,8 @@
             </div>
         </div>
 
-        <!--
-            공유 시트. 채널을 시트에서 고르게 하는 방식(카톡/링크복사)이라 popover 형태 대신
-            화면 전체를 덮는 dialog 로 뒀다 — 배경을 눌러도 뒤 화면(포스터·본문) 조작이 안 되는
-            게 맞다(그러라고 배경을 어둡게 깐다). 카카오톡 옵션은 JS 키가 없으면(미발급) 아예
-            안 그린다 — 눌러도 항상 실패하는 버튼을 보여줄 이유가 없다.
-        -->
-        <div class="sharesheet-backdrop" id="shareSheetBackdrop"></div>
-        <div class="sharesheet" id="shareSheet" role="dialog" aria-modal="true" aria-labelledby="shareSheetTitle">
-            <div class="sharesheet-head">
-                <h3 id="shareSheetTitle">공유하기</h3>
-                <button type="button" class="sharesheet-close" id="shareSheetClose" aria-label="닫기">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2 2l12 12M14 2 2 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="sharesheet-options">
-                <button type="button" class="sharesheet-option" id="kakaoShareOption" th:if="${kakaoJsKey != null}">
-                    <span class="sharesheet-icon sharesheet-icon-kakao">
-                        <svg width="26" height="26" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path fill="#000000" d="M9 2C4.582 2 1 4.94 1 8.56c0 2.32 1.53 4.36 3.84 5.53-.17.62-.6 2.19-.69 2.53-.11.42.16.42.33.3.14-.1 2.2-1.49 3.09-2.1.47.07.95.1 1.43.1 4.418 0 8-2.94 8-6.56C17 4.94 13.418 2 9 2z"/>
-                        </svg>
-                    </span>
-                    카카오톡
-                </button>
-                <button type="button" class="sharesheet-option" id="copyLinkOption">
-                    <span class="sharesheet-icon sharesheet-icon-link">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </span>
-                    링크복사
-                </button>
-            </div>
-        </div>
+        <!-- 공유 시트(결제 완료 화면과 공용). 트리거는 위 #shareBtn 이다. -->
+        <th:block th:replace="~{fragment/sharesheet :: sheet}"></th:block>
 
         <div>
             <h2 th:text="${performance.title}">공연명</h2>
@@ -277,96 +241,9 @@
 
 <th:block th:replace="~{fragment/toast :: toast}"></th:block>
 
+<th:block th:replace="~{fragment/sharesheet :: sheetScript}"></th:block>
+
 <script>
-(function () {
-    var toast = window.__toast;
-
-    var shareBtn = document.getElementById('shareBtn');
-    var backdrop = document.getElementById('shareSheetBackdrop');
-    var sheet = document.getElementById('shareSheet');
-    var closeBtn = document.getElementById('shareSheetClose');
-    var kakaoOption = document.getElementById('kakaoShareOption');
-    var linkOption = document.getElementById('copyLinkOption');
-    if (!shareBtn || !sheet) return;
-
-    function openSheet() {
-        backdrop.classList.add('open');
-        sheet.classList.add('open');
-        shareBtn.setAttribute('aria-expanded', 'true');
-    }
-    function closeSheet() {
-        backdrop.classList.remove('open');
-        sheet.classList.remove('open');
-        shareBtn.setAttribute('aria-expanded', 'false');
-    }
-
-    shareBtn.addEventListener('click', openSheet);
-    closeBtn.addEventListener('click', closeSheet);
-    backdrop.addEventListener('click', closeSheet);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet();
-    });
-
-    /**
-     * 마지막 폴백. clipboard API 는 보안 컨텍스트(https·localhost)에서만 동작해서,
-     * 사내망이나 IP 접속 같은 http 환경에서는 없는 것과 같다. 그때도 최소한
-     * "주소를 직접 복사할 수 있는 상태"까지는 만들어 준다.
-     */
-    function legacyCopy(url) {
-        var input = document.createElement('input');
-        input.value = url;
-        input.setAttribute('readonly', '');
-        input.style.position = 'fixed';
-        input.style.opacity = '0';
-        document.body.appendChild(input);
-        input.select();
-        var ok = false;
-        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-        document.body.removeChild(input);
-        return ok;
-    }
-
-    async function copyLink() {
-        var url = shareBtn.dataset.url;
-        if (navigator.clipboard && window.isSecureContext) {
-            try {
-                await navigator.clipboard.writeText(url);
-                toast('링크를 복사했습니다');
-                return;
-            } catch (e) { /* 아래 폴백으로 */ }
-        }
-        toast(legacyCopy(url) ? '링크를 복사했습니다' : '복사에 실패했습니다. 주소창의 주소를 사용해 주세요.');
-    }
-
-    /** 카카오톡 카드형 공유(제목+설명+이미지+버튼). kakaoOption 이 안 그려졌으면(키 미발급)
-        이 리스너 자체가 안 붙는다. */
-    function kakaoShare() {
-        var url = shareBtn.dataset.url;
-        var title = shareBtn.dataset.title;
-        var link = { mobileWebUrl: url, webUrl: url };
-        var buttons = [{ title: '공연 보러가기', link: link }];
-        var image = shareBtn.dataset.image;
-        var params = image
-            ? { objectType: 'feed', content: { title: title, description: shareBtn.dataset.description, imageUrl: image, link: link }, buttons: buttons }
-            : { objectType: 'text', text: title + '\n' + shareBtn.dataset.description, link: link, buttons: buttons };
-        if (!window.Kakao || !window.Kakao.isInitialized()) {
-            toast('카카오톡 공유를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.');
-            return;
-        }
-        try {
-            window.Kakao.Share.sendDefault(params);
-        } catch (e) {
-            // 도메인이 카카오 콘솔에 등록 안 됐거나 팝업이 차단된 경우 등 — SDK 내부에서 던진다.
-            toast('카카오톡 공유를 열지 못했습니다. 잠시 후 다시 시도해 주세요.');
-        }
-    }
-
-    if (kakaoOption) {
-        kakaoOption.addEventListener('click', function () { closeSheet(); kakaoShare(); });
-    }
-    linkOption.addEventListener('click', function () { closeSheet(); copyLink(); });
-})();
-
 (function () {
     var wishBtn = document.getElementById('wishBtn');
     if (!wishBtn) return;
@@ -469,22 +346,6 @@
     </script>
 </th:block>
 
-<!--
-    카카오 JS 키가 있을 때만 SDK 를 받는다(공유 시트의 카카오톡 옵션도 같은 조건으로
-    안 그려진다). 초기화만 여기서 하고, 실제 공유 호출은 위 공유 시트 스크립트의
-    kakaoShare() 가 window.Kakao.isInitialized() 로 확인해서 쓴다.
--->
-<th:block th:if="${kakaoJsKey != null}">
-    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
-    <script th:inline="javascript">
-      (function () {
-        // 도메인이 카카오 콘솔의 "Web 플랫폼"에 등록 안 돼 있으면 init 은 되지만 이후
-        // sendDefault 호출에서 KOE101 로 실패한다 — 그건 kakaoShare() 의 try/catch 가 잡는다.
-        if (window.Kakao && !window.Kakao.isInitialized()) {
-          window.Kakao.init(/*[[${kakaoJsKey}]]*/ '');
-        }
-      })();
-    </script>
-</th:block>
+<th:block th:replace="~{fragment/sharesheet :: sdk}"></th:block>
 </body>
 </html>
