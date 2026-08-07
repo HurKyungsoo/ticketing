@@ -17,6 +17,16 @@
         <!-- 0 이면 배지를 아예 안 그린다. "0" 을 띄우면 알림이 온 것처럼 눈에 띈다. -->
         <span class="tabbadge" th:if="${unreadCount > 0}" th:text="${unreadCount}">3</span>
     </a>
+
+    <!--
+        마이페이지로 나가는 길. 이 화면은 헤더 내비를 끄고 있어서(showAuthNav=false)
+        로고 말고는 공연을 보러 갈 방법이 없었다.
+
+        탭 줄 오른쪽에 두는 이유: 세 탭이 이 조각을 공유하므로 한 번에 다 생기고,
+        "지금 어디" (탭)와 "다른 데로" (이 링크)가 한 줄에서 좌우로 갈린다.
+        탭처럼 보이면 안 되므로 밑줄·굵기를 빼고 한 단계 낮춰 둔다.
+    -->
+    <a class="mypagemore" th:href="@{/performances(status='ongoing')}">공연 찾기 →</a>
 </nav>
 </body>
 </html>

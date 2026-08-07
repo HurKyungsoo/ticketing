@@ -3592,6 +3592,16 @@ body.page-mypage.tone-light .mypagetabs a {
   transition: color .15s, border-color .15s;
 }
 body.page-mypage.tone-light .mypagetabs a:hover { color: var(--ink); }
+/* 「공연 찾기 →」. 탭이 아니라 나가는 링크라 밑줄 자리를 안 쓰고 오른쪽 끝으로 민다.
+   색은 .6(대비 4.75) — 탭보다 한 단계 낮되 본문 기준(4.5)은 넘긴다. .55 는 4.04 로 못 미친다. */
+body.page-mypage.tone-light .mypagetabs .mypagemore {
+  margin-left: auto;
+  border-bottom: 0;
+  font-size: 14px; font-weight: 600;
+  color: rgba(17, 18, 20, .6);
+  white-space: nowrap;
+}
+body.page-mypage.tone-light .mypagetabs .mypagemore:hover { color: var(--ink); }
 body.page-mypage.tone-light .mypagetabs a.active {
   color: var(--ink);
   font-weight: 800;
