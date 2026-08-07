@@ -183,6 +183,32 @@ a { color: inherit; text-decoration: none; }
   font: inherit; color: var(--brass); cursor: pointer;
 }
 
+/* ---- 내비 링크(공연 찾기 · 마이페이지) ----
+
+   화면 스코프에 두지 않는다. 헤더가 공용 조각이라 여기 스타일도 공용이어야 한다 —
+   알약 호버가 body.page-home 에만 걸려 있어서 홈에서만 눌리는 범위가 보였다.
+
+   호버에 배경을 깔면 어디까지가 누르는 영역인지 보인다. 글자색만 바뀌면 그 범위를
+   글자 폭으로 짐작해야 한다. */
+.masthead .authnav .navlink {
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: background .18s, color .18s;
+}
+/* 지금 보고 있는 구역. 색만으로 알리지 않도록 마크업에서 aria-current="page" 를 같이 준다. */
+.masthead .authnav .navlink.active { font-weight: 700; }
+
+/* 닉네임 앞 이니셜 원. */
+.masthead .authnav .who { display: inline-flex; align-items: center; gap: 7px; }
+.masthead .authnav .who-avatar {
+  flex: none;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  line-height: 1;
+}
+
 /* ---------- 페이지네이션 ---------- */
 .pager {
   display: flex;
@@ -2251,20 +2277,10 @@ body.page-home .masthead .logo-mark { color: var(--ink); width: 30px; height: 19
 body.page-home .masthead .tag { display: none; }
 body.page-home .masthead .authnav { color: var(--ink); gap: 20px; font-size: 14.5px; font-weight: 600; }
 body.page-home .masthead .authnav .who { color: var(--ink); }
-/* 내비 링크는 알약 배경으로 눌린다. 색만 바꾸면 어디까지가 누를 수 있는 영역인지
-   글자 폭으로만 짐작해야 하는데, 배경이 뜨면 그 범위가 그대로 보인다.
-   로그인·회원가입(.authbtns)은 이미 자기 모양이 있으므로 .navlink 로만 좁힌다. */
+/* 모양(알약 padding·radius)과 색은 공용 규칙이 정한다 — .masthead .authnav .navlink 와
+   그 아래 tone-light/page-home 공용 셀렉터. 여기서는 홈에만 있는 것이 없어 비워 둔다. */
 body.page-home .masthead .authnav a { color: var(--ink); transition: color .2s; }
 body.page-home .masthead .authnav a:hover { color: var(--brass-dim); }
-body.page-home .masthead .authnav .navlink {
-  padding: 8px 14px;
-  border-radius: 999px;
-  transition: background .2s, color .2s;
-}
-body.page-home .masthead .authnav .navlink:hover {
-  background: rgba(17, 18, 20, .06);
-  color: var(--ink);
-}
 body.page-home .masthead .linklike { color: var(--ink); }
 body.page-home .masthead .linklike:hover { color: var(--brass-dim); }
 body.page-home .masthead .navdivider { background: rgba(17, 18, 20, .18); }
@@ -2948,6 +2964,21 @@ body.tone-light .masthead .logo-mark { color: var(--ink); }
 body.tone-light .masthead .tag { display: none; }
 body.tone-light .masthead .authnav { color: var(--ink); }
 body.tone-light .masthead .authnav .who { color: var(--ink); }
+/* 내비 링크 — 라이트 배경. 평소엔 한 단계 낮추고(.6 → 대비 4.75) 호버·현재 위치에서
+   잉크로 올라온다. 현재 위치는 아주 옅은 판을 깔아 "여기"를 표시한다 — 진하게 채우면
+   로그인·회원가입 알약보다 무거워져서 헤더의 무게중심이 왼쪽으로 쏠린다.
+
+   홈(body.page-home)을 셀렉터에 같이 적는 이유: 홈은 tone-light 를 안 달고 자기 블록에서
+   같은 값을 따로 정한다. 한쪽만 고치면 헤더가 홈에서만 달라지는데, 헤더는 화면을 옮겨도
+   그대로여야 하는 부품이라 그 어긋남이 제일 눈에 띈다. */
+body.tone-light .masthead .authnav .navlink,
+body.page-home .masthead .authnav .navlink { color: rgba(17, 18, 20, .6); }
+body.tone-light .masthead .authnav .navlink:hover,
+body.page-home .masthead .authnav .navlink:hover { background: rgba(17, 18, 20, .06); color: var(--ink); }
+body.tone-light .masthead .authnav .navlink.active,
+body.page-home .masthead .authnav .navlink.active { background: rgba(17, 18, 20, .07); color: var(--ink); }
+body.tone-light .masthead .authnav .who-avatar,
+body.page-home .masthead .authnav .who-avatar { background: var(--ink); color: var(--paper); }
 body.tone-light .masthead .authnav a { color: var(--ink); transition: color .2s; }
 body.tone-light .masthead .authnav a:hover { color: var(--brass-ink); }
 body.tone-light .masthead .linklike { color: var(--ink); }

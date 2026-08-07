@@ -18,12 +18,33 @@
     </h1>
     <span class="tag" th:text="${tag}">태그</span>
     <nav class="authnav" th:if="${showAuthNav}">
-        <a th:href="@{/performances}" class="navlink">공연 찾기</a>
+        <!--
+            지금 보고 있는 구역을 알약으로 채워 표시한다(CurrentPathAdvice.currentPath).
+            aria-current 를 같이 주는 게 핵심 — 색으로만 알리면 스크린리더에는 그냥 링크
+            셋이라 어디에 있는지가 전달되지 않는다.
+        -->
+        <a th:href="@{/performances}" class="navlink"
+           th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/performances')} ? 'active'"
+           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/performances')} ? 'page' : null">공연 찾기</a>
         <!-- 비로그인도 항상 보인다 — /mypage/** 는 SecurityConfig 에서 인증 필수라
              누르면 로그인으로 보냈다가 성공 후 다시 여기로 돌아온다(postLoginRedirectHandler). -->
-        <a th:href="@{/mypage/reservations}" class="navlink">마이페이지</a>
+        <a th:href="@{/mypage/reservations}" class="navlink"
+           th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'active'"
+           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'page' : null">마이페이지</a>
         <span class="navdivider" aria-hidden="true"></span>
-        <span sec:authorize="isAuthenticated()" class="who" sec:authentication="principal.nickname">닉네임</span>
+        <!--
+            닉네임 앞의 이니셜 원. 로그인한 사람이 누구인지 글자만으로 알리는 것보다
+            눈에 먼저 걸린다. 장식이라 aria-hidden 이다 — 바로 옆에서 닉네임을 읽어준다.
+
+            빈 닉네임을 방어하는 이유: substring(0,1) 이 터지면 헤더가 공용이라
+            전 화면이 500 이 된다. 장식 하나 때문에 감수할 위험이 아니다.
+        -->
+        <span sec:authorize="isAuthenticated()" class="who">
+            <span class="who-avatar" aria-hidden="true"
+                  th:text="${#strings.isEmpty(#authentication.principal.nickname)}
+                           ? '·' : ${#strings.substring(#authentication.principal.nickname, 0, 1)}">일</span>
+            <span sec:authentication="principal.nickname">닉네임</span>
+        </span>
         <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
             <button type="submit" class="linklike">로그아웃</button>
         </form>
