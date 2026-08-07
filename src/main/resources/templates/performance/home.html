@@ -20,13 +20,17 @@
     <!-- 히어로. 검색은 홈의 주요 동선이라 여기 둔다 — 목록 화면 필터 패널에도 같은
          입력이 있지만, 홈에 들어온 사람은 아직 필터를 열 이유를 모른다. -->
     <section class="hero">
-        <!-- 무대 조명 연출(스윕 빔 · 로즈 반사광). 순수 장식이라 aria-hidden 이고,
+        <!-- 무대 조명 연출(로즈 반사광). 순수 장식이라 aria-hidden 이고,
              그레인·브라스 글로우는 .hero 자신의 의사요소가 그린다. -->
         <div class="hero-lights" aria-hidden="true"></div>
+        <!-- 커서를 따라다니는 팔로우 스포트라이트. 위치는 아래 스크립트가 갱신하고,
+             마우스가 있는 기기에서만 리스너를 건다. -->
+        <div class="hero-spotlight" id="heroSpotlight" aria-hidden="true"></div>
         <div class="hero-inner">
             <div>
                 <p class="hero-kicker">Public Data Ticketing</p>
-                <h2>오늘,<br>어떤 무대를<br>보고 싶으세요?</h2>
+                <!-- 마지막 줄만 브라스로 빼서 문장이 어디서 끝나는지 보이게 한다. -->
+                <h2>오늘,<br>어떤 무대를<br><span class="hero-accent">보고 싶으세요?</span></h2>
                 <form class="hero-search" th:action="@{/performances}" method="get">
                     <!-- 검색으로 넘어갈 때도 홈과 같은 범위(진행·예정작)를 유지한다. 이게 없으면
                          목록의 기본값에 기대게 되는데, 기본값이 바뀌면 홈 숫자와 조용히 어긋난다. -->
@@ -50,6 +54,10 @@
                 <p>전국 진행·예정작</p>
                 <strong th:text="${#numbers.formatInteger(home.total,0,'COMMA')}">878</strong>
                 <p>건을 공공데이터로 모았습니다</p>
+                <!-- 수집이 살아 있다는 표시. 핸드오프 문구는 "실시간 업데이트 중"이지만
+                     수집은 매일 새벽 4시 배치라(PerformanceSyncScheduler) 사실과 다르다.
+                     실제 주기를 그대로 적는다 — 점이 깜빡인다고 실시간이 되지는 않는다. -->
+                <span class="hero-live">매일 새벽 자동 수집</span>
             </div>
         </div>
     </section>
@@ -101,6 +109,7 @@
                                  「곧 막을 내려요」 섹션은 마감순이라 대부분 붙지만, 「새로 들어온
                                  공연」에서는 짧게 하는 공연에만 붙어 실제로 정보가 된다. -->
                             <span class="card-dday" th:if="${dday >= 0 and dday <= 7}"
+                                  th:classappend="${dday == 0} ? 'card-dday--today'"
                                   th:text="${dday == 0} ? '오늘 마감' : 'D-' + ${dday}">D-2</span>
                             <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                                  onerror="this.remove(); this.parentElement.classList.add('no-img')">
@@ -156,6 +165,35 @@
 </div>
 
 <script>
+(function () {
+    // 커서를 따라다니는 히어로 스포트라이트.
+    //
+    // hover:hover 인 기기에서만 리스너를 건다 — 터치 기기에는 따라올 커서가 없어서
+    // 조명이 마지막으로 닿은 자리에 그대로 붙어 있게 된다(켜지지도 꺼지지도 않는 얼룩).
+    // 모션을 끈 사용자에게도 안 건다. 전역 CSS 는 animation/transition 만 끄는데,
+    // 이건 좌표를 직접 바꾸는 것이라 그 규칙에 안 걸린다.
+    var hero = document.querySelector('.hero');
+    var spot = document.getElementById('heroSpotlight');
+    if (!hero || !spot) return;
+    if (!window.matchMedia('(hover: hover)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // 좌표를 바로 반영한다. 좌석도 끌기처럼 requestAnimationFrame 으로 묶지 않는 이유:
+    // 거기서 미룬 건 좌석 3,000개의 레이아웃이었고 여기서 바뀌는 건 절대배치된 div 하나의
+    // left/top 이라 리플로가 없다. 크롬이 mousemove 를 이미 프레임당 한 번꼴로 합쳐 주므로
+    // 얻는 것도 없고, rAF 가 안 도는 상황(백그라운드 탭 등)에서 조명만 안 따라오는
+    // 실패 경로가 하나 늘어난다.
+    hero.addEventListener('mousemove', function (e) {
+        var r = hero.getBoundingClientRect();
+        spot.style.left = (e.clientX - r.left) + 'px';
+        spot.style.top = (e.clientY - r.top) + 'px';
+        spot.style.opacity = '1';
+    }, { passive: true });
+    hero.addEventListener('mouseleave', function () {
+        spot.style.opacity = '0';
+    });
+})();
+
 (function () {
     // 모션을 끈 사용자나 IntersectionObserver 가 없는 환경에서는 아무것도 안 한다 —
     // .reveal 이 안 붙으면 카드는 CSS 기본값(불투명)으로 그냥 보인다.

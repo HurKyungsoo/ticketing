@@ -2318,31 +2318,44 @@ body.page-home .hero::after {
   0%, 100% { opacity: .16; transform: scale(1); }
   50%      { opacity: .28; transform: scale(1.08); }
 }
-/* 좌우로 천천히 지나가는 조명 빔 + 우하단 로즈 반사광. 둘 다 순수 장식이라
-   .hero-inner 뒤에 깔고 pointer-events 를 끈다. */
+/* 우하단 로즈 반사광. 순수 장식이라 .hero-inner 뒤에 깔고 pointer-events 를 끈다.
+   좌우 스윕 빔은 4차 핸드오프에서 빠졌다 — 커서 스포트라이트가 들어오면서 움직이는
+   빛이 둘이 되는데, 하나는 마우스를 따라오고 하나는 제멋대로 지나가서 서로 방해한다. */
 body.page-home .hero-lights { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-body.page-home .hero-lights::before {
-  content: "";
-  position: absolute;
-  top: -30%; left: -10%;
-  width: 60%; height: 180%;
-  background: linear-gradient(90deg, rgba(248, 244, 236, .05), rgba(248, 244, 236, 0) 60%);
-  animation: hero-beam 9s ease-in-out infinite;
-}
-@keyframes hero-beam {
-  0%, 100% { transform: translateX(-10%) rotate(8deg); }
-  50%      { transform: translateX(10%) rotate(8deg); }
-}
 body.page-home .hero-lights::after {
   content: "";
   position: absolute;
   bottom: -40%; right: -15%;
   width: 50%; height: 160%;
-  background: radial-gradient(ellipse, rgba(242, 109, 109, .08) 0%, rgba(242, 109, 109, 0) 65%);
+  background: radial-gradient(ellipse, rgba(242, 109, 109, .06) 0%, rgba(242, 109, 109, 0) 65%);
+}
+
+/* 커서를 따라다니는 브라스 조명. 무대 위 팔로우 스포트라이트를 흉내낸 것이라
+   이 화면의 조명 어휘와 맞는다.
+
+   mix-blend-mode: screen 이라 아래 깔린 것만 밝히고 위 글자는 건드리지 않는다 —
+   대신 .hero-inner 가 z-index 로 확실히 위에 있어야 한다(아래 규칙).
+   위치는 JS 가 left/top 으로 갱신한다. transform 은 중심 맞추기(-50%)에만 쓰므로
+   JS 가 건드리지 않는다 — 둘을 같이 쓰면 서로 덮어쓴다. */
+body.page-home .hero-spotlight {
+  position: absolute;
+  width: 640px; height: 640px;
+  left: 0; top: 0;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle,
+      rgba(233, 180, 76, .38) 0%,
+      rgba(233, 180, 76, .12) 45%,
+      rgba(233, 180, 76, 0) 70%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+  z-index: 1;
 }
 
 body.page-home .hero-inner {
   position: relative;
+  z-index: 2;   /* 스포트라이트(z-index 1) 위. 안 주면 글자가 조명에 씻긴다. */
   max-width: 1240px;
   margin: 0 auto;
   display: grid;
@@ -2350,21 +2363,26 @@ body.page-home .hero-inner {
   gap: 64px;
   align-items: end;
 }
+/* 작고 자간 넓은 라벨. 브라스를 옅게 쓰되 .75 아래로는 안 내린다 —
+   #111214 위에서 .75 는 5.99, .70 은 5.36 이고 .60 부터 본문 기준(4.5)에 가까워진다. */
 body.page-home .hero-kicker {
-  font-size: 14px; font-weight: 700; letter-spacing: .14em;
-  color: var(--brass); text-transform: uppercase;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .2em;
+  color: rgba(233, 180, 76, .75); text-transform: uppercase;
   margin: 0 0 22px;
 }
+/* 큰 헤드라인은 굵기를 낮추고 자간을 더 조인다 — 800 은 이 크기에서 글자끼리 붙어
+   덩어리로 보인다. 마지막 줄만 브라스로 빼서 문장의 착지점을 만든다. */
 body.page-home .hero h2 {
   font-family: var(--display);
   max-width: none;
-  font-size: clamp(40px, 6vw, 76px);
-  line-height: 1.02;
-  font-weight: 800;
-  letter-spacing: -.03em;
+  font-size: clamp(42px, 6vw, 80px);
+  line-height: .98;
+  font-weight: 700;
+  letter-spacing: -.04em;
   margin: 0 0 28px;
   white-space: normal;
 }
+body.page-home .hero h2 .hero-accent { color: var(--brass); }
 body.page-home .hero-stat {
   text-align: right;
   border-left: 1px solid rgba(248, 244, 236, .18);
@@ -2405,14 +2423,48 @@ body.page-home .hero-collage span:nth-child(3) {
   50%      { translate: 0 -10px; }
 }
 
-body.page-home .hero-stat p { margin: 0; font-size: 14px; font-weight: 600; color: rgba(248, 244, 236, .55); }
+/* 핸드오프는 이 라벨을 13px + rgba(...,.45) 로 줄이는데, .45 는 #111214 위에서 대비 4.23 로
+   본문 기준(4.5)에 못 미친다(.40 은 3.59). 크기만 따르고 투명도는 .5(4.95)에서 멈춘다 —
+   이 표 위쪽에 같은 실수를 두 번 적어뒀다(브라스 글자, 공유 시트). 옅게 하는 건
+   "덜 중요하다"는 표시지 "안 읽혀도 된다"는 뜻이 아니다. */
+body.page-home .hero-stat p {
+  margin: 0;
+  font-size: 13px; font-weight: 600; letter-spacing: -.01em;
+  color: rgba(248, 244, 236, .5);
+}
 body.page-home .hero-stat strong {
   display: block;
   margin: 6px 0;
   font-size: clamp(48px, 7vw, 88px);
-  font-weight: 800; letter-spacing: -.03em;
+  font-weight: 700; letter-spacing: -.04em;
   color: var(--brass);
   font-variant-numeric: tabular-nums;
+  /* 히어로 텍스트가 다 들어온 뒤 숫자가 마지막으로 떠오른다(지연 .4s). */
+  animation: hero-count-in 1.2s ease both .4s;
+}
+@keyframes hero-count-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* 수집이 살아 있다는 표시. 초록 점 + 문구.
+
+   **"실시간"이라고 쓰지 않는다.** 수집은 매일 새벽 4시 배치다
+   (PerformanceSyncScheduler, cron 0 0 4 * * *). 실시간이 아닌 걸 실시간이라 적으면
+   그건 장식이 아니라 거짓말이고, 이 프로젝트가 표기에서 지켜온 기준과 어긋난다. */
+body.page-home .hero-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  color: rgba(248, 244, 236, .5);
+}
+body.page-home .hero-live::before {
+  content: "";
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #9ee6a8;
+  animation: pulse-live 1.8s ease-out infinite;
+}
+/* 점 주위로 고리가 퍼져 나간다. box-shadow 만 움직이므로 레이아웃을 건드리지 않는다. */
+@keyframes pulse-live {
+  0%   { box-shadow: 0 0 0 0 rgba(158, 230, 168, .6); }
+  100% { box-shadow: 0 0 0 8px rgba(158, 230, 168, 0); }
 }
 /* hero-sub 는 구 버전(알약형 통계 배지)의 이름을 이번 리디자인에서는 우측 큰 숫자로
    대체했다 — 마크업이 hero-stat 으로 바뀌었으므로 이 클래스는 더 안 쓰인다. */
@@ -2459,6 +2511,10 @@ body.page-home .hero-search button {
   transition: transform .2s, background .2s;
 }
 body.page-home .hero-search button:hover { background: #f2c874; transform: scale(1.04); }
+/* 눌린 순간 살짝 들어간다. 검색·회원가입처럼 "누르면 화면이 바뀌는" 버튼에만 준다 —
+   응답이 오기 전까지의 빈 시간을 메꿔서 눌린 게 맞는지 다시 누르는 걸 줄인다. */
+body.page-home .hero-search button:active,
+body.page-home .masthead .btn-signup:active { transform: scale(.94); }
 
 /* 장르 바로가기. 라이트 배경 위 알약 — 아웃라인 기본, hover 시 브라스 라인 + 살짝 뜬다. */
 body.page-home .genrenav {
@@ -2591,6 +2647,21 @@ body.page-home .homesec .card-dday {
   background: var(--rose); color: #fff;
   font-size: 11px; font-weight: 700;
 }
+/* 오늘 마감인 것만 고리가 퍼진다.
+
+   핸드오프는 D-day 배지 전부에 이 맥동을 주는데, 목업에는 배지가 한 장뿐이라
+   그렇게 보였을 뿐이다. 실데이터에서는 「곧 막을 내려요」가 마감순이라 열 장이
+   한꺼번에 깜빡인다 — 전부 뛰면 아무것도 안 뛰는 것과 같아서 "임박"이라는 뜻이
+   사라지고 화면만 소란해진다. 진짜 오늘 끝나는 것에만 남긴다. */
+body.page-home .homesec .card-dday--today {
+  animation: pulse-live 1.4s ease-out infinite;
+}
+/* 시작 시점을 어긋나게 준다. 배지가 전부 같은 순간에 켜지면 화면이 한 박자로 깜빡여
+   "고장난 표시등"처럼 읽힌다 — 어긋나 있으면 같은 개수라도 잔잔하게 도는 것으로 보인다.
+   주기가 1.4s 라 넷으로 나눠 0/.35/.7/1.05 를 돌려 쓴다. */
+body.page-home .homesec .card:nth-child(4n+2) .card-dday--today { animation-delay: .35s; }
+body.page-home .homesec .card:nth-child(4n+3) .card-dday--today { animation-delay: .7s; }
+body.page-home .homesec .card:nth-child(4n+4) .card-dday--today { animation-delay: 1.05s; }
 
 /* 에디토리얼 밴드(가운데 섹션 — "N월 공연") — 다크 풀블리드, 3열, 카드 사이 1px 구분선. */
 body.page-home .homesec--editorial {
