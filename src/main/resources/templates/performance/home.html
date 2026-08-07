@@ -20,6 +20,9 @@
     <!-- 히어로. 검색은 홈의 주요 동선이라 여기 둔다 — 목록 화면 필터 패널에도 같은
          입력이 있지만, 홈에 들어온 사람은 아직 필터를 열 이유를 모른다. -->
     <section class="hero">
+        <!-- 무대 조명 연출(스윕 빔 · 로즈 반사광). 순수 장식이라 aria-hidden 이고,
+             그레인·브라스 글로우는 .hero 자신의 의사요소가 그린다. -->
+        <div class="hero-lights" aria-hidden="true"></div>
         <div class="hero-inner">
             <div>
                 <p class="hero-kicker">Public Data Ticketing</p>
@@ -35,6 +38,15 @@
                 </form>
             </div>
             <div class="hero-stat">
+                <!-- 포스터 콜라주. 실제 수집분 포스터를 살짝 기울여 겹쳐 놓는다 — 숫자만 있던
+                     자리에 "무엇을 모았는지"를 같이 보여준다. 순수한 장식이라 aria-hidden 이다:
+                     같은 포스터가 아래 카드에 제목과 함께 다시 나오므로, 여기서 또 읽히면
+                     스크린리더에는 뜻 없는 이미지 세 개가 먼저 지나갈 뿐이다.
+                     포스터가 하나도 없으면(수집 직후) 통째로 안 그린다 — 빈 액자 세 개보다 낫다. -->
+                <div class="hero-collage" th:if="${!home.heroPosters.isEmpty()}" aria-hidden="true">
+                    <span th:each="u : ${home.heroPosters}"
+                          th:style="'background-image:url(' + @{/img/poster(u=${u})} + ')'"></span>
+                </div>
                 <p>전국 진행·예정작</p>
                 <strong th:text="${#numbers.formatInteger(home.total,0,'COMMA')}">878</strong>
                 <p>건을 공공데이터로 모았습니다</p>
@@ -45,7 +57,11 @@
     <!-- 장르 바로가기. 건수는 홈 상단의 총계와 같은 기준(진행·예정작)으로 세어져 있어
          눌러서 넘어간 목록의 건수와 일치한다. -->
     <nav class="genrenav" aria-label="장르별 바로가기">
-        <a th:each="c : ${home.categories}"
+        <!-- 홈은 장르를 안 걸고 있으므로 "전체"가 선택된 상태다(buildCategoryOptions 가
+             selected 를 그렇게 준다). 목록 화면의 필터 칩과 같은 값을 보고 같은 방식으로
+             표시한다 — 여기서 첫 항목을 그냥 칠하면, 나중에 옵션 순서가 바뀔 때
+             엉뚱한 칩이 선택된 것처럼 보인다. -->
+        <a th:each="c : ${home.categories}" th:classappend="${c.selected} ? 'active'"
            th:href="@{/performances(genre=${c.value},status='ongoing')}">
             <span th:text="${c.label}">뮤지컬</span>
             <em th:text="${#numbers.formatInteger(c.count,0,'COMMA')}">123</em>
@@ -74,9 +90,18 @@
             <div class="railwrap" th:if="${iterStat.index != 1}">
                 <button type="button" class="railnav railnav--prev" aria-label="이전 공연 보기">‹</button>
                 <div class="grid">
-                    <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}">
+                    <!-- dday 를 th:with 로 한 번만 계산한다. 배지 표시 여부·문구·값 세 군데가
+                         같은 값을 봐야 하는데, 그때마다 다시 부르면 자정을 넘기는 순간 셋이 갈린다. -->
+                    <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}"
+                       th:with="dday=${p.daysUntilClose(home.today)}">
                         <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
                             <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                            <!-- 마감 임박 배지. 며칠 안 남았을 때만 뜬다 — 두 달 남은 공연에까지
+                                 붙이면 로즈색이 카드마다 깔려 "임박"이라는 뜻이 사라진다.
+                                 「곧 막을 내려요」 섹션은 마감순이라 대부분 붙지만, 「새로 들어온
+                                 공연」에서는 짧게 하는 공연에만 붙어 실제로 정보가 된다. -->
+                            <span class="card-dday" th:if="${dday >= 0 and dday <= 7}"
+                                  th:text="${dday == 0} ? '오늘 마감' : 'D-' + ${dday}">D-2</span>
                             <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                                  onerror="this.remove(); this.parentElement.classList.add('no-img')">
                             <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>

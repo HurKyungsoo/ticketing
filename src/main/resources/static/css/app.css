@@ -2201,8 +2201,20 @@ body.page-home .masthead .logo-mark { color: var(--ink); width: 30px; height: 19
 body.page-home .masthead .tag { display: none; }
 body.page-home .masthead .authnav { color: var(--ink); gap: 20px; font-size: 14.5px; font-weight: 600; }
 body.page-home .masthead .authnav .who { color: var(--ink); }
+/* 내비 링크는 알약 배경으로 눌린다. 색만 바꾸면 어디까지가 누를 수 있는 영역인지
+   글자 폭으로만 짐작해야 하는데, 배경이 뜨면 그 범위가 그대로 보인다.
+   로그인·회원가입(.authbtns)은 이미 자기 모양이 있으므로 .navlink 로만 좁힌다. */
 body.page-home .masthead .authnav a { color: var(--ink); transition: color .2s; }
 body.page-home .masthead .authnav a:hover { color: var(--brass-dim); }
+body.page-home .masthead .authnav .navlink {
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: background .2s, color .2s;
+}
+body.page-home .masthead .authnav .navlink:hover {
+  background: rgba(17, 18, 20, .06);
+  color: var(--ink);
+}
 body.page-home .masthead .linklike { color: var(--ink); }
 body.page-home .masthead .linklike:hover { color: var(--brass-dim); }
 body.page-home .masthead .navdivider { background: rgba(17, 18, 20, .18); }
@@ -2261,6 +2273,49 @@ body.page-home .hero::before {
   80% { transform: translate(-3%, -2%); }
   90% { transform: translate(2%, 2%); }
 }
+/* 무대 조명 연출 세 겹. 좌석 배치도가 "어두운 객석 + 조명 받는 무대"를 전제로 만들어져
+   있는데(그 화면의 무대 빛무리), 홈 히어로도 같은 배경색이라 같은 어휘를 쓴다.
+
+   목업은 장식용 div 를 넷 두지만 여기서는 하나(.hero-lights)만 쓴다 — 그레인과 브라스
+   글로우는 .hero 의 ::before/::after 로, 빔과 로즈 반사광은 .hero-lights 의 두 의사요소로
+   얹는다. 빈 요소가 늘수록 스크린리더가 지나가야 할 것만 늘어난다.
+   prefers-reduced-motion 은 전역 규칙(* { animation: none !important })이 이미 끈다. */
+body.page-home .hero::after {
+  content: "";
+  position: absolute;
+  top: -20%; right: 5%;
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, rgba(233, 180, 76, .16) 0%, rgba(233, 180, 76, 0) 70%);
+  animation: hero-glow 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes hero-glow {
+  0%, 100% { opacity: .16; transform: scale(1); }
+  50%      { opacity: .28; transform: scale(1.08); }
+}
+/* 좌우로 천천히 지나가는 조명 빔 + 우하단 로즈 반사광. 둘 다 순수 장식이라
+   .hero-inner 뒤에 깔고 pointer-events 를 끈다. */
+body.page-home .hero-lights { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+body.page-home .hero-lights::before {
+  content: "";
+  position: absolute;
+  top: -30%; left: -10%;
+  width: 60%; height: 180%;
+  background: linear-gradient(90deg, rgba(248, 244, 236, .05), rgba(248, 244, 236, 0) 60%);
+  animation: hero-beam 9s ease-in-out infinite;
+}
+@keyframes hero-beam {
+  0%, 100% { transform: translateX(-10%) rotate(8deg); }
+  50%      { transform: translateX(10%) rotate(8deg); }
+}
+body.page-home .hero-lights::after {
+  content: "";
+  position: absolute;
+  bottom: -40%; right: -15%;
+  width: 50%; height: 160%;
+  background: radial-gradient(ellipse, rgba(242, 109, 109, .08) 0%, rgba(242, 109, 109, 0) 65%);
+}
+
 body.page-home .hero-inner {
   position: relative;
   max-width: 1240px;
@@ -2290,6 +2345,41 @@ body.page-home .hero-stat {
   border-left: 1px solid rgba(248, 244, 236, .18);
   padding-left: 40px;
 }
+/* 포스터 콜라주. 실제 수집분 포스터 3장을 조금씩 다르게 기울여 겹친다.
+   가운데 장만 z-index 를 올려 앞으로 나오게 해서 겹침 방향이 한쪽으로 쏠리지 않게 한다.
+   부유 애니메이션은 장마다 지연을 달리 줘야 세 장이 한 덩어리로 오르내리지 않는다. */
+body.page-home .hero-collage {
+  display: flex; justify-content: flex-end; gap: 14px;
+  margin-bottom: 36px;
+}
+body.page-home .hero-collage span {
+  width: 96px; aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  background-color: #1a1b1e;
+  background-size: cover; background-position: center;
+  animation: hero-float 4.5s ease-in-out infinite;
+}
+body.page-home .hero-collage span:nth-child(1) {
+  transform: rotate(-3deg) translateY(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .4);
+}
+body.page-home .hero-collage span:nth-child(2) {
+  transform: rotate(2deg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .45);
+  position: relative; z-index: 1;
+  animation-delay: .6s;
+}
+body.page-home .hero-collage span:nth-child(3) {
+  transform: rotate(-1deg) translateY(14px);
+  animation-delay: 1.2s;
+}
+/* translateY 만 움직인다 — transform 을 통째로 쓰면 위 nth-child 의 rotate 가 지워져
+   애니메이션이 도는 동안 세 장이 반듯하게 펴진다. */
+@keyframes hero-float {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -10px; }
+}
+
 body.page-home .hero-stat p { margin: 0; font-size: 14px; font-weight: 600; color: rgba(248, 244, 236, .55); }
 body.page-home .hero-stat strong {
   display: block;
@@ -2361,6 +2451,14 @@ body.page-home .genrenav a {
   transition: border-color .2s, transform .2s;
 }
 body.page-home .genrenav a:hover { border-color: var(--brass); transform: translateY(-2px); }
+/* 선택된 칩을 잉크로 채운다. 홈에서는 장르를 안 걸고 있으므로 항상 "전체"가 여기 해당한다
+   — 목록 화면에서 장르를 고르고 돌아왔을 때와 같은 표시 방식이라 두 화면이 같은 말을 한다.
+   :first-child 로 잡지 않는 건 그게 "선택됨"이 아니라 "맨 앞"을 칠하는 것이기 때문이다. */
+body.page-home .genrenav a.active {
+  background: var(--ink); border-color: var(--ink); color: var(--paper);
+}
+body.page-home .genrenav a.active:hover { border-color: var(--ink); }
+body.page-home .genrenav a.active em { opacity: .6; }
 body.page-home .genrenav em {
   font-style: normal; font-weight: 600; opacity: .5;
 }
@@ -2444,6 +2542,10 @@ body.page-home .homesec .card .poster {
   background: var(--ink);
 }
 body.page-home .homesec .card .poster::after { display: none; }
+/* 목록(1.04 / .25s)보다 조금 크고 느리게. 홈은 훑는 화면이라 카드가 크고 수가 적어
+   같은 값이면 거의 안 보인다 — 핸드오프 값(1.06 / .4s)을 그대로 쓴다. */
+body.page-home .homesec .card .poster img { transition: transform .4s ease; }
+body.page-home .homesec .card:hover .poster img { transform: scale(1.06); }
 body.page-home .homesec .card h3 { color: var(--ink); font-size: 16px; letter-spacing: -.01em; }
 body.page-home .homesec .card:hover h3 { color: var(--brass-dim); }
 body.page-home .homesec .card .meta { color: rgba(17, 18, 20, .55); }
@@ -2452,6 +2554,17 @@ body.page-home .homesec .card .m-date::before { display: none; }
 body.page-home .homesec .card-badge {
   background: rgba(17, 18, 20, .75); color: var(--brass);
   border: 0;
+}
+/* 마감 임박 배지. 장르 배지(좌상단·브라스)와 반대쪽 모서리에 로즈로 둔다 —
+   같은 쪽에 두면 둘이 한 덩어리로 읽혀 "장르 뒤에 붙은 꼬리표"처럼 보인다.
+   z-index 는 장르 배지와 같은 3 — 포스터 img(1)와 .poster::after(2) 위에 와야 한다
+   (배지가 포스터 뒤로 숨던 결함을 겪은 자리다). */
+body.page-home .homesec .card-dday {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--rose); color: #fff;
+  font-size: 11px; font-weight: 700;
 }
 
 /* 에디토리얼 밴드(가운데 섹션 — "N월 공연") — 다크 풀블리드, 3열, 카드 사이 1px 구분선. */
@@ -2528,6 +2641,10 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
   body.page-home .hero { padding: 48px 20px 36px; }
   body.page-home .hero-inner { grid-template-columns: 1fr; gap: 28px; align-items: start; }
   body.page-home .hero-stat { text-align: left; border-left: 0; padding-left: 0; }
+  /* 통계가 왼쪽으로 붙으므로 콜라주도 같이 왼쪽으로. 한 칸에 세로로 쌓이는 배치라
+     포스터만 오른쪽에 남으면 숫자와 어긋나 보인다. 여백도 줄인다 — 좁은 화면에서
+     36px 은 포스터와 숫자 사이가 끊긴 것처럼 벌어진다. */
+  body.page-home .hero-collage { justify-content: flex-start; margin-bottom: 24px; }
   body.page-home .hero h2 { font-size: 32px; white-space: normal; }
   body.page-home .genrenav { padding: 20px; }
   body.page-home .homesec { padding: 28px 20px 16px; }

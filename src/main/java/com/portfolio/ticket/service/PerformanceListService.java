@@ -109,7 +109,15 @@ public class PerformanceListService {
      */
     public record HomeSection(String title, String subtitle, String moreUrl, List<PerformanceListRow> items) {}
 
-    public record Home(List<HomeSection> sections, List<Option> categories, long total) {}
+    /**
+     * @param heroPosters 히어로 우측 포스터 콜라주에 쓸 포스터 주소(최대 3장). 장식이라 없으면
+     *                    빈 목록이고 화면이 콜라주를 통째로 안 그린다 — 수집 직후처럼 포스터가
+     *                    하나도 없을 때 빈 액자 세 개가 떠 있는 것보다 낫다.
+     * @param today       D-day 배지의 기준일. 화면 전체가 한 값을 공유해야 카드마다 기준이
+     *                    갈리지 않는다({@link PerformanceListRow#daysUntilClose} 참고).
+     */
+    public record Home(List<HomeSection> sections, List<Option> categories, long total,
+                        List<String> heroPosters, LocalDate today) {}
 
     /**
      * 가로 슬라이드 섹션(첫째·셋째)에 담는 개수.
@@ -148,7 +156,31 @@ public class PerformanceListService {
         // 여기 숫자와 넘어간 화면의 건수가 같아야 한다.
         PerformanceFilter ongoing = ongoingBase(today);
         return new Home(sections, buildCategoryOptions(ongoing, null),
-                performanceMapper.countPerformances(ongoing));
+                performanceMapper.countPerformances(ongoing),
+                heroPosters(sections), today);
+    }
+
+    /** 히어로 콜라주에 쓸 포스터 3장. */
+    private static final int HERO_POSTER_COUNT = 3;
+
+    /**
+     * 이미 조회한 섹션 항목에서 포스터만 골라 쓴다 — 콜라주 때문에 쿼리를 더 날리지 않는다.
+     *
+     * <p>첫 섹션만 보지 않고 전 섹션을 훑는 이유: 포스터 없는 공연이 수집분에 꽤 있어서
+     * (상세 화면이 폴백을 그리는 것도 그래서다) 한 섹션에서 세 장이 안 나올 수 있다.
+     * 그러면 콜라주가 한두 장짜리로 기울어 보인다.
+     *
+     * <p>같은 공연이 여러 섹션에 겹쳐 들어오므로 주소로 중복을 걷어낸다 — 안 그러면
+     * 같은 포스터 세 장이 나란히 놓인다.
+     */
+    private List<String> heroPosters(List<HomeSection> sections) {
+        return sections.stream()
+                .flatMap(s -> s.items().stream())
+                .map(PerformanceListRow::getPosterUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .distinct()
+                .limit(HERO_POSTER_COUNT)
+                .toList();
     }
 
     /** 홈 섹션은 전부 "진행·예정작"만 본다. 이미 끝난 공연을 홈에 띄울 이유가 없다. */
