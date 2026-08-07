@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.savedrequest.RequestCache;
 
 @Configuration
 @RequiredArgsConstructor
@@ -22,6 +23,8 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final PostLoginRedirectHandler postLoginRedirectHandler;
     private final OAuth2ReturnToCaptureFilter oAuth2ReturnToCaptureFilter;
+    /** 정의는 {@link RequestCacheConfig} 에 있다 — 여기 두면 핸들러와 순환 참조가 된다. */
+    private final RequestCache requestCache;
 
     /**
      * 관리자 API 전용 체인. 브라우저 폼 로그인이 아니라 HTTP Basic 을 쓴다.
@@ -98,6 +101,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
+            // 저장하는 쪽과 읽는 쪽(PostLoginRedirectHandler)이 같은 인스턴스를 쓰게 한다.
+            .requestCache(cache -> cache.requestCache(requestCache))
             // "/oauth2/authorization/{id}?returnTo=..." 가 카카오/네이버로 리다이렉트되기 전에
             // returnTo 를 세션에 먼저 저장해야 하므로, 그 리다이렉트를 실행하는 필터보다 앞에 둔다.
             .addFilterBefore(oAuth2ReturnToCaptureFilter, OAuth2AuthorizationRequestRedirectFilter.class)
