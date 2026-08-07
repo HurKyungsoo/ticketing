@@ -10,13 +10,16 @@
     reason 은 어드바이스가 "보여줘도 되는 예외 메시지"일 때만 모델에 넣는다
     (PageExceptionHandler.page 참고). 스프링 부트 기본 에러 처리로 들어온 경우엔
     없으므로 th:if 로 통째로 건너뛴다.
+
+    인라인 style 을 걷어내고 클래스로 옮겼다 — 색을 인라인으로 박아두면 라이트 톤
+    전환에서 통째로 빠진다(실제로 --brass 글자가 아이보리 위에 대비 1.72 로 남아 있었다).
 */-->
-<div th:fragment="errorbody(code, heading, detail)" class="empty-state" style="text-align:left;padding:0">
-    <p style="font-family:var(--display);font-size:56px;line-height:1;color:var(--brass-dim);margin:0 0 16px"
-       th:text="${code}">404</p>
-    <p><strong style="font-size:17px" th:text="${heading}">요약</strong></p>
-    <p th:text="${detail}">안내</p>
-    <p th:if="${reason}" style="color:var(--mute);font-size:13px;margin-top:10px" th:text="${reason}">사유</p>
+<div th:fragment="errorbody(code, heading, detail)" class="errorbody">
+    <p class="errorcode" th:text="${code}">404</p>
+    <!-- 이 화면의 주된 메시지라 제목으로 둔다. 헤더의 h1 은 브랜드("객석")가 갖고 있다. -->
+    <h2 class="errorheading" th:text="${heading}">요약</h2>
+    <p class="errordetail" th:text="${detail}">안내</p>
+    <p class="errorreason" th:if="${reason}" th:text="${reason}">사유</p>
 </div>
 </body>
 </html>

@@ -1000,11 +1000,41 @@ body.page-seatmap { padding-bottom: calc(var(--footer-h, 150px) + 20px); }
   display: flex; flex-direction: column; justify-content: center;
 }
 
-/* 에러 페이지(403/404/5xx). 종전에는 .authwrap 을 그대로 썼는데, 그건 로그인 폼 한 장을
-   담는 400px 칸이라 **헤더까지 그 폭에 갇혔다** — 로고 "객석"이 두 줄로 접히고 내비가
-   줄바꿈되면서 로그인·회원가입이 서로 붙어버렸다. 에러 페이지도 헤더는 다른 화면과
-   같아야 하므로 폭은 .wrap(1080px) 을 그대로 쓰고, 본문만 읽기 좋은 폭으로 좁힌다. */
-.errorwrap .empty-state { max-width: 520px; padding: 48px 0 0; }
+/* ---- 에러 페이지(403/404/5xx) ----
+
+   종전에는 .authwrap 을 그대로 썼는데, 그건 로그인 폼 한 장을 담는 400px 칸이라
+   **헤더까지 그 폭에 갇혔다** — 로고 "객석"이 두 줄로 접히고 내비가 줄바꿈되면서
+   로그인·회원가입이 서로 붙어버렸다. 폭은 .wrap(1080px) 을 그대로 쓰고 본문만 좁힌다.
+
+   색은 전부 라이트 톤 기준이다. 종전에는 body 에 클래스가 없어 다크로 남아 있었고,
+   본문 색이 인라인 style 로 박혀 있어서 톤 전환에서 통째로 빠져 있었다 —
+   아이보리 배경이 됐을 때 --brass 링크는 대비 1.72, 큰 상태코드(--brass-dim)는 2.88 로
+   사실상 안 보인다. 아래 값은 전부 #F8F4EC 위에서 실측해 고른 것이다. */
+body.page-error { background: var(--paper); color: var(--ink); }
+.errorbody { max-width: 520px; padding: 48px 0 0; }
+
+/* 상태코드. 큰 글씨(3.0 기준)지만 --brass-dim(2.88)은 그마저도 못 넘어서 --brass-ink(4.51)를 쓴다. */
+.errorcode {
+  font-family: var(--display);
+  font-size: 56px; line-height: 1;
+  color: var(--brass-ink);
+  margin: 0 0 16px;
+}
+.errorheading {
+  font-size: 17px; font-weight: 700; color: var(--ink);
+  margin: 0 0 8px;
+}
+/* 다음에 뭘 할 수 있는지 알려주는 줄이라 흐리게 두면 안 된다.
+   앱의 보조 텍스트 관행(.55 → 4.04)보다 한 단계 진하게 잡아 본문 기준(4.5)을 넘긴다. */
+.errordetail { font-size: 15px; color: rgba(17, 18, 20, .6); margin: 0; }
+/* 사유도 읽으라고 띄우는 줄이라 같은 기준을 적용한다 — .55 는 4.04 로 못 미친다. */
+.errorreason { font-size: 13px; color: rgba(17, 18, 20, .6); margin: 10px 0 0; }
+
+.errorlinks { margin: 28px 0 0; font-size: 15px; font-weight: 700; }
+.errorlinks a { color: var(--brass-ink); }
+.errorlinks a:hover { color: var(--ink); }
+/* 링크 사이 가운뎃점. 읽을 내용이 아니라 구분 기호라 스크린리더에서 뺀다(aria-hidden). */
+.errorlinks .errorsep { color: rgba(17, 18, 20, .3); margin: 0 8px; font-weight: 400; }
 .authcard {
   background: var(--ink-soft);
   border: 1px solid var(--line);

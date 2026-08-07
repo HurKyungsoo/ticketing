@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
+<body class="page-error tone-light">
 <div class="wrap errorwrap">
     <header th:replace="~{fragment/header :: masthead(tag='오류', showAuthNav=true)}"></header>
 
@@ -16,10 +16,10 @@
             heading='일시적인 오류가 발생했습니다.',
             detail='잠시 후 다시 시도해 주세요. 결제가 진행 중이었다면 마이페이지에서 예매 상태를 먼저 확인해 주세요.')}"></div>
 
-    <p style="margin-top:24px">
-        <a th:href="@{/mypage/reservations}" style="color:var(--brass)">내 예매 내역</a>
-        <span style="color:var(--mute);margin:0 8px">·</span>
-        <a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a>
+    <p class="errorlinks">
+        <a th:href="@{/mypage/reservations}">내 예매 내역</a>
+        <span class="errorsep" aria-hidden="true">·</span>
+        <a th:href="@{/}">공연 목록으로</a>
     </p>
 </div>
 </body>

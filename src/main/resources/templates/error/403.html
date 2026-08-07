@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
+<body class="page-error tone-light">
 <div class="wrap errorwrap">
     <header th:replace="~{fragment/header :: masthead(tag='접근 불가', showAuthNav=true)}"></header>
 
@@ -16,10 +16,10 @@
             heading='이 페이지를 볼 권한이 없습니다.',
             detail='본인 예매 내역만 조회하고 결제할 수 있습니다. 다른 계정으로 예매하셨다면 해당 계정으로 로그인해 주세요.')}"></div>
 
-    <p style="margin-top:24px">
-        <a th:href="@{/mypage/reservations}" style="color:var(--brass)">내 예매 내역</a>
-        <span style="color:var(--mute);margin:0 8px">·</span>
-        <a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a>
+    <p class="errorlinks">
+        <a th:href="@{/mypage/reservations}">내 예매 내역</a>
+        <span class="errorsep" aria-hidden="true">·</span>
+        <a th:href="@{/}">공연 목록으로</a>
     </p>
 </div>
 </body>

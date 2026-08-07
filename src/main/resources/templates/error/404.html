@@ -7,7 +7,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
-<body>
+<body class="page-error tone-light">
 <div class="wrap errorwrap">
     <header th:replace="~{fragment/header :: masthead(tag='페이지 없음', showAuthNav=true)}"></header>
 
@@ -16,7 +16,7 @@
             heading='요청하신 페이지를 찾을 수 없습니다.',
             detail='주소가 바뀌었거나 종료된 공연일 수 있습니다.')}"></div>
 
-    <p style="margin-top:24px"><a th:href="@{/}" style="color:var(--brass)">공연 목록으로</a></p>
+    <p class="errorlinks"><a th:href="@{/}">공연 목록으로</a></p>
 </div>
 </body>
 </html>
