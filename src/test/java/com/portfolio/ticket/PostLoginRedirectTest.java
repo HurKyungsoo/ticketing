@@ -2,7 +2,10 @@ package com.portfolio.ticket;
 
 import com.portfolio.ticket.domain.Member;
 import com.portfolio.ticket.domain.MemberRole;
-import com.portfolio.ticket.repository.MemberRepository;
+import com.portfolio.ticket.domain.Performance;
+import com.portfolio.ticket.domain.PerformanceCategory;
+import com.portfolio.ticket.domain.SourceType;
+import com.portfolio.ticket.repository.*;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +23,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,10 +56,28 @@ class PostLoginRedirectTest {
     @Autowired MockMvc mockMvc;
     @Autowired MemberRepository memberRepository;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired NotificationRepository notificationRepository;
+    @Autowired WishlistRepository wishlistRepository;
+    @Autowired PerformanceRepository performanceRepository;
+    @Autowired PerformanceScheduleRepository scheduleRepository;
+    @Autowired SeatRepository seatRepository;
+    @Autowired SeatHoldRepository seatHoldRepository;
+    @Autowired ReservationRepository reservationRepository;
+
+    /** 헤더 링크가 실어 보낼 "보던 화면". 공연 상세는 비로그인도 볼 수 있다. */
+    private Long performanceId;
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
+        wishlistRepository.deleteAll();
+        seatHoldRepository.deleteAll();
+        seatRepository.deleteAll();
+        reservationRepository.deleteAll();
+        scheduleRepository.deleteAll();
+        performanceRepository.deleteAll();
         memberRepository.deleteAll();
+
         memberRepository.save(Member.builder()
                 .loginId(LOGIN_ID)
                 .password(passwordEncoder.encode(PASSWORD))
@@ -63,6 +85,19 @@ class PostLoginRedirectTest {
                 .role(MemberRole.USER)
                 .createdAt(LocalDateTime.now())
                 .build());
+
+        performanceId = performanceRepository.save(Performance.builder()
+                .externalId("REDIRECT-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title("돌아오기 테스트 공연")
+                .category(PerformanceCategory.MUSICAL)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusDays(30))
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build()).getId();
     }
 
     @DisplayName("인증이 필요해 막힌 화면으로 로그인 후 되돌아간다")
@@ -114,6 +149,58 @@ class PostLoginRedirectTest {
             mockMvc.perform(login("returnTo", evil))
                     .andExpect(redirectedUrl("/"));
         }
+    }
+
+    /* ------------------------------------------------------------------
+     *  로그인 없이도 볼 수 있는 화면에서 스스로 「로그인」을 누른 경우
+     * ------------------------------------------------------------------ */
+
+    /**
+     * 공연 상세는 비로그인도 볼 수 있어서 <b>막힌 요청이 없다</b> — 서버는 그냥 로그인 화면을
+     * 연 것으로 볼 뿐 보던 자리를 모른다. 그래서 헤더 링크가 직접 실어 보내야 한다
+     * ({@code CurrentPathAdvice.currentPath}).
+     */
+    @DisplayName("공개 화면의 헤더 로그인 링크는 보던 자리를 실어 보낸다")
+    @Test
+    void headerLoginLinkCarriesCurrentPath() throws Exception {
+        String html = mockMvc.perform(get("/performances/{id}", performanceId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("/login?returnTo=/performances/" + performanceId);
+        assertThat(html).contains("/signup?returnTo=/performances/" + performanceId);
+    }
+
+    /**
+     * 목록의 필터·페이지까지 있어야 "보던 자리"가 된다.
+     *
+     * <p>주소에 쿼리를 직접 적는다 — {@code .param()} 을 쓰면 파라미터 맵에만 들어가고
+     * {@code getQueryString()} 은 null 이라, 조건을 실어 보내는지 검증하지 못한 채 통과한다
+     * (로그인 POST 본문에서 겪은 것과 같은 함정이다).
+     */
+    @DisplayName("목록은 필터·페이지 조건까지 실어 보낸다")
+    @Test
+    void headerLoginLinkKeepsQuery() throws Exception {
+        String html = mockMvc.perform(get("/performances?genre=MUSICAL&page=1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // @{} 가 값 안의 = 와 & 를 인코딩하므로 디코딩하면 원래 조건이 나온다.
+        assertThat(html).contains("/login?returnTo=/performances?genre%3DMUSICAL%26page%3D1");
+    }
+
+    /**
+     * 로그인 화면 자신과 홈은 실어 보내지 않는다. 전자는 로그인하고 다시 로그인 화면으로
+     * 돌아오는 막다른 길이고, 후자는 어차피 기본 도착지라 주소만 길어진다.
+     */
+    @DisplayName("로그인 화면과 홈에서는 returnTo 를 붙이지 않는다")
+    @Test
+    void doesNotCarryPathForLoginOrHome() throws Exception {
+        String home = mockMvc.perform(get("/")).andReturn().getResponse().getContentAsString();
+        assertThat(home).contains("\"/login\"").doesNotContain("/login?returnTo=");
+
+        String login = mockMvc.perform(get("/login")).andReturn().getResponse().getContentAsString();
+        assertThat(login).doesNotContain("/login?returnTo=");
     }
 
     /** 인증이 필요한 주소로 들어가 로그인으로 튕긴 뒤, 저장된 요청이 담긴 세션을 돌려준다. */

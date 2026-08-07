@@ -21,6 +21,12 @@
             <p class="autherror" th:if="${error}" th:text="${error}">에러</p>
 
             <form class="authform" th:action="@{/signup}" method="post">
+                <!-- 가입 전에 보던 화면. 가입 후 로그인 화면으로 그대로 들려 보내(MemberController.signup)
+                     로그인까지 마치면 원래 자리로 돌아간다. 헤더 링크가 붙여준 쿼리를 그대로 받고,
+                     제출 실패로 폼을 다시 그릴 때는 모델에 담긴 값을 쓴다. -->
+                <input type="hidden" name="returnTo"
+                       th:if="${param.returnTo != null or returnTo != null}"
+                       th:value="${param.returnTo != null} ? ${param.returnTo[0]} : ${returnTo}">
                 <label>
                     아이디
                     <input type="text" name="loginId" required autofocus autocomplete="username">

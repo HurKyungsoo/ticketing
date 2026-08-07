@@ -28,8 +28,19 @@
             <button type="submit" class="linklike">로그아웃</button>
         </form>
         <span sec:authorize="isAnonymous()" class="authbtns">
-            <a th:href="@{/login}" class="btn-login">로그인</a>
-            <a th:href="@{/signup}" class="btn-signup">회원가입</a>
+            <!--
+                보던 자리를 실어 보낸다(CurrentPathAdvice.currentPath). 로그인이 필요해서
+                막힌 화면은 스프링이 기록해 두므로 PostLoginRedirectHandler 가 알아서
+                되돌려 보내지만, 공연 상세처럼 로그인 없이도 볼 수 있는 화면에서 스스로
+                「로그인」을 누른 경우엔 막힌 요청이 없어 서버가 보던 자리를 알 수 없다.
+
+                currentPath 가 null 인 화면(로그인·회원가입 자신 등)에서는 안 붙인다 —
+                빈 returnTo 를 달면 주소만 지저분해진다.
+            -->
+            <a class="btn-login"
+               th:href="${currentPath} != null ? @{/login(returnTo=${currentPath})} : @{/login}">로그인</a>
+            <a class="btn-signup"
+               th:href="${currentPath} != null ? @{/signup(returnTo=${currentPath})} : @{/signup}">회원가입</a>
         </span>
     </nav>
 </header>
