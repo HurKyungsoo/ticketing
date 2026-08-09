@@ -45,7 +45,19 @@
                 좁은 화면에서는 CSS 가 숨긴다 — 그때는 이 칸이 sticky 가 아니라 제목 위로
                 올라가서, 공연명보다 가격이 먼저 읽히는 이상한 순서가 된다.
             -->
-            <div class="summarycard" th:if="${summary.hasAnything()}">
+            <!-- 관람평이 있으면 최저가·회차가 없어도 카드를 띄운다 — 보여줄 게 생겼기 때문이다. -->
+            <div class="summarycard" th:if="${summary.hasAnything() or reviewStat.count > 0}">
+                <!-- 평점은 한 줄 요약만. 본문은 폭이 안 맞아 아래 섹션에 있고, 여기서는
+                     눌러서 그리로 내려갈 수 있게만 한다. 관람평이 없으면 줄을 통째로 숨긴다 —
+                     "★ 0.0 · 0명"은 정보가 아니라 없다는 사실을 굳이 강조하는 것이다. -->
+                <a class="sc-row sc-rating" th:if="${reviewStat.count > 0}" href="#reviews">
+                    <span class="sc-label">관람평</span>
+                    <strong>
+                        <span class="sc-star" aria-hidden="true">★</span>
+                        <span th:text="${#numbers.formatDecimal(reviewStat.average, 1, 1)}">4.3</span>
+                        <span class="sc-count" th:text="'· ' + ${reviewStat.count} + '명'">· 12명</span>
+                    </strong>
+                </a>
                 <div class="sc-row" th:if="${summary.lowestPrice() != null}">
                     <span class="sc-label">최저가</span>
                     <strong class="sc-price"
@@ -234,6 +246,71 @@
             <p class="refundnote">
                 결제 전 좌석 선점 상태에서는 수수료 없이 취소할 수 있습니다.
                 취소는 마이페이지 예매 내역에서 할 수 있습니다.
+            </p>
+
+            <!--
+                관람평. 본문 맨 아래에 둔다.
+
+                핸드오프 메모에는 「공연 소개」 바로 아래로 적어뒀지만, 그 자리에 넣으면
+                관람평이 쌓일수록 「회차 선택」(이 화면의 주요 액션)이 그만큼 아래로 밀린다.
+                맨 아래에 두고, 왼쪽 요약 카드의 「★ 4.3 · 12명」이 여기로 내려오는 앵커가 된다.
+
+                아무나 못 쓴다 — 확정된 예매가 있고 관람일이 지난 사람만(ReviewService.canWrite).
+                자격 판정을 서버가 해서 넘기므로, 자격이 없으면 폼 자체가 안 그려진다.
+                다 쓰고 제출한 뒤에야 못 쓴다고 알리는 것보다 낫다.
+            -->
+            <h3 class="detail-heading refund-heading" id="reviews">관람평</h3>
+
+            <p class="reviewerror" th:if="${reviewError}" th:text="${reviewError}">오류</p>
+
+            <!-- 자격이 있을 때만. 이미 쓴 사람에게는 그 내용을 채워 "고치기"로 보여준다. -->
+            <form class="reviewform" th:if="${canWriteReview}" method="post"
+                  th:action="@{/performances/{id}/reviews(id=${performance.id})}">
+                <div class="rf-head">
+                    <label class="rf-rating">
+                        <span class="sr-only">별점</span>
+                        <!-- 5→1 내림차순. #numbers.sequence 는 step 을 안 주면 1 씩 올라가서
+                             from 이 to 보다 크면 빈 목록이 나온다(별점 칸이 통째로 비었었다). -->
+                        <select name="rating">
+                            <option th:each="n : ${#numbers.sequence(5, 1, -1)}" th:value="${n}"
+                                    th:text="${#strings.repeat('★', n)} + ' ' + ${n}"
+                                    th:selected="${myReview != null ? myReview.rating == n : n == 5}">★★★★★ 5</option>
+                        </select>
+                    </label>
+                    <span class="rf-note"
+                          th:text="${myReview != null ? '이미 쓴 관람평을 고칩니다' : '관람하신 공연입니다'}">관람하신 공연입니다</span>
+                </div>
+                <textarea name="content" required maxlength="500" rows="3"
+                          placeholder="무대는 어땠나요? 좌석에서 잘 보였는지도 적어주시면 다른 분께 도움이 됩니다."
+                          th:text="${myReview != null ? myReview.content : ''}"></textarea>
+                <button type="submit"
+                        th:text="${myReview != null ? '관람평 고치기' : '관람평 남기기'}">관람평 남기기</button>
+            </form>
+
+            <ul class="reviewlist" th:if="${!reviews.isEmpty()}">
+                <li th:each="r : ${reviews}">
+                    <div class="rv-head">
+                        <!-- 별점은 채운 별과 빈 별을 함께 그린다. 색만으로 개수를 알리면
+                             색각 이상에서 구분이 안 되고, 흑백으로 봐도 모양이 남아야 한다. -->
+                        <span class="rv-stars" th:attr="aria-label='별점 ' + ${r.rating} + '점'">
+                            <span aria-hidden="true"
+                                  th:text="${#strings.repeat('★', r.rating) + #strings.repeat('☆', 5 - r.rating)}">★★★★☆</span>
+                        </span>
+                        <span class="rv-writer" th:text="${r.nickname}">닉네임</span>
+                        <span class="rv-date" th:text="${#temporals.format(r.createdAt, 'yyyy.M.d')}">2026.8.7</span>
+                        <!-- 내 관람평에만 붙는다. 삭제는 상태를 바꾸므로 링크가 아니라 POST 다. -->
+                        <form th:if="${myReview != null and myReview.id == r.id}" method="post"
+                              th:action="@{/performances/{pid}/reviews/{rid}/delete(pid=${performance.id},rid=${r.id})}">
+                            <button type="submit" class="rv-delete">삭제</button>
+                        </form>
+                    </div>
+                    <p class="rv-content" th:text="${r.content}">관람평 본문</p>
+                </li>
+            </ul>
+
+            <p class="reviewempty" th:if="${reviews.isEmpty()}">
+                아직 관람평이 없습니다.
+                <span th:if="${!canWriteReview}">관람하신 분만 남길 수 있습니다.</span>
             </p>
         </div>
     </div>

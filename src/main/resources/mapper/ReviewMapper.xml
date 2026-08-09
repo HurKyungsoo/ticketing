@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.portfolio.ticket.mapper.ReviewMapper">
+
+    <!--
+        한 공연의 관람평 개수·평균.
+
+        관람평을 전부 읽어와 화면에서 평균을 내지 않는 이유: 요약 카드는 개수와 평균
+        두 값만 쓰는데, 관람평이 쌓일수록 그 낭비가 그대로 커진다.
+
+        관람평이 하나도 없으면 COUNT 는 0, AVG 는 NULL 을 준다 — 0.0 으로 뭉개지 않는다.
+        "아직 평이 없다"와 "평균이 0 이다"는 다른 말이고, 화면은 전자일 때 줄을 통째로 숨긴다.
+    -->
+    <select id="selectReviewStat" resultType="com.portfolio.ticket.mapper.dto.ReviewStatRow">
+        SELECT COUNT(*)     AS count,
+               AVG(rating)  AS average
+        FROM review
+        WHERE performance_id = #{performanceId}
+    </select>
+
+</mapper>

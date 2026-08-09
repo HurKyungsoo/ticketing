@@ -15,6 +15,7 @@ import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
 import com.portfolio.ticket.service.SeoView;
+import com.portfolio.ticket.service.ReviewService;
 import com.portfolio.ticket.service.WishlistService;
 import com.portfolio.ticket.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class PerformanceController {
     private final SeatMapView seatMapView;
     private final SeoView seoView;
     private final WishlistService wishlistService;
+    private final ReviewService reviewService;
 
     /**
      * 공유 카드용 절대주소의 기준. Thymeleaf 3.1 부터 템플릿에서 {@code #request} 를 못 쓰므로
@@ -216,6 +218,14 @@ public class PerformanceController {
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         // 카카오톡 공유 JS 키. 키가 없으면 null 이고 템플릿이 카카오톡 공유 버튼을 아예 안 그린다.
         model.addAttribute("kakaoJsKey", kakaoShareProperties.isConfigured() ? kakaoShareProperties.getJsKey() : null);
+
+        // 관람평. 자격 판정(canWrite)까지 서버가 해서 넘긴다 — 자격 없는 사람에게 폼을 띄우고
+        // 제출 시점에 거절하면 다 쓰고 나서야 못 쓴다는 걸 알게 된다.
+        Long memberId = principal != null ? principal.getMemberId() : null;
+        model.addAttribute("reviews", reviewService.findByPerformance(id));
+        model.addAttribute("reviewStat", reviewService.stat(id));
+        model.addAttribute("myReview", reviewService.findMine(memberId, id));
+        model.addAttribute("canWriteReview", reviewService.canWrite(memberId, id, now));
         return "performance/detail";
     }
 

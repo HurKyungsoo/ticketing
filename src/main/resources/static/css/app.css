@@ -3370,6 +3370,79 @@ body.tone-light .rp-fee { color: var(--ink); font-weight: 700; }
 body.tone-light .refundpolicy .rp-deny .rp-fee { color: var(--rose); }
 body.tone-light .refundnote { font-size: 13px; color: rgba(17, 18, 20, .5); }
 
+/* ---- 관람평 ----
+   색은 전부 아이보리(#F8F4EC) 위에서 실측해 골랐다. 보조 텍스트를 .55(4.04)로 두는
+   앱 관행보다 한 단계 진한 .6(4.75)을 쓰는 곳이 있는데, 읽으라고 띄운 문장이라
+   본문 기준(4.5)을 넘겨야 해서다. */
+body.tone-light .sc-rating { display: flex; align-items: baseline; justify-content: space-between; }
+body.tone-light .sc-rating .sc-star { color: var(--brass-ink); }
+body.tone-light .sc-rating .sc-count { font-weight: 600; color: rgba(17, 18, 20, .6); }
+
+body.tone-light .reviewerror {
+  margin: 0 0 16px; padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(178, 58, 58, .07);
+  font-size: 14px; color: #B23A3A;
+}
+
+body.tone-light .reviewform {
+  margin: 0 0 28px; padding: 18px;
+  border: 1px solid rgba(17, 18, 20, .12);
+  border-radius: var(--radius);
+  background: #fff;
+}
+body.tone-light .rf-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+body.tone-light .rf-rating select {
+  padding: 8px 12px;
+  border: 1px solid rgba(17, 18, 20, .16); border-radius: 999px;
+  background: none; font: inherit; font-size: 14px; color: var(--ink);
+  cursor: pointer;
+}
+body.tone-light .rf-note { font-size: 13px; color: rgba(17, 18, 20, .6); }
+body.tone-light .reviewform textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 18, 20, .16); border-radius: var(--radius-sm);
+  font: inherit; font-size: 14.5px; line-height: 1.6; color: var(--ink);
+  resize: vertical;
+}
+body.tone-light .reviewform textarea:focus { outline: 2px solid var(--brass-ink); outline-offset: 1px; }
+body.tone-light .reviewform button {
+  margin-top: 12px; padding: 10px 20px;
+  border: 0; border-radius: 999px;
+  background: var(--ink); color: var(--paper);
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .15s, transform .15s;
+}
+body.tone-light .reviewform button:hover { background: #292a2d; }
+body.tone-light .reviewform button:active { transform: scale(.96); }
+
+body.tone-light .reviewlist { list-style: none; margin: 0; padding: 0; }
+body.tone-light .reviewlist li {
+  padding: 18px 0;
+  border-top: 1px solid rgba(17, 18, 20, .1);
+}
+body.tone-light .reviewlist li:first-child { border-top: 0; padding-top: 0; }
+body.tone-light .rv-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+body.tone-light .rv-head form { margin: 0 0 0 auto; }
+body.tone-light .rv-stars { color: var(--brass-ink); font-size: 14px; letter-spacing: 1px; }
+body.tone-light .rv-writer { font-size: 14px; font-weight: 700; color: var(--ink); }
+body.tone-light .rv-date { font-size: 13px; color: rgba(17, 18, 20, .5); }
+body.tone-light .rv-delete {
+  background: none; border: 0; padding: 0;
+  font: inherit; font-size: 13px; color: rgba(17, 18, 20, .5);
+  cursor: pointer; transition: color .15s;
+}
+body.tone-light .rv-delete:hover { color: #B23A3A; }
+/* 줄바꿈을 살린다 — 관람평은 문단을 나눠 쓰는 사람이 많은데 그걸 한 덩어리로 흘리면
+   쓴 사람 의도와 다르게 읽힌다. break-word 는 띄어쓰기 없는 긴 문자열 대비다. */
+body.tone-light .rv-content {
+  margin: 0;
+  font-size: 14.5px; line-height: 1.7; color: rgba(17, 18, 20, .8);
+  white-space: pre-wrap; overflow-wrap: break-word;
+}
+body.tone-light .reviewempty { margin: 0; font-size: 14px; color: rgba(17, 18, 20, .6); }
+
 /* 공유 시트. 라이트 배경 위에 뜨는 창이라 면도 밝게 간다.
 
    **면만 밝히고 글자를 안 옮겨서 시트가 통째로 안 보이던 걸 고쳤다.** 기본 규칙은 어두운

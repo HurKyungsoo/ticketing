@@ -7,6 +7,7 @@ import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatRepository;
 import com.portfolio.ticket.repository.NotificationRepository;
+import com.portfolio.ticket.repository.ReviewRepository;
 import com.portfolio.ticket.repository.WishlistRepository;
 import com.portfolio.ticket.service.ScheduleOpenedEvent;
 import com.portfolio.ticket.service.SeatGenerator;
@@ -71,6 +72,7 @@ public class PerformanceSyncService {
     private final ReservationRepository reservationRepository;
     private final WishlistRepository wishlistRepository;
     private final NotificationRepository notificationRepository;
+    private final ReviewRepository reviewRepository;
     private final ApplicationEventPublisher events;
     private final SeatGenerator seatGenerator;
     private final PerformanceCategoryResolver categoryResolver;
@@ -155,6 +157,8 @@ public class PerformanceSyncService {
             wishlistRepository.deleteByPerformanceId(performance.getId());
             // 알림도 같은 이유로 공연을 FK 로 참조한다. 남겨두면 공연 삭제가 FK 제약에 막힌다.
             notificationRepository.deleteByPerformanceId(performance.getId());
+            // 관람평도 마찬가지다. 그 공연이 사라지면 관람평이 가리킬 대상이 없다.
+            reviewRepository.deleteByPerformanceId(performance.getId());
 
             // 좌석은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지 않는다.
             // 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로 함께 지워진다).
