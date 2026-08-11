@@ -2,21 +2,25 @@
 #
 # 객석 배포 — 빌드 → 전송 → 재시작 → 헬스체크, 실패하면 이전 jar 로 되돌린다.
 #
-#   ./deploy.sh
+#   DEPLOY_HOST=ubuntu@1.2.3.4 ./deploy.sh
 #
 # 되돌리기를 넣은 이유: 이 인스턴스에는 다른 서비스 둘(WeddingCard 8080, LIBRE 8081)이
 # 같이 돌고 있고 메모리가 빠듯하다. 새 jar 가 안 뜨는 채로 방치되면 그 사이 사이트가
 # 죽어 있는 것은 물론, 원인을 찾는 동안 수동으로 되돌려야 한다. 실패를 감지하는 김에
 # 되돌리는 데까지 가는 편이 낫다.
 #
-# 환경변수로 덮어쓸 수 있다:
-#   DEPLOY_HOST  기본 ubuntu@3.36.205.135
+# 배포 대상은 환경변수로 받는다:
+#   DEPLOY_HOST  필수. 예: ubuntu@1.2.3.4
 #   DEPLOY_KEY   기본 ~/.ssh/lightsail_gaeseok
 #   DEPLOY_URL   기본 https://gaekseok.com  (헬스체크 대상)
+#
+# 서버 주소를 기본값으로 박아두지 않는 이유: 이 저장소는 공개고, 도메인은
+# Cloudflare 뒤에 있어 원본 IP 가 가려져 있다. 스크립트에 적어두면 그 가림막이
+# 무의미해진다. 매번 치기 번거로우면 gitignore 된 파일에 넣고 source 할 것.
 
 set -euo pipefail
 
-HOST="${DEPLOY_HOST:-ubuntu@3.36.205.135}"
+HOST="${DEPLOY_HOST:?DEPLOY_HOST 를 지정하세요 (예: DEPLOY_HOST=ubuntu@1.2.3.4 ./deploy.sh)}"
 KEY="${DEPLOY_KEY:-$HOME/.ssh/lightsail_gaeseok}"
 URL="${DEPLOY_URL:-https://gaekseok.com}"
 REMOTE_DIR="~/gaeseok"
