@@ -16,11 +16,21 @@
 #
 # 서버 주소를 기본값으로 박아두지 않는 이유: 이 저장소는 공개고, 도메인은
 # Cloudflare 뒤에 있어 원본 IP 가 가려져 있다. 스크립트에 적어두면 그 가림막이
-# 무의미해진다. 매번 치기 번거로우면 gitignore 된 파일에 넣고 source 할 것.
+# 무의미해진다.
+#
+# 매번 치기 번거로우면 옆에 .env.deploy 를 만들어 `DEPLOY_HOST=ubuntu@1.2.3.4`
+# 한 줄만 넣어두면 된다. .gitignore 의 `.env.*` 에 걸려 커밋되지 않는다.
 
 set -euo pipefail
 
-HOST="${DEPLOY_HOST:?DEPLOY_HOST 를 지정하세요 (예: DEPLOY_HOST=ubuntu@1.2.3.4 ./deploy.sh)}"
+# 명령줄로 준 값이 항상 이긴다. 파일은 값이 없을 때만 읽는다 —
+# 반대로 하면 임시로 다른 서버에 배포하려고 앞에 붙인 값이 조용히 무시된다.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -z "${DEPLOY_HOST:-}" ] && [ -f "$SCRIPT_DIR/.env.deploy" ]; then
+    . "$SCRIPT_DIR/.env.deploy"
+fi
+
+HOST="${DEPLOY_HOST:?DEPLOY_HOST 를 지정하세요 (.env.deploy 에 적어두거나 DEPLOY_HOST=ubuntu@1.2.3.4 ./deploy.sh)}"
 KEY="${DEPLOY_KEY:-$HOME/.ssh/lightsail_gaeseok}"
 URL="${DEPLOY_URL:-https://gaekseok.com}"
 REMOTE_DIR="~/gaeseok"
