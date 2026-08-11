@@ -518,6 +518,15 @@ docker compose up --build
 데이터소스 URL(`localhost` 고정)은 컨테이너 네트워크용 `SPRING_DATASOURCE_URL`
 환경변수로 덮어쓴다.
 
+### 운영에서 겪은 문제
+
+| 문제 | 해결 |
+|---|---|
+| 배포 이틀 뒤부터 앱이 `OutOfMemoryError: Metaspace` 를 쏟아내는데(6시간에 1,621건) `systemctl` 은 `active`, 재시작 횟수 0. **Metaspace OOM 은 프로세스를 죽이지 않고 예외만 던지므로 `Restart=on-failure` 가 걸리지 않는다** — 살아 있는 채로 오류만 반환해 한 번은 14시간을 아무도 모르게 장애 상태로 보냈다. 그동안 좌석 선점 만료 배치도 같이 멈춰 결제 안 한 좌석이 계속 잠긴다 | ① `-XX:+ExitOnOutOfMemoryError` 추가 — OOM 시 프로세스가 죽고 기존 `Restart=on-failure` 가 10초 만에 살린다. 몇 시간짜리 조용한 장애가 10초 재시작으로 바뀌는 게 핵심이다. ② `MaxMetaspaceSize` 를 128m → 192m. 실측해 보니 **기동 직후 사용량이 이미 117MB** 로 상한에 붙어 있었고(여유 11MB), 41시간에 10MB씩 자라 이틀이면 넘겼다. 폭주하는 누수가 아니라 한도가 기본 사용량에 너무 붙어 있던 것 |
+| 위 조사에서 `ExecStart` 만 보고 "JVM 에 메모리 옵션이 하나도 없다"고 오진했다. 실제 옵션은 `EnvironmentFile` 의 `JAVA_TOOL_OPTIONS` 에 있었고, 방향이 정반대(무제한이 아니라 과소 설정)라 처방도 완전히 달라졌다 | **JVM 실제 적용값은 유닛 파일이 아니라 실행 중인 프로세스에서 확인한다** — `jcmd <pid> VM.flags`. 환경변수·`JAVA_TOOL_OPTIONS`·래퍼 스크립트 등 옵션이 들어올 경로가 여러 개다 |
+| 힙 상한을 그대로 두고 Metaspace 만 올리면 cgroup(`MemoryMax=700M`)을 넘겨 이번엔 커널 OOM 킬러가 죽인다. `OOMScoreAdjust=500` 이라 이 앱이 1순위 표적이고 재시작 루프에 빠진다 | `MemoryMax` 를 900M 로 함께 올렸다(drop-in `gaeseok.service.d/memory.conf`, 지우고 `daemon-reload` 하면 원복). **JVM 상한과 컨테이너/cgroup 상한은 항상 같이 움직여야 한다** — 한쪽만 올리면 죽는 주체가 JVM 에서 커널로 바뀔 뿐이다 |
+| 재시작 후 로그 점검에서 `grep OutOfMemoryError` 가 1건을 잡아 재발로 오인할 뻔했다 | JVM 이 기동 시 출력하는 `Picked up JAVA_TOOL_OPTIONS: ... -XX:+ExitOnOutOfMemoryError` 줄이 걸린 것. 실제 발생은 `java.lang.OutOfMemoryError` 로 검사해야 한다. 마찬가지로 `grep Exception` 은 `ExceptionTranslationFilter` 같은 정상 INFO 로그를 잡는다 |
+
 ---
 
 ## 8. API
