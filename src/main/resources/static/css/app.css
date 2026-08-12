@@ -620,7 +620,36 @@ a { color: inherit; text-decoration: none; }
    sticky 는 스크롤 컨테이너 왼쪽을 기준으로 잡히므로 열이 여러 개면 오른쪽 구역의 라벨까지
    전부 왼쪽 끝으로 몰려 다른 구역 좌석 위에 겹쳐 뜬다. 열이 하나인 홀에서는 종전대로 붙어 있다.
 */
-.housescroll.has-sides .rowlabel { position: static; }
+.housescroll.has-sides .rowlabel {
+  position: static;
+  /*
+     고정을 풀면 라벨이 줄과 함께 흐르므로, 좌석 위를 지나갈 수 있다. 부채꼴 구역에서
+     실제로 겹친다 — 좌석은 호(--arc-y)를 그리느라 줄 양끝이 좌석 높이의 90% 가까이
+     들리는데(확대 시 22px, 줄 간격은 30px) 그만큼 옆 줄 라벨 높이까지 파고든다.
+     실측: 24px 확대에서 「4」가 5열 2번을, 「2」가 3열 1번을 16x13px 가렸다.
+
+     배경을 깔아둔 채로 두면 그 좌석이 지워져 보이고, 라벨이 위에 있으니 그 부분은
+     클릭도 안 먹는다 — 고를 수 있는 좌석이 화면에서 사라지는 셈이라 그냥 미관 문제가
+     아니다. 배경을 없애 좌석이 그대로 보이게 하고, 클릭은 통과시킨다. 숫자는 좌석
+     위에 겹쳐 그려지므로 어두운 좌석에서도 읽히도록 외곽선을 얇게 깐다.
+
+     sticky 인 홀(열이 하나)에서는 이 규칙이 적용되지 않는다 — 거기서는 라벨이 화면
+     왼쪽에 고정된 채 좌석이 뒤로 지나가므로 불투명 배경이 있어야 읽힌다.
+  */
+  background: none;
+  pointer-events: none;
+  text-shadow:
+     0 0 3px var(--ink),  0 0 3px var(--ink),
+     1px 0 0 var(--ink), -1px 0 0 var(--ink),
+     0 1px 0 var(--ink),  0 -1px 0 var(--ink);
+}
+body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
+  /* 라이트 톤에서는 종이색으로 테두리를 깐다 — 어두운 잉크로 깔면 글자가 뭉개진다. */
+  text-shadow:
+     0 0 3px var(--paper),  0 0 3px var(--paper),
+     1px 0 0 var(--paper), -1px 0 0 var(--paper),
+     0 1px 0 var(--paper),  0 -1px 0 var(--paper);
+}
 /*
    구역 이름도 같은 이유로 고정을 풀고, 그 구역의 좌석 폭 가운데로 옮긴다.
 
@@ -3627,6 +3656,13 @@ body.page-seatmap.tone-light .floorchip[aria-current="true"] i { color: rgba(248
 body.page-seatmap.tone-light .row .rowlabel {
   background: var(--paper);
   color: rgba(17, 18, 20, .4);
+}
+/* 라벨이 고정되지 않는 홀에서는 배경을 없앤다 — 이유는 `.housescroll.has-sides .rowlabel`
+   주석 참고(부채꼴에서 옆 줄 좌석을 덮어 지우고 클릭도 막는다). 이 규칙은 바로 위
+   라이트 톤 규칙보다 뒤에 있고 선택자도 한 단계 더 구체적이어야 이긴다 — 앞쪽 규칙에만
+   적어두면 배경이 그대로 남는다(실제로 그렇게 놓쳤다가 실측에서 잡았다). */
+body.page-seatmap.tone-light .housescroll.has-sides .row .rowlabel {
+  background: none;
 }
 
 /*
