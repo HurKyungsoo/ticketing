@@ -540,25 +540,13 @@
     function syncMinimap() {
         if (!zoomed) { minimap.hidden = true; miniK = 0; return; }
         if (miniBuildFrame !== null) return;
-        /*
-           두 프레임을 미룬다. 한 프레임만 미루면 setZoomed 가 sizeMapViewport() 로 정한
-           격자 높이가 아직 반영되기 전에 clientHeight 를 읽을 수 있다. 그러면 높이가 화면
-           전체(안 넘침)로 보여 mapOverflows() 가 거짓이 되고, 미니맵은 숨은 채로 굳는다 —
-           그 뒤로는 이 함수를 다시 부르는 곳이 확대 토글뿐이라 스크롤해도 안 돌아온다.
-
-           실제로 2,015석 홀에서 확대해도 미니맵이 안 뜨는 것으로 나타났다(넘침은 가로
-           1,100px·세로 1,943px 인데 숨김 상태). 첫 프레임은 브라우저가 레이아웃을 적용하는
-           데 쓰고, 두 번째 프레임에서 읽는다.
-        */
         miniBuildFrame = requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                miniBuildFrame = null;
-                if (!zoomed) { minimap.hidden = true; miniK = 0; return; }
-                const show = mapOverflows();
-                minimap.hidden = !show;
-                if (!show) { miniK = 0; return; }
-                if (buildMinimap()) syncMinimapView();
-            });
+            miniBuildFrame = null;
+            if (!zoomed) { minimap.hidden = true; miniK = 0; return; }
+            const show = mapOverflows();
+            minimap.hidden = !show;
+            if (!show) { miniK = 0; return; }
+            if (buildMinimap()) syncMinimapView();
         });
     }
 
