@@ -18,6 +18,23 @@
          ORDER BY s.section ASC, s.row_no ASC, s.seat_no ASC
     </select>
 
+    <!--
+        좌석도 실시간 갱신용. 고를 수 없는 좌석(HELD/SOLD)만 준다.
+
+        AVAILABLE 을 빼는 건 응답을 줄이려는 것만이 아니다 — 화면은 "여기 없으면 예매 가능"
+        으로 읽으므로, 선점이 만료돼 목록에서 빠지는 것이 곧 "다시 살 수 있게 됨"이 된다.
+        전체를 보내고 화면이 비교하는 방식보다 규칙이 하나 적다.
+
+        보통 한 회차에서 팔린 좌석은 전체의 일부라, 좌석 3,000개짜리 홀에서도 몇십 행이다.
+    -->
+    <select id="selectSeatStatuses" resultType="com.portfolio.ticket.mapper.dto.SeatStatusRow">
+        SELECT s.id     AS seat_id,
+               s.status AS status
+          FROM seat s
+         WHERE s.schedule_id = #{scheduleId}
+           AND s.status &lt;&gt; 'AVAILABLE'
+    </select>
+
     <!-- 등급별 가격 (중복 제거). 등급마다 가격이 하나뿐이라 DISTINCT 로 충분하다. -->
     <select id="selectGradePrices" resultType="com.portfolio.ticket.mapper.dto.GradePriceRow">
         SELECT DISTINCT s.grade AS grade, s.price AS price

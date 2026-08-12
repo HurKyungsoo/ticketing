@@ -77,6 +77,10 @@ public class SecurityConfig {
                         // prod 에서는 서블릿 자체가 뜨지 않으므로 이 허용이 노출로 이어지지 않는다.
                         "/h2-console/**",
                         "/api/webhooks/**",
+                        // 좌석도 실시간 갱신. 좌석도(/schedules/**)가 비로그인으로 보이는
+                        // 화면이라 여기만 막으면 그 화면의 좌석 상태만 안 바뀐다. 돌려주는
+                        // 것도 이미 그 화면에 그려져 있는 사실(어느 좌석이 나갔는지)뿐이다.
+                        "/api/schedules/*/seat-status",
                         // 컨테이너/로드밸런서 헬스체크. management.endpoints.web.exposure.include 가
                         // health 하나뿐이라 다른 actuator 엔드포인트는 애초에 등록되지 않는다.
                         "/actuator/health"

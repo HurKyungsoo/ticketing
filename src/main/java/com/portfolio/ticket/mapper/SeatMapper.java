@@ -6,6 +6,7 @@ import com.portfolio.ticket.mapper.dto.GradeSalesRow;
 import com.portfolio.ticket.mapper.dto.PerformanceSalesRow;
 import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.mapper.dto.SalesStatRow;
+import com.portfolio.ticket.mapper.dto.SeatStatusRow;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -18,6 +19,14 @@ import java.util.List;
 public interface SeatMapper {
 
     List<SeatMapRow> selectSeatMap(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 고를 수 없는 좌석(HELD/SOLD)만. 좌석도를 열어둔 화면이 몇 초마다 물어본다.
+     *
+     * <p>여기 없는 좌석은 예매 가능하다는 뜻이다 — 선점이 만료되면 목록에서 빠지고,
+     * 화면은 그걸 "다시 살 수 있게 됨"으로 읽는다.
+     */
+    List<SeatStatusRow> selectSeatStatuses(@Param("scheduleId") Long scheduleId);
 
     /**
      * 한 회차의 등급별 가격(중복 제거). 공연 상세 화면에서 "관람료" 대신 등급별 실제 가격을
