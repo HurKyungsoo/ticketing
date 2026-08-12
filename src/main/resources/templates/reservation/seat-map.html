@@ -380,7 +380,17 @@
         if (!zoomed) { scroller.style.height = ''; return; }
         const available = window.innerHeight - scroller.getBoundingClientRect().top
                 - bookbar.offsetHeight - 12;
-        scroller.style.height = Math.round(Math.max(280, Math.min(860, available))) + 'px';
+        /*
+           상한을 860 에서 1600 으로 올렸다. 860 은 세로가 긴 화면에서 남는 공간을 그냥
+           버리고 있었다 — 1440px 창이면 여유가 1,148px 인데 860 에서 잘려 288px(좌석
+           아홉 줄쯤)이 빈 채로 남는다. 지도 모드의 목적이 "한 번에 많이 보기"인데
+           화면이 클수록 덜 보여주는 셈이었다.
+
+           상한 자체를 없애지는 않는다. 세로로 아주 긴 창에서는 좌석이 한 화면에 다
+           들어와도 지도가 계속 늘어나 아래쪽이 텅 비게 되고, 미니맵 배율도 그만큼
+           작아져 쓸모가 없어진다.
+        */
+        scroller.style.height = Math.round(Math.max(280, Math.min(1600, available))) + 'px';
     }
 
     /**
