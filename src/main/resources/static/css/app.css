@@ -599,6 +599,17 @@ a { color: inherit; text-decoration: none; }
 */
 .row .rowlabel {
   margin-left: calc((var(--max-n, var(--n)) - var(--n)) / 2 * (var(--seat-size) + var(--seat-gap)));
+  /*
+     라벨은 줄의 왼쪽 끝에 붙어 있으므로 그 자리 좌석과 같은 높이여야 한다. 기본 정렬
+     (align-items:center)은 줄 상자의 수직 중앙에 두는데, 좌석은 호를 그리느라 양끝이
+     들리거나 처져서 끝자리는 중앙과 다르다 — 40석 줄에서 실측 21.9px(확대 기준),
+     번호가 자기 옆 좌석에서 떠 보였다.
+
+     첫 좌석의 u 는 -(n-1)/2 이고 오프셋은 u² 에 비례하므로, 여기서도 같은 식을 쓰되
+     길이로 계산한다. transform 은 레이아웃을 안 건드리므로 좌석 위치는 그대로다.
+  */
+  transform: translateY(calc(
+      ((var(--n) - 1) / 2) * ((var(--n) - 1) / 2) * var(--seat-size) * var(--arc-unit, 0)));
   font-family: var(--display);
   width: var(--rowlabel-w);
   text-align: right;
@@ -701,9 +712,15 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
    --seat-size 에 의존하지 않게 된다. 의존하게 두면 확대·축소로 --seat-size 를 바꿀 때마다
    모든 좌석의 --u/--arc-y 가 무효화돼서 한 단계에 700ms 가 걸렸다(핀치가 사실상 멈춤).
 */
-.house { --arc-strength: -0.24%; }
+/*
+   --arc-unit 은 --arc-strength 와 같은 값을 %가 아닌 순수 숫자로 둔 것이다(0.24% = 0.0024).
+   좌석은 %를 쓴다(자기 높이 기준이라 --seat-size 에 안 매여서 확대가 빠르다). 하지만 줄번호
+   라벨은 높이가 좌석과 달라서(글자 크기 기준) 같은 %를 주면 다른 거리만큼 움직인다.
+   라벨은 홀당 수십 개뿐이라 --seat-size 에 의존해도 확대 성능에 영향이 없다.
+*/
+.house { --arc-strength: -0.24%; --arc-unit: -0.0024; }
 /* 무대 뒤 구역은 무대가 아래쪽에 있으니 반대로 휜다. */
-.zoneline-rear .house { --arc-strength: 0.24%; }
+.zoneline-rear .house { --arc-strength: 0.24%; --arc-unit: 0.0024; }
 
 .seat {
   --u: calc(var(--i) - (var(--n) - 1) / 2);
