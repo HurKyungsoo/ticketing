@@ -727,10 +727,24 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
    깨지지는 않는다.
 */
 .housescroll.has-sides .floor:not(:has(> .floorname)) { padding-top: 0; }
+/*
+   구역 블록이 열 폭에 맞춰 늘어나지 않게 한다. 늘어나면 이름이 "그 구역"이 아니라
+   "그 열에서 가장 넓은 구역" 기준으로 가운데 잡혀서, 좁은 구역일수록 오른쪽으로 밀린다.
+   실측(2,015석 홀): A 구역 이름이 자기 좌석 중앙에서 82px, B 는 52px, C 는 21px 밀려
+   있었고 가장 넓은 E 만 맞았다. 자기 내용 폭만 갖게 하면 전 구역이 같은 기준이 된다.
+   좌석은 원래도 블록 왼쪽에 붙어 있어서 이 변경으로 자리가 바뀌지 않는다.
+*/
+.housescroll.has-sides .floor { align-self: flex-start; }
 .housescroll.has-sides .floorname {
   position: absolute;
   top: 0;
-  left: 50%;
+  /*
+     줄번호 칸(라벨 + 그 뒤 간격)의 절반만큼 오른쪽으로 민다. 블록 폭에는 번호 칸이
+     들어 있어서 그냥 50% 로 두면 이름이 "번호+좌석" 기준으로 가운데가 되고, 눈에는
+     좌석 덩어리보다 왼쪽으로 치우쳐 보인다(실측 10px). 구역 이름은 좌석 위에 있어야
+     한다.
+  */
+  left: calc(50% + (var(--rowlabel-w) + var(--seat-gap)) / 2);
   transform: translateX(-50%);
   width: 100%;
   margin: 0;
