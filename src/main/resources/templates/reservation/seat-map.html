@@ -591,9 +591,31 @@
             if (target.el.getBoundingClientRect().top <= referenceY) current = target;
             else break;   // 칩 순서 = 밴드 순서 = DOM 순서(위→아래)라 여기서 멈춰도 된다.
         }
-        floorChipTargets.forEach(({ chip }) => chip.removeAttribute('aria-current'));
-        current.chip.setAttribute('aria-current', 'true');
+        setActiveChip(current.chip);
     }
+
+    function setActiveChip(chip) {
+        floorChipTargets.forEach(({ chip: other }) => other.removeAttribute('aria-current'));
+        chip.setAttribute('aria-current', 'true');
+    }
+
+    /* 누른 칩을 곧바로 활성으로 표시한다.
+
+       칩은 앵커(#floor-N-head)라서 브라우저가 알아서 그 자리로 이동하는데, 그 이동으로는
+       스크롤 스파이가 따라오지 않았다 — 실측: 2층 칩을 눌러 scrollY 1952(2층)까지 갔는데
+       칩은 계속 「1층 P」였다. 눌러도 아무 반응이 없는 것처럼 보이고, 나중에 위로 올라와도
+       여전히 1층 P 라서 "선택이 남지 않는다"고 느껴진다.
+
+       스크롤로 옮겨 다니면 그때부터는 스파이가 지금 보고 있는 층으로 다시 맞춘다 —
+       칩은 "어디로 가겠다는 선택"이자 "지금 어디를 보고 있는가"의 표시이기도 하므로,
+       실제로 다른 층을 보고 있는데 누른 칩이 계속 켜져 있으면 그건 거짓말이 된다. */
+    floorChipTargets.forEach(({ chip }) => {
+        chip.addEventListener('click', () => setActiveChip(chip));
+    });
+
+    /* 뒤로가기·앞으로가기로 해시가 바뀌는 경우(브라우저가 스크롤만 옮기고 클릭은 없다). */
+    window.addEventListener('hashchange', syncActiveFloorChip);
+
     window.addEventListener('scroll', () => {
         if (zoomed) return;   // 확대 모드는 위 scroller 스크롤 핸들러가 맡는다.
         if (miniFrame !== null) return;
