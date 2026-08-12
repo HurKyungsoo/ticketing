@@ -714,6 +714,19 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
    font-size 를 바꾸면 이 값도 같이 맞춰야 한다.
 */
 .housescroll.has-sides .floor { position: relative; padding-top: 57px; }
+/*
+   구역 이름이 없는 구역에서는 그 자리를 비워두지 않는다.
+
+   이름(.floorname)은 구역이 여럿일 때만 그린다 — 구역이 하나뿐이면 밴드 머릿글과 같은
+   글자가 되므로 템플릿이 아예 안 그린다(seatzone.html 의 shortName 검사). 그런데 위
+   padding 은 그대로 남아서, 없는 글자 자리로 57px 을 버리고 있었다. 실측: 2,015석 홀의
+   「1층 P」 밴드에서 제목과 첫 좌석 사이가 89px 이고 그중 57px 이 이것이었다(좌석 띠
+   자체가 161px 인데 그 절반이 넘는 빈칸이다).
+
+   :has() 를 못 쓰는 브라우저에서는 종전대로 여백이 남는다 — 화면이 조금 성길 뿐
+   깨지지는 않는다.
+*/
+.housescroll.has-sides .floor:not(:has(> .floorname)) { padding-top: 0; }
 .housescroll.has-sides .floorname {
   position: absolute;
   top: 0;
