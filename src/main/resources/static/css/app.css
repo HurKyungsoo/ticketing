@@ -728,13 +728,21 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
 */
 .housescroll.has-sides .floor:not(:has(> .floorname)) { padding-top: 0; }
 /*
-   구역 블록이 열 폭에 맞춰 늘어나지 않게 한다. 늘어나면 이름이 "그 구역"이 아니라
-   "그 열에서 가장 넓은 구역" 기준으로 가운데 잡혀서, 좁은 구역일수록 오른쪽으로 밀린다.
-   실측(2,015석 홀): A 구역 이름이 자기 좌석 중앙에서 82px, B 는 52px, C 는 21px 밀려
-   있었고 가장 넓은 E 만 맞았다. 자기 내용 폭만 갖게 하면 전 구역이 같은 기준이 된다.
-   좌석은 원래도 블록 왼쪽에 붙어 있어서 이 변경으로 자리가 바뀌지 않는다.
+   구역 블록을 열 가운데에 놓는다.
+
+   종전에는 블록이 열 폭에 맞춰 늘어나 있었다. 그래서 ① 좌석은 블록 왼쪽에 붙어
+   좁은 구역일수록 왼쪽으로 치우쳐 보였고, ② 이름은 "그 구역"이 아니라 "그 열에서 가장
+   넓은 구역" 기준으로 가운데 잡혔다. 실측(2,015석 홀)으로 A 구역이 열 중앙에서 82px,
+   B 52px, C 21px 벗어나 있었고 가장 넓은 구역만 맞았다.
+
+   블록이 자기 내용 폭만 갖게 하고(align-self 가 stretch 를 끈다) 가운데로 모으면 둘 다
+   해결된다 — 전 구역이 열 중앙 기준 같은 값이 된다.
+
+   여기서 align-self: center 는 써도 된다. .zone 의 폭은 그 안에서 가장 넓은 구역이
+   정하므로 어떤 구역도 열보다 넓어질 수 없다 — 내용이 컨테이너보다 넓어질 때 양쪽으로
+   넘쳐 앞쪽 좌석이 음수 좌표로 나가는 문제(.house 의 align-items 주석 참고)는 안 생긴다.
 */
-.housescroll.has-sides .floor { align-self: flex-start; }
+.housescroll.has-sides .floor { align-self: center; }
 .housescroll.has-sides .floorname {
   position: absolute;
   top: 0;
