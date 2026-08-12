@@ -922,8 +922,13 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
   border-radius: 2px;
   background: rgba(233, 180, 76, .16);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 0 8px rgba(233, 180, 76, .6);
+  /* 포인터를 안 받는다 — 위치 판정은 미니맵 전체에서 하고(상자 안/밖), 상자가 이벤트를
+     가로채면 상자 위에서 시작한 끌기가 미니맵까지 안 온다. */
   pointer-events: none;
 }
+/* 끌 수 있다는 걸 커서로 알린다. 상자가 pointer-events 를 안 받으므로 미니맵에 건다. */
+.minimap { cursor: grab; }
+.minimap.is-dragging { cursor: grabbing; }
 
 @media (max-width: 720px) {
   /* 좁은 화면에서는 지도 자체가 좁으니 미니맵도 자리를 덜 차지하게 줄인다. */

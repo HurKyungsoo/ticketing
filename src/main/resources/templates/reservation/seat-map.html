@@ -673,23 +673,61 @@
     /* 미니맵을 누르거나 끌면 그 지점이 화면 가운데로 오게 지도를 옮긴다.
        미니맵은 격자 바깥의 fixed 요소라 격자의 끌기 처리와 겹치지 않는다. */
     let miniDrag = false;
+    /* 뷰 상자를 잡은 지점과 상자 중심의 차이. 끄는 동안 이 차이를 유지해야 상자가 손을 따라온다.
+       0,0 이면 "누른 지점을 화면 가운데로"가 된다(상자 바깥을 눌렀을 때). */
+    let miniGrab = { dx: 0, dy: 0 };
+
+    /** 미니맵 좌표(clientX/Y)를 격자 스크롤 위치로 옮긴다. */
     function miniScrollTo(clientX, clientY) {
         if (!miniK) return;
         const r = minimapInner.getBoundingClientRect();
-        scroller.scrollLeft = (clientX - r.left) / miniK - scroller.clientWidth / 2;
-        scroller.scrollTop = (clientY - r.top) / miniK - scroller.clientHeight / 2;
+        scroller.scrollLeft = (clientX - miniGrab.dx - r.left) / miniK - scroller.clientWidth / 2;
+        scroller.scrollTop = (clientY - miniGrab.dy - r.top) / miniK - scroller.clientHeight / 2;
         syncMinimapView();
     }
+
+    /*
+       상자를 잡았으면 그 자리에서 끌고, 바깥을 눌렀으면 거기로 옮긴 뒤 끈다.
+
+       종전에는 누른 지점이 무조건 화면 가운데가 됐다 — 지금 보고 있는 상자 안을 잡아도
+       지도가 먼저 튀고 나서 손을 따라왔다. 상자를 "잡아서 옮기는" 게 아니라 매번 다시
+       조준하는 느낌이라, 조금만 옮기려 해도 화면이 크게 흔들렸다.
+    */
     minimap.addEventListener('pointerdown', (e) => {
         miniDrag = true;
         try { minimap.setPointerCapture(e.pointerId); } catch (ignored) { /* 캡처 없이 진행 */ }
+
+        const view = minimapView.getBoundingClientRect();
+        const inside = e.clientX >= view.left && e.clientX <= view.right
+                    && e.clientY >= view.top && e.clientY <= view.bottom;
+        miniGrab = inside
+                ? { dx: e.clientX - (view.left + view.width / 2), dy: e.clientY - (view.top + view.height / 2) }
+                : { dx: 0, dy: 0 };
+
+        minimap.classList.add('is-dragging');
         miniScrollTo(e.clientX, e.clientY);
         e.preventDefault();
     });
-    minimap.addEventListener('pointermove', (e) => { if (miniDrag) miniScrollTo(e.clientX, e.clientY); });
+
+    /* pointermove 는 화면 주사율보다 자주 올 수 있다. 격자 스크롤을 프레임마다 한 번만
+       건드려야 3,000석짜리 홀에서도 끌리는 느낌이 끊기지 않는다(격자 끌기와 같은 방식). */
+    let miniMoveFrame = null;
+    let miniLastPoint = null;
+    minimap.addEventListener('pointermove', (e) => {
+        if (!miniDrag) return;
+        miniLastPoint = { x: e.clientX, y: e.clientY };
+        if (miniMoveFrame !== null) return;
+        miniMoveFrame = requestAnimationFrame(() => {
+            miniMoveFrame = null;
+            if (miniDrag && miniLastPoint) miniScrollTo(miniLastPoint.x, miniLastPoint.y);
+        });
+    });
+
     function endMiniDrag(e) {
         if (!miniDrag) return;
         miniDrag = false;
+        miniGrab = { dx: 0, dy: 0 };
+        minimap.classList.remove('is-dragging');
         if (minimap.hasPointerCapture(e.pointerId)) minimap.releasePointerCapture(e.pointerId);
     }
     minimap.addEventListener('pointerup', endMiniDrag);
