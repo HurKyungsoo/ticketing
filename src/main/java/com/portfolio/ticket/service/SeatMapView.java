@@ -67,7 +67,17 @@ public class SeatMapView {
      *                  이름을 아예 안 그린다 — 머릿글과 똑같은 글자가 두 번 나오게 된다.
      */
     public record Floor(String name, String anchorId, String shortName, List<Row> rows,
-                        int seatCount, int availableCount) {}
+                        int seatCount, int availableCount) {
+
+        /**
+         * 이 구역에서 가장 긴 줄의 좌석 수. 부채꼴 구역(줄마다 좌석 수가 다름)의 화면 CSS
+         * (--max-n)가 줄번호 라벨을 한 줄로 정렬하는 데 쓴다 — 자세한 이유는 app.css
+         * ".rowlabel + .seat" 규칙 주석 참고.
+         */
+        public int maxRowSize() {
+            return rows.stream().mapToInt(r -> r.seats().size()).max().orElse(0);
+        }
+    }
 
     /**
      * 한 층(밴드). 가로로 나란히 놓이는 열들의 묶음이고, 열마다 구역이 위에서 아래로 쌓인다.

@@ -14,7 +14,10 @@
              뗄 게 없으면(구역명이 곧 층 이름) 빈 문자열이라 아예 안 그린다 — 그리면 바로
              위 머릿글과 같은 글자가 두 번 나온다. -->
         <h3 class="floorname" th:if="${!floor.shortName.isEmpty()}" th:text="${floor.shortName}">A</h3>
-        <div class="house">
+        <!-- --max-n: 이 구역에서 가장 긴 줄의 좌석 수. 부채꼴 구역(줄마다 좌석 수가 다름)에서
+             짧은 줄의 첫 좌석을 얼마나 밀어야 긴 줄과 같은 중심에 맞는지 계산하는 기준이다
+             (app.css ".rowlabel + .seat" 규칙 참고). 구역에 한 번만 적으면 되므로 여기 둔다. -->
+        <div class="house" th:style="'--max-n:' + ${floor.maxRowSize()}">
             <!--
                 --n(줄 좌석 수) 과 --i(줄 안에서 몇 번째) 로 좌석마다 호(arc) 곡선의 y 오프셋을
                 계산한다. 실제 극장 줄은 무대를 중심으로 휘어서, 양끝이 무대에 더 가깝다.
