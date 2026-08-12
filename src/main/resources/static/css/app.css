@@ -421,7 +421,20 @@ a { color: inherit; text-decoration: none; }
    전부 다시 배치돼서 한 단계에 300ms 가 걸렸고, 핀치가 끊겨 보였다.
    origin 을 0 0 으로 고정해야 스크롤 보정 계산이 간단해진다(콘텐츠 좌표 X -> k*X).
 */
-#housecontent { transform-origin: 0 0; }
+/*
+   좌석 격자 전체를 감싸는 상자. 폭을 내용에 맞춘다(max-content).
+
+   기본값(block, 폭 = 스크롤러 폭)이면 좁은 밴드가 "화면 폭" 안에서 가운데를 잡고, 넓은
+   밴드만 그 밖으로 넘쳐 흐른다. 그래서 확대해서 가로로 넓어지는 순간 밴드마다 중심이
+   달라진다 — 실측(2,015석 홀, 확대): 전체 폭 2,492 인데 1층은 중앙 1,269 인 반면
+   무대 뒤 1층 P 와 2층은 707 이라 539px 씩 왼쪽으로 붙었다. 무대는 무대 뒤 밴드를
+   따라가므로 같이 밀린다.
+
+   내용 폭으로 두면 모든 밴드가 같은 좌표계를 공유해 중심이 하나로 모인다.
+   min-width: 100% 는 반대 경우를 위한 것이다 — 좌석이 화면보다 좁은 홀에서 상자가
+   쪼그라들면 밴드들이 왼쪽으로 몰린다.
+*/
+#housecontent { transform-origin: 0 0; width: max-content; min-width: 100%; }
 .housescroll.pinching #housecontent { will-change: transform; }
 
 /*
