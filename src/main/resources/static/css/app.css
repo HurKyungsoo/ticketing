@@ -449,8 +449,17 @@ a { color: inherit; text-decoration: none; }
 .zoneline { display: flex; gap: var(--zone-gap); padding: 0 var(--tooltip-bleed); }
 /* 층 이름을 못 얻어 머릿글이 없는 홀에서만 쓰인다(머릿글이 있으면 .bandname 이 간격을 낸다). */
 .zoneline + .zoneline { margin-top: 44px; }
-/* 무대 뒤 밴드와 무대 사이는 좁게 — 무대 뒤 좌석은 무대에 붙어 있다. */
-.zoneline + .stage { margin-top: 14px; }
+/*
+   무대 뒤 밴드와 무대 사이. 실제로 붙어 있는 자리라 좁게 두지만, 종전 값(14px, 게다가
+   .stage 자신의 8px 이 이기는 경우가 있었다)은 너무 좁았다 — 실측으로 가장 아래 좌석과
+   무대 사이가 6px, 좌석 한 칸의 절반이었다. 아래쪽 여백이 40px 인 것과 견주면 무대가
+   위쪽 좌석에만 달라붙은 것처럼 보인다.
+
+   좌석 크기에 비례시킨다. 고정값으로 두면 확대했을 때(좌석 12px → 24px) 좌석만 커지고
+   틈은 그대로라 다시 붙어 보인다. 호(arc) 때문에 줄 양끝이 아래로 처지는 것도 이 값이
+   흡수한다.
+*/
+.zoneline + .stage { margin-top: calc(var(--seat-size) * 2); }
 
 /*
    층 머릿글.
@@ -3715,6 +3724,15 @@ body.page-seatmap.tone-light .stage {
   padding-left: calc(12px + .14em);
 }
 body.page-seatmap.tone-light .stage::after { display: none; }
+/*
+   위 라이트 톤 규칙이 margin 을 통째로 지정하는 바람에 `.zoneline + .stage` 의 위쪽 여백이
+   묻힌다(선택자가 더 구체적이라 이긴다). 그래서 같은 값을 여기서 다시 준다 — 앞쪽에만
+   적어두면 화면에서는 8px 그대로다. 오늘 줄번호 배경(.rowlabel)에서 똑같이 겪었다.
+
+   무대 뒤 밴드가 있을 때만 키운다. 무대가 맨 앞에 오는 홀(뒤 밴드 없음)에서는 위가
+   비어 있으므로 여백을 더 주면 지도 첫머리가 그만큼 빈다.
+*/
+body.page-seatmap.tone-light .zoneline + .stage { margin-top: calc(var(--seat-size) * 2); }
 
 /* 층 머릿글 · 구역 이름 */
 body.page-seatmap.tone-light .bandname { color: var(--ink); }
