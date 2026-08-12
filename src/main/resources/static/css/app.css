@@ -682,6 +682,13 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 0 0 max(2px, calc(var(--seat-size) * 0.12)) var(--paper);
 }
 .seat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+/* .seat 는 부채꼴 배치 때문에 hover 여부와 무관하게 항상 transform 이 걸려 있어서
+   스스로 스태킹 컨텍스트를 만든다. 그 안의 툴팁(::after, z-index:5)은 이 컨텍스트
+   밖의 형제 요소와 비교될 때는 .seat 자신이 z-index:auto 인 채로(사실상 0) 취급된다.
+   줄 번호 라벨(.rowlabel, z-index:2, position:sticky)은 이보다 높아서, 줄 첫 좌석의
+   툴팁이 라벨 배경에 가려 잘려 보였다. 툴팁이 보이는 동안만 좌석 자체를 라벨보다
+   위로 올려 스태킹 컨텍스트째로 끌어올린다. */
+.seat:hover, .seat:focus-visible { z-index: 6; }
 
 /* 등급·가격 툴팁 */
 .seat::before, .seat::after { opacity: 0; transition: opacity .12s, transform .12s; pointer-events: none; z-index: 5; }
