@@ -35,12 +35,19 @@
         층은 넷(합창석·1·2·3층)뿐이라 한 줄에 들어가고, 구역별 잔여석은 층으로 이동한 뒤
         구역 이름 아래에서 확인하면 된다.
     -->
-    <nav class="floornav" th:if="${arena.bands().size() > 1}">
-        <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.jumpTargetId()}">
-            <span th:text="${band.displayName()}">1층</span>
-            <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
-        </a>
-    </nav>
+    <!--
+        슬롯으로 한 번 감싸는 이유: 아래로 스크롤하면 이 줄이 화면 왼쪽에 세로로 붙는데
+        (position: fixed), 그러면 흐름에서 빠져 아래 내용이 그 높이만큼 위로 튄다.
+        슬롯이 원래 높이를 붙잡고 있으면 붙었다 떨어질 때 화면이 흔들리지 않는다.
+    -->
+    <div class="floornav-slot" th:if="${arena.bands().size() > 1}">
+        <nav class="floornav" id="floornav">
+            <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.jumpTargetId()}">
+                <span th:text="${band.displayName()}">1층</span>
+                <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
+            </a>
+        </nav>
+    </div>
 
     <!--
         좌석 격자는 이 안에서만 가로 스크롤된다. 페이지 본문이 옆으로 밀리면 안 된다.
@@ -357,6 +364,8 @@
         syncMinimap();
         // 기준선(sticky 바 vs 지도 뷰포트)이 모드마다 다르므로 전환 직후 다시 계산한다.
         syncActiveFloorChip();
+        // 확대 모드에서는 층 줄을 옆에 붙이지 않는다(미니맵이 그 역할을 한다).
+        syncFloornavDock();
     }
 
     /**
@@ -616,10 +625,48 @@
     /* 뒤로가기·앞으로가기로 해시가 바뀌는 경우(브라우저가 스크롤만 옮기고 클릭은 없다). */
     window.addEventListener('hashchange', syncActiveFloorChip);
 
+    /* ---------- 층 바로가기를 옆으로 빼기 ----------
+       층 줄은 페이지 맨 위에만 있어서, 층을 바꾸려면 매번 맨 위까지 올라와야 했다. 그런데
+       위쪽에 고정하면 헤더·인원수 줄에 이어 세로를 또 먹는다 — 좌석을 고르는 화면에서 세로는
+       가장 아까운 자원이다. 원래 자리를 지나가면 화면 왼쪽에 세로로 붙여, 세로를 한 픽셀도
+       안 쓰면서 어디서든 층을 바꿀 수 있게 한다.
+
+       좁은 화면에서는 붙이지 않는다 — 좌석 격자가 화면 폭을 다 쓰므로 옆에 띄우면 좌석을
+       덮는다. 그때는 원래대로 맨 위 줄을 쓰면 된다. 확대 모드에서도 안 붙인다(그쪽은
+       미니맵이 같은 역할을 하고, 층 이동도 미니맵 좌표로 한다). */
+    const floornav = document.getElementById('floornav');
+    const floornavSlot = floornav?.parentElement;
+    const DOCK_MIN_WIDTH = 1100;
+
+    function syncFloornavDock() {
+        if (!floornav) return;
+        const slotTop = floornavSlot.getBoundingClientRect().top;
+        const stickyH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) || 0;
+        const shouldDock = !zoomed
+                && window.innerWidth >= DOCK_MIN_WIDTH
+                && slotTop < stickyH;
+
+        if (shouldDock === floornav.classList.contains('is-docked')) return;
+        if (shouldDock) {
+            // 흐름에서 빠지기 직전 높이를 슬롯에 넘겨둔다. 안 하면 아래 내용이 그만큼 위로 튄다.
+            floornavSlot.style.height = floornav.offsetHeight + 'px';
+            floornav.classList.add('is-docked');
+        } else {
+            floornav.classList.remove('is-docked');
+            floornavSlot.style.height = '';
+        }
+    }
+    window.addEventListener('resize', syncFloornavDock);
+    syncFloornavDock();
+
     window.addEventListener('scroll', () => {
         if (zoomed) return;   // 확대 모드는 위 scroller 스크롤 핸들러가 맡는다.
         if (miniFrame !== null) return;
-        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncActiveFloorChip(); });
+        miniFrame = requestAnimationFrame(() => {
+            miniFrame = null;
+            syncActiveFloorChip();
+            syncFloornavDock();
+        });
     }, { passive: true });
     syncActiveFloorChip();
 

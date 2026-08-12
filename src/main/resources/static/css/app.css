@@ -533,6 +533,7 @@ a { color: inherit; text-decoration: none; }
    width: fit-content + margin-inline auto 로 가운데 정렬한다. justify-content 로는
    안 된다 — 컨테이너가 블록이라 폭이 100% 여서 테두리가 화면 전체로 늘어난다.
 */
+.floornav-slot { display: flex; justify-content: center; }
 .floornav {
   display: flex; flex-wrap: wrap; gap: 4px;
   width: fit-content;
@@ -543,6 +544,37 @@ a { color: inherit; text-decoration: none; }
   border-radius: 999px;
   background: var(--ink-soft);
 }
+/*
+   원래 자리를 지나 스크롤하면 화면 왼쪽에 세로로 붙는다.
+
+   위쪽에 고정(sticky)하지 않은 이유: 헤더와 인원수 줄이 이미 고정돼 있어서 층 줄까지
+   얹으면 좌석이 보이는 높이가 그만큼 줄어든다. 좌석을 고르는 화면에서 세로 공간은
+   가장 아까운 자원이다. 옆으로 빼면 세로를 한 픽셀도 안 먹는다.
+
+   오른쪽이 아니라 왼쪽인 것은 미니맵(.minimap)이 오른쪽 아래에 고정돼 있어서다.
+   z-index 는 미니맵(11)보다 낮게 둬서, 둘이 만나는 일이 생겨도 지도가 위로 온다.
+
+   좁은 화면에서는 감춘다 — 좌석 격자가 화면 폭을 다 쓰므로 옆에 띄우면 좌석을 덮는다.
+   그 경우엔 원래처럼 맨 위 줄을 쓰면 된다.
+*/
+.floornav.is-docked {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  /* 콘서트홀은 칩이 20개까지 나온다. 화면을 넘기지 않게 잘라 스크롤한다. */
+  max-height: 72vh;
+  overflow-y: auto;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(11, 11, 12, .86);
+  backdrop-filter: blur(8px);
+  border-color: var(--line-strong);
+  z-index: 10;
+}
+.floornav.is-docked .floorchip { justify-content: space-between; }
 .floorchip {
   display: inline-flex; align-items: baseline; gap: 5px;
   padding: 7px 16px;
@@ -3654,6 +3686,13 @@ body.page-seatmap.tone-light .floorname { color: rgba(17, 18, 20, .45); }
 body.page-seatmap.tone-light .floornav {
   background: #fff;
   border-color: rgba(17, 18, 20, .12);
+}
+/* 옆으로 붙었을 때는 좌석 위에 뜨므로, 뒤가 비쳐 글자가 묻히지 않게 흰 배경을 유지하고
+   그림자로 띄운다(다크 톤의 반투명 검정 대신). */
+body.page-seatmap.tone-light .floornav.is-docked {
+  background: rgba(255, 255, 255, .92);
+  border-color: rgba(17, 18, 20, .16);
+  box-shadow: 0 6px 24px rgba(17, 18, 20, .12);
 }
 body.page-seatmap.tone-light .floorchip { color: rgba(17, 18, 20, .7); }
 body.page-seatmap.tone-light .floorchip:hover { background: rgba(17, 18, 20, .06); }
