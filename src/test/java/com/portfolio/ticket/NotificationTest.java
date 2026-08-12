@@ -176,7 +176,8 @@ class NotificationTest {
         syncService.topUpStaleSchedules();
 
         Notification created = notificationService.findMine(MEMBER).get(0);
-        assertThat(notificationService.markRead(created.getId(), MEMBER)).contains(performanceId);
+        assertThat(notificationService.markRead(created.getId(), MEMBER))
+                .contains(new NotificationService.ReadResult(performanceId, NotificationType.SCHEDULE_OPENED));
         assertThat(notificationService.countUnread(MEMBER)).isZero();
 
         var readAt = notificationService.findMine(MEMBER).get(0).getReadAt();

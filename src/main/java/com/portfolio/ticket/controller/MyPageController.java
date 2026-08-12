@@ -1,6 +1,7 @@
 package com.portfolio.ticket.controller;
 
 import com.portfolio.ticket.domain.Notification;
+import com.portfolio.ticket.domain.NotificationType;
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.domain.Wishlist;
 import com.portfolio.ticket.security.CustomUserDetails;
@@ -83,8 +84,14 @@ public class MyPageController {
     public String readNotification(@PathVariable Long id,
                                    @AuthenticationPrincipal CustomUserDetails principal) {
         return notificationService.markRead(id, principal.getMemberId())
-                .map(performanceId -> "redirect:/performances/" + performanceId)
+                .map(this::redirectAfterRead)
                 .orElse("redirect:/mypage/notifications");
+    }
+
+    /** 관람평 요청 알림은 공연 상세의 관람평 칸까지 데려간다 — 이 알림을 누른 이유가 그거니까. */
+    private String redirectAfterRead(NotificationService.ReadResult result) {
+        String base = "redirect:/performances/" + result.performanceId();
+        return result.type() == NotificationType.REVIEW_REQUESTED ? base + "#reviews" : base;
     }
 
     /** 상단 탭의 안 읽은 알림 배지. 세 화면이 같은 탭을 공유하므로 어디서 열어도 같은 수가 보여야 한다. */
