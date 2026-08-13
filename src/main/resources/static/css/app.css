@@ -3981,7 +3981,12 @@ body.page-mypage.tone-light .resmodal-share:focus-visible {
 }
 
 @media (max-width: 560px) {
-  body.page-mypage.tone-light .masthead { padding: 16px 20px; }
+  /* 목록·상세와 같은 문제(내비가 줄바꿈 없이 폭을 넘겨 낱말마다 두 줄로 접힘) —
+     그 화면들은 .page-list 클래스를 공유해(홈과 카드 CSS 를 나누는 것과 같은 이유로)
+     이미 고쳐져 있었는데 마이페이지만 빠져 있었다. 실기동(500px)으로 확인. */
+  body.page-mypage.tone-light .masthead { padding: 16px 20px; flex-wrap: wrap; row-gap: 8px; }
+  body.page-mypage.tone-light .masthead h1 { white-space: nowrap; }
+  body.page-mypage.tone-light .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
   body.page-mypage.tone-light .mypageinner { padding: 24px 20px 60px; }
   body.page-mypage.tone-light .mypagetabs { gap: 20px; }
 }
