@@ -6,6 +6,7 @@ import com.portfolio.ticket.payment.TossPaymentClient;
 import com.portfolio.ticket.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,6 +41,7 @@ public class ReservationService {
     private final PerformanceScheduleRepository scheduleRepository;
     private final TossPaymentClient tossPaymentClient;
     private final ExternalInventoryClient externalInventoryClient;
+    private final ApplicationEventPublisher events;
 
     /* ------------------------------------------------------------------
      *  1) 락 없음 - 오버부킹이 발생하는 원본 코드
@@ -287,6 +289,9 @@ public class ReservationService {
             schedule.increaseRemaining();
         }
         externalInventoryClient.notifyReleased(schedule.getId(), seats.size());
+        // 취소표 알림 대상. 이 트랜잭션이 실제로 커밋된 뒤에만 처리된다 — 이유는
+        // SeatsReleasedEvent, NotificationService.onSeatsReleased 주석 참고.
+        events.publishEvent(new SeatsReleasedEvent(schedule.getId()));
 
         log.info("예매 취소. no={}, feeRate={}%, refund={}", reservationNo, feeRate, refund);
         return refund;

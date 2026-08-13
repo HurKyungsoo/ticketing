@@ -15,6 +15,7 @@ import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
 import com.portfolio.ticket.service.SeoView;
+import com.portfolio.ticket.service.RestockAlertService;
 import com.portfolio.ticket.service.ReviewService;
 import com.portfolio.ticket.service.WishlistService;
 import com.portfolio.ticket.security.CustomUserDetails;
@@ -32,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -53,6 +55,7 @@ public class PerformanceController {
     private final SeatMapView seatMapView;
     private final SeoView seoView;
     private final WishlistService wishlistService;
+    private final RestockAlertService restockAlertService;
     private final ReviewService reviewService;
 
     /**
@@ -214,6 +217,16 @@ public class PerformanceController {
         // 그때는 찜 상태를 물을 대상이 없으므로 항상 해제 상태로 그린다.
         model.addAttribute("wishlisted",
                 principal != null && wishlistService.isWishlisted(principal.getMemberId(), id));
+        // 매진 회차의 "빈자리 알림 받기" 버튼 상태. 매진이 아닌 회차까지 물을 이유가 없어
+        // 대상을 좁혀서 넘긴다(회차가 많은 공연에서 조회 폭을 줄인다).
+        List<Long> soldOutScheduleIds = schedules.stream()
+                .filter(s -> s.getRemainingSeats() == 0)
+                .map(PerformanceSchedule::getId)
+                .toList();
+        model.addAttribute("subscribedScheduleIds",
+                principal != null
+                        ? restockAlertService.subscribedScheduleIds(principal.getMemberId(), soldOutScheduleIds)
+                        : Set.of());
         // 지도 스크립트 URL. 키가 없으면 null 이고 템플릿이 링크로만 대체한다.
         model.addAttribute("naverMapScriptUrl", naverMapProperties.scriptUrl());
         // 카카오톡 공유 JS 키. 키가 없으면 null 이고 템플릿이 카카오톡 공유 버튼을 아예 안 그린다.

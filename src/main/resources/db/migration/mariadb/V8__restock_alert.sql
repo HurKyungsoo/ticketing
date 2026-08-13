@@ -1,0 +1,37 @@
+-- 취소표 알림. (h2 쪽 V8 과 같은 내용, 타입 표기만 다르다)
+--
+-- 매진 회차에 "빈자리 알림 받기"를 눌러두면 그 회차에서 좌석이 하나라도 풀릴 때
+-- (취소·만료, Seat.release()) 알림을 보낸다.
+--
+-- performance_schedule 을 참조한다. wishlist(공연 단위)와 달리 특정 날짜·시각의 매진을
+-- 구독하는 것이라 회차 단위가 맞는다.
+create table restock_subscription (
+    id          bigint not null auto_increment,
+    member_id   bigint not null,
+    schedule_id bigint not null,
+    created_at  datetime(6) not null,
+    primary key (id)
+) engine=InnoDB;
+
+-- 같은 회차를 두 번 구독할 수 없다. wishlist 와 같은 이유로 최종 방어는 DB.
+alter table restock_subscription add constraint uk_restock_subscription unique (member_id, schedule_id);
+
+-- 좌석이 풀렸을 때 "이 회차를 구독한 사람"을 찾는 조회(NotificationService.onSeatsReleased).
+create index idx_restock_subscription_schedule on restock_subscription (schedule_id);
+
+alter table restock_subscription
+    add constraint fk_restock_subscription_schedule foreign key (schedule_id) references performance_schedule (id);
+
+-- 알림에 회차 참조를 더한다. 취소표 알림(SEAT_AVAILABLE)은 "이 공연"이 아니라 "이 회차"에
+-- 자리가 났다는 뜻이라, 알림을 눌렀을 때 좌석도로 바로 보내려면 회차를 알아야 한다.
+-- SCHEDULE_OPENED 는 회차를 특정하지 않으므로(찜은 공연 단위) null 로 남는다.
+alter table notification add column schedule_id bigint;
+
+alter table notification
+    add constraint fk_notification_schedule foreign key (schedule_id) references performance_schedule (id);
+
+-- 회차 단위 알림의 중복 방지. 기존 uk_notification(member_id, performance_id, type)과
+-- 별개로 둔다 — SCHEDULE_OPENED 는 schedule_id 가 항상 null 이라 이 제약이 서로 다른 값으로
+-- 취급해 막지 못한다(SQL 표준상 NULL 은 유니크 비교에서 서로 다른 값). 실질적으로
+-- SEAT_AVAILABLE(schedule_id 항상 채움) 타입에만 작동한다.
+alter table notification add constraint uk_notification_schedule unique (member_id, schedule_id, type);

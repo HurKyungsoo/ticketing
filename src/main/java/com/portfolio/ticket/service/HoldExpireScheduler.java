@@ -10,6 +10,7 @@ import com.portfolio.ticket.repository.SeatHoldRepository;
 import com.portfolio.ticket.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class HoldExpireScheduler {
     private final SeatRepository seatRepository;
     private final SeatHoldRepository seatHoldRepository;
     private final PerformanceScheduleRepository scheduleRepository;
+    private final ApplicationEventPublisher events;
 
     @Scheduled(fixedDelay = 30_000)
     @Transactional
@@ -71,6 +73,8 @@ public class HoldExpireScheduler {
                             schedule.increaseRemaining();
                         }
                     });
+            // 취소표 알림 대상. ReservationService.cancel() 과 같은 이유로 커밋 후 처리된다.
+            events.publishEvent(new SeatsReleasedEvent(scheduleId));
         }
 
         // 예매 생성 전에 죽은 고아 hold 도 정리

@@ -2010,23 +2010,37 @@ body.page-detail .scheduleday.soldout .sd-date,
 body.page-detail .scheduleday.soldout .sd-dow { color: var(--mute); opacity: .6; }
 
 body.page-detail .sd-times { display: flex; flex-wrap: wrap; gap: 8px; }
-body.page-detail .sd-times a {
+/* .sd-chip 은 <a>(예매 가능한 회차)와 <button>(매진 → 알림 구독)이 같이 쓰는 기본 알약 모양.
+   button 은 기본적으로 배경·테두리·글꼴을 안 물려받으므로 여기서 전부 명시한다. */
+body.page-detail .sd-times .sd-chip {
   display: inline-flex; align-items: baseline; gap: 8px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
+  background: none;
   color: var(--paper);
   padding: 9px 14px;
-  font-size: 14px; font-weight: 600;
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
   transition: border-color .12s, color .12s, background .12s;
 }
-body.page-detail .sd-times a:hover {
+body.page-detail .sd-times a.sd-chip:hover {
   border-color: var(--brass); color: var(--brass);
   background: rgba(255, 201, 64, 0.08);
 }
 body.page-detail .sd-remain { font-size: 12px; font-weight: 500; color: var(--mute); }
-body.page-detail .sd-times a:hover .sd-remain { color: var(--brass-dim); }
-body.page-detail .sd-times a.soldout {
-  border-color: var(--line); color: var(--mute); opacity: .5; pointer-events: none;
+body.page-detail .sd-times a.sd-chip:hover .sd-remain { color: var(--brass-dim); }
+/* 알림 구독 버튼. 매진이라 링크보다 흐리게 두되(살 수 없다는 사실이 먼저 읽혀야 한다),
+   완전히 죽어 있던 종전 .soldout 링크와 달리 실제로 누를 수 있는 액션이라 hover 반응은 남긴다. */
+body.page-detail .sd-times .restock-btn {
+  border-color: var(--line); color: var(--mute);
+}
+body.page-detail .sd-times .restock-btn:hover {
+  border-color: var(--brass-dim); color: var(--paper);
+}
+/* 구독 중. 찜 버튼(브라스 강조)과 같은 신호로 "신청됨"을 알린다. */
+body.page-detail .sd-times .restock-btn[aria-pressed="true"] {
+  border-color: var(--brass); color: var(--brass);
+  background: rgba(255, 201, 64, 0.08);
 }
 
 body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0; }
@@ -3355,28 +3369,36 @@ body.page-detail.tone-light .scheduleday.soldout .sd-day,
 body.page-detail.tone-light .scheduleday.soldout .sd-dow { color: rgba(17, 18, 20, .35); opacity: 1; }
 
 body.page-detail.tone-light .sd-times { gap: 10px; }
-body.page-detail.tone-light .sd-times a {
+body.page-detail.tone-light .sd-times .sd-chip {
   border-color: rgba(17, 18, 20, .16);
   border-radius: 999px;
   color: var(--ink);
   padding: 9px 16px;
   font-size: 13.5px; font-weight: 700;
 }
-body.page-detail.tone-light .sd-times a:hover {
+body.page-detail.tone-light .sd-times a.sd-chip:hover {
   border-color: var(--brass); color: var(--ink);
   background: rgba(233, 180, 76, .08);
 }
 body.page-detail.tone-light .sd-remain { color: rgba(17, 18, 20, .4); font-weight: 600; }
-body.page-detail.tone-light .sd-times a:hover .sd-remain { color: var(--brass-ink); }
-/* 매진 회차는 취소선으로 "있었지만 지금은 못 산다"를 그대로 보여준다. 흐리기만
-   하면 비활성인지 매진인지 구분이 안 된다. */
-body.page-detail.tone-light .sd-times a.soldout {
+body.page-detail.tone-light .sd-times a.sd-chip:hover .sd-remain { color: var(--brass-ink); }
+/* 알림 구독 버튼. 매진임을 먼저 알리는 취소선은 유지하되(있었지만 지금은 못 사는 회차),
+   완전한 비활성이 아니라 실제 액션이 있으므로 hover 로 반응을 보여준다. */
+body.page-detail.tone-light .sd-times .restock-btn {
   border-color: rgba(17, 18, 20, .1);
   color: rgba(17, 18, 20, .35);
-  opacity: 1;
   text-decoration: line-through;
 }
-body.page-detail.tone-light .sd-times a.soldout .sd-remain { color: inherit; }
+body.page-detail.tone-light .sd-times .restock-btn .sd-remain { color: inherit; }
+body.page-detail.tone-light .sd-times .restock-btn:hover {
+  border-color: var(--brass); color: rgba(17, 18, 20, .55);
+}
+/* 구독 중은 취소선을 뗀다 — "못 산다"보다 "알림을 신청해 뒀다"는 사실이 우선이다. */
+body.page-detail.tone-light .sd-times .restock-btn[aria-pressed="true"] {
+  border-color: var(--brass); color: var(--brass-ink);
+  background: rgba(233, 180, 76, .1);
+  text-decoration: none;
+}
 
 body.page-detail.tone-light .empty-inline { color: rgba(17, 18, 20, .5); }
 

@@ -12,11 +12,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     /**
      * 알림 목록. 공연을 join fetch 하는 이유는 화면이 알림마다 공연명·포스터를 쓰기 때문이다 —
-     * 안 하면 알림 수만큼 공연 조회가 나간다(N+1).
+     * 안 하면 알림 수만큼 공연 조회가 나간다(N+1). schedule 은 SEAT_AVAILABLE 에서만 있어
+     * left join fetch 다 — 일반 join 이면 SCHEDULE_OPENED(schedule null) 행이 통째로 빠진다.
      */
     @Query("""
            select n from Notification n
              join fetch n.performance
+             left join fetch n.schedule
             where n.memberId = :memberId
             order by n.createdAt desc
            """)
@@ -26,6 +28,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     boolean existsByMemberIdAndPerformanceIdAndType(
             Long memberId, Long performanceId, com.portfolio.ticket.domain.NotificationType type);
+
+    boolean existsByMemberIdAndScheduleIdAndType(
+            Long memberId, Long scheduleId, com.portfolio.ticket.domain.NotificationType type);
 
     Optional<Notification> findByIdAndMemberId(Long id, Long memberId);
 

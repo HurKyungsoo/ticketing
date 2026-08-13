@@ -7,6 +7,7 @@ import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.SeatRepository;
 import com.portfolio.ticket.repository.NotificationRepository;
+import com.portfolio.ticket.repository.RestockSubscriptionRepository;
 import com.portfolio.ticket.repository.ReviewRepository;
 import com.portfolio.ticket.repository.WishlistRepository;
 import com.portfolio.ticket.service.ScheduleOpenedEvent;
@@ -72,6 +73,7 @@ public class PerformanceSyncService {
     private final ReservationRepository reservationRepository;
     private final WishlistRepository wishlistRepository;
     private final NotificationRepository notificationRepository;
+    private final RestockSubscriptionRepository restockSubscriptionRepository;
     private final ReviewRepository reviewRepository;
     private final ApplicationEventPublisher events;
     private final SeatGenerator seatGenerator;
@@ -160,11 +162,14 @@ public class PerformanceSyncService {
             // 관람평도 마찬가지다. 그 공연이 사라지면 관람평이 가리킬 대상이 없다.
             reviewRepository.deleteByPerformanceId(performance.getId());
 
-            // 좌석은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지 않는다.
-            // 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로 함께 지워진다).
+            // 좌석·구독은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지
+            // 않는다. 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로
+            // 함께 지워진다). 취소표 알림 구독도 같은 이유로 함께 정리한다 — 안 지우면
+            // schedule_id FK 가 회차 삭제를 막는다.
             for (PerformanceSchedule schedule : scheduleRepository.findByPerformanceIdOrderByShowAtAsc(performance.getId())) {
                 seatRepository.deleteAll(
                         seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(schedule.getId()));
+                restockSubscriptionRepository.deleteByScheduleId(schedule.getId());
             }
             performanceRepository.delete(performance);
             log.info("공연이 아닌 항목을 제거했다. title={}", performance.getTitle());

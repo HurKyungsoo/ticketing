@@ -201,13 +201,27 @@
                         <span class="sd-dow" th:text="${#temporals.format(d.date, '(E)')}">(금)</span>
                     </div>
                     <div class="sd-times">
-                        <a th:each="s : ${d.schedules}"
-                           th:href="@{/schedules/{id}/seats(id=${s.id})}"
-                           th:classappend="${s.remainingSeats == 0} ? ' soldout'">
-                            <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
-                            <span class="sd-remain"
-                                  th:text="${s.remainingSeats == 0} ? '매진' : '잔여 ' + ${s.remainingSeats}">잔여 400</span>
-                        </a>
+                        <th:block th:each="s : ${d.schedules}">
+                            <a th:if="${s.remainingSeats > 0}" class="sd-chip"
+                               th:href="@{/schedules/{id}/seats(id=${s.id})}">
+                                <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
+                                <span class="sd-remain" th:text="'잔여 ' + ${s.remainingSeats}">잔여 400</span>
+                            </a>
+                            <!--
+                                매진 회차는 좌석도로 가도 살 게 없다. 종전엔 pointer-events:none 인
+                                죽은 링크라 매진을 확인하는 것 말고는 할 수 있는 일이 없었는데,
+                                이제는 "빈자리 알림 받기" 토글 버튼이다 — 취소·만료로 좌석이 풀리면
+                                NotificationService.onSeatsReleased 가 구독자에게 알린다.
+                                구독 상태(aria-pressed)는 컨트롤러가 미리 물어와서 첫 렌더에 반영한다.
+                            -->
+                            <button type="button" th:if="${s.remainingSeats == 0}" class="sd-chip restock-btn"
+                                    th:attr="data-schedule-id=${s.id},
+                                             aria-pressed=${subscribedScheduleIds.contains(s.id)}">
+                                <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
+                                <span class="sd-remain restock-label"
+                                      th:text="${subscribedScheduleIds.contains(s.id)} ? '매진 · 알림 신청됨' : '매진 · 알림 받기'">매진 · 알림 받기</span>
+                            </button>
+                        </th:block>
                     </div>
                 </div>
             </div>
@@ -402,6 +416,87 @@
         if (result.authRequired || !result.ok) return; // 다시 실패하면 버튼을 다시 누르게 둔다
         render(result.data.wishlisted);
         window.__toast(wishToast(result.data.wishlisted));
+    })();
+})();
+</script>
+
+<!--
+    취소표 알림 구독. 매진 회차마다 버튼이 하나씩이라(찜 버튼과 달리 여러 개) 각각에
+    리스너를 달지 않고 .sd-times 에 위임한다 — 나중에 회차가 추가돼도(날짜 늘어남 등)
+    새 버튼에 따로 리스너를 달 필요가 없다.
+-->
+<script>
+(function () {
+    var container = document.querySelector('.scheduledays');
+    if (!container) return;
+
+    var csrfToken = document.querySelector('meta[name="_csrf"]').content;
+    var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+    // 찜 버튼의 PENDING_WISH_KEY 와 같은 목적 — 로그인하고 돌아왔을 때 아까 누르려던 걸 이어간다.
+    var PENDING_RESTOCK_KEY = 'pendingRestockAlert';
+
+    function render(btn, subscribed) {
+        btn.setAttribute('aria-pressed', String(subscribed));
+        btn.querySelector('.restock-label').textContent = subscribed ? '매진 · 알림 신청됨' : '매진 · 알림 받기';
+    }
+
+    async function toggleRestockAlert(scheduleId) {
+        try {
+            var res = await fetch('/api/schedules/' + scheduleId + '/restock-alert', {
+                method: 'POST',
+                headers: { [csrfHeader]: csrfToken }
+            });
+            // 미인증이면 폼 로그인으로 302 된다(찜 버튼과 같은 판별 방식).
+            if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
+                return { authRequired: true };
+            }
+            if (!res.ok) {
+                return { authRequired: false, ok: false };
+            }
+            return { authRequired: false, ok: true, data: await res.json() };
+        } catch (e) {
+            return { authRequired: false, ok: false };
+        }
+    }
+
+    container.addEventListener('click', async function (e) {
+        var btn = e.target.closest('.restock-btn');
+        if (!btn) return;
+
+        btn.disabled = true;
+        var result = await toggleRestockAlert(btn.dataset.scheduleId);
+        btn.disabled = false;
+
+        if (result.authRequired) {
+            sessionStorage.setItem(PENDING_RESTOCK_KEY, btn.dataset.scheduleId);
+            location.href = '/login?returnTo=' + encodeURIComponent(location.pathname);
+            return;
+        }
+        if (!result.ok) {
+            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
+
+        render(btn, result.data.subscribed);
+        window.__toast(result.data.subscribed
+            ? '알림을 신청했습니다. 자리가 나면 알려드릴게요'
+            : '알림 신청을 취소했습니다');
+    });
+
+    /** 로그인하느라 이 화면을 떠났다가 돌아온 직후라면, 아까 누르려던 구독을 자동으로 이어간다. */
+    (async function resumePendingRestockAlert() {
+        var pendingId = sessionStorage.getItem(PENDING_RESTOCK_KEY);
+        if (!pendingId) return;
+        sessionStorage.removeItem(PENDING_RESTOCK_KEY);
+        var btn = container.querySelector('.restock-btn[data-schedule-id="' + pendingId + '"]');
+        if (!btn) return; // 그 사이 회차가 열려 버튼이 사라졌을 수 있다
+
+        var result = await toggleRestockAlert(pendingId);
+        if (result.authRequired || !result.ok) return; // 다시 실패하면 버튼을 다시 누르게 둔다
+        render(btn, result.data.subscribed);
+        window.__toast(result.data.subscribed
+            ? '알림을 신청했습니다. 자리가 나면 알려드릴게요'
+            : '알림 신청을 취소했습니다');
     })();
 })();
 </script>

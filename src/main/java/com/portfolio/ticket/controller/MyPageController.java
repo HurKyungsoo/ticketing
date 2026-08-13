@@ -83,7 +83,11 @@ public class MyPageController {
     public String readNotification(@PathVariable Long id,
                                    @AuthenticationPrincipal CustomUserDetails principal) {
         return notificationService.markRead(id, principal.getMemberId())
-                .map(performanceId -> "redirect:/performances/" + performanceId)
+                // 회차를 아는 알림(취소표 알림)은 좌석도로 바로 보낸다 — 사용자가 기다리던 건
+                // "그 회차"의 빈자리라서, 공연 상세에 내려주고 다시 찾게 하면 한 걸음 낭비다.
+                .map(target -> target.scheduleId() != null
+                        ? "redirect:/schedules/" + target.scheduleId() + "/seats"
+                        : "redirect:/performances/" + target.performanceId())
                 .orElse("redirect:/mypage/notifications");
     }
 
