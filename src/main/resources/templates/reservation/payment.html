@@ -186,6 +186,9 @@
 
 </script>
 
+<!-- 아래 결제 요청 스크립트가 실패 안내에 window.__toast 를 쓴다. 반드시 앞에 와야 한다. -->
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+
 <!--
     토스 결제 요청. 테스트 모드에서는 통째로 안 그린다 — 위에서 SDK 를 안 받았으므로
     TossPayments() 호출이 ReferenceError 로 터진다. 카운트다운 스크립트와 한 덩어리로
@@ -217,7 +220,9 @@
                     card: { useEscrow: false },
                 });
             } catch (e) {
-                alert('결제 요청 중 오류가 발생했습니다: ' + (e.message || e));
+                // reload 가 뒤따르지 않는 실패 안내라 마이페이지 취소와 달리 sessionStorage 로
+                // 넘길 필요가 없다 — 화면은 그대로 있고 다시 시도할 수 있으니 바로 띄운다.
+                window.__toast('결제 요청 중 오류가 발생했습니다: ' + (e.message || e), 4000);
             }
         });
     })();
