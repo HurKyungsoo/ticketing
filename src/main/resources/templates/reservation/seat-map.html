@@ -35,18 +35,34 @@
         층은 넷(합창석·1·2·3층)뿐이라 한 줄에 들어가고, 구역별 잔여석은 층으로 이동한 뒤
         구역 이름 아래에서 확인하면 된다.
     -->
-    <nav class="floornav" th:if="${arena.bands().size() > 1}">
-        <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.jumpTargetId()}">
-            <span th:text="${band.displayName()}">1층</span>
-            <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
-        </a>
-    </nav>
+    <!--
+        슬롯으로 한 번 감싸는 이유: 아래로 스크롤하면 이 줄이 화면 왼쪽에 세로로 붙는데
+        (position: fixed), 그러면 흐름에서 빠져 아래 내용이 그 높이만큼 위로 튄다.
+        슬롯이 원래 높이를 붙잡고 있으면 붙었다 떨어질 때 화면이 흔들리지 않는다.
+    -->
+    <div class="floornav-slot" th:if="${arena.bands().size() > 1}">
+        <nav class="floornav" id="floornav">
+            <a class="floorchip" th:each="band : ${arena.bands()}" th:href="'#' + ${band.jumpTargetId()}">
+                <span th:text="${band.displayName()}">1층</span>
+                <b th:text="${band.availableCount()}">615</b><i th:text="'/' + ${band.seatCount()}">/615</i>
+            </a>
+        </nav>
+    </div>
 
     <!--
         좌석 격자는 이 안에서만 가로 스크롤된다. 페이지 본문이 옆으로 밀리면 안 된다.
         무대도 이 안에 둔다 — 무대 뒤 구역(합창석)이 무대 위쪽에 와야 하고, 무대와 좌석이
         같이 스크롤돼야 어느 좌석이 무대 정면인지가 유지된다.
     -->
+    <!--
+        키보드 조작 안내. 좌석은 구역마다 정지점 하나(roving tabindex)라 Tab 만으로는
+        구역 첫 좌석까지밖에 못 간다 — 방향키로 옮긴다는 걸 모르면 갇힌 것처럼 느껴진다.
+        눈으로 쓰는 사람에게는 필요 없는 설명이라 화면에는 감추고 스크린리더에만 읽힌다.
+    -->
+    <p class="sr-only">좌석은 방향키로 옮겨 다니고, 엔터 또는 스페이스로 선택합니다.
+        이미 판매되었거나 결제 대기 중인 좌석은 건너뜁니다.
+        Tab 을 누르면 다음 구역으로 넘어갑니다.</p>
+
     <div class="housescroll" id="housescroll" th:classappend="${arena.hasSides()} ? 'has-sides'">
       <!-- 핀치 중에는 이 래퍼만 transform 으로 확대해 보여준다(레이아웃 없이 합성만 하므로 부드럽다).
            손을 떼는 순간 실제 좌석 크기로 확정하고 transform 을 지운다. -->
@@ -348,6 +364,8 @@
         syncMinimap();
         // 기준선(sticky 바 vs 지도 뷰포트)이 모드마다 다르므로 전환 직후 다시 계산한다.
         syncActiveFloorChip();
+        // 확대 모드에서는 층 줄을 옆에 붙이지 않는다(미니맵이 그 역할을 한다).
+        syncFloornavDock();
     }
 
     /**
@@ -362,7 +380,17 @@
         if (!zoomed) { scroller.style.height = ''; return; }
         const available = window.innerHeight - scroller.getBoundingClientRect().top
                 - bookbar.offsetHeight - 12;
-        scroller.style.height = Math.round(Math.max(280, Math.min(860, available))) + 'px';
+        /*
+           상한을 860 에서 1600 으로 올렸다. 860 은 세로가 긴 화면에서 남는 공간을 그냥
+           버리고 있었다 — 1440px 창이면 여유가 1,148px 인데 860 에서 잘려 288px(좌석
+           아홉 줄쯤)이 빈 채로 남는다. 지도 모드의 목적이 "한 번에 많이 보기"인데
+           화면이 클수록 덜 보여주는 셈이었다.
+
+           상한 자체를 없애지는 않는다. 세로로 아주 긴 창에서는 좌석이 한 화면에 다
+           들어와도 지도가 계속 늘어나 아래쪽이 텅 비게 되고, 미니맵 배율도 그만큼
+           작아져 쓸모가 없어진다.
+        */
+        scroller.style.height = Math.round(Math.max(280, Math.min(1600, available))) + 'px';
     }
 
     /**
@@ -582,36 +610,129 @@
             if (target.el.getBoundingClientRect().top <= referenceY) current = target;
             else break;   // 칩 순서 = 밴드 순서 = DOM 순서(위→아래)라 여기서 멈춰도 된다.
         }
-        floorChipTargets.forEach(({ chip }) => chip.removeAttribute('aria-current'));
-        current.chip.setAttribute('aria-current', 'true');
+        setActiveChip(current.chip);
     }
+
+    function setActiveChip(chip) {
+        floorChipTargets.forEach(({ chip: other }) => other.removeAttribute('aria-current'));
+        chip.setAttribute('aria-current', 'true');
+    }
+
+    /* 누른 칩을 곧바로 활성으로 표시한다.
+
+       칩은 앵커(#floor-N-head)라서 브라우저가 알아서 그 자리로 이동하는데, 그 이동으로는
+       스크롤 스파이가 따라오지 않았다 — 실측: 2층 칩을 눌러 scrollY 1952(2층)까지 갔는데
+       칩은 계속 「1층 P」였다. 눌러도 아무 반응이 없는 것처럼 보이고, 나중에 위로 올라와도
+       여전히 1층 P 라서 "선택이 남지 않는다"고 느껴진다.
+
+       스크롤로 옮겨 다니면 그때부터는 스파이가 지금 보고 있는 층으로 다시 맞춘다 —
+       칩은 "어디로 가겠다는 선택"이자 "지금 어디를 보고 있는가"의 표시이기도 하므로,
+       실제로 다른 층을 보고 있는데 누른 칩이 계속 켜져 있으면 그건 거짓말이 된다. */
+    floorChipTargets.forEach(({ chip }) => {
+        chip.addEventListener('click', () => setActiveChip(chip));
+    });
+
+    /* 뒤로가기·앞으로가기로 해시가 바뀌는 경우(브라우저가 스크롤만 옮기고 클릭은 없다). */
+    window.addEventListener('hashchange', syncActiveFloorChip);
+
+    /* ---------- 층 바로가기를 옆으로 빼기 ----------
+       층 줄은 페이지 맨 위에만 있어서, 층을 바꾸려면 매번 맨 위까지 올라와야 했다. 그런데
+       위쪽에 고정하면 헤더·인원수 줄에 이어 세로를 또 먹는다 — 좌석을 고르는 화면에서 세로는
+       가장 아까운 자원이다. 원래 자리를 지나가면 화면 왼쪽에 세로로 붙여, 세로를 한 픽셀도
+       안 쓰면서 어디서든 층을 바꿀 수 있게 한다.
+
+       좁은 화면에서는 붙이지 않는다 — 좌석 격자가 화면 폭을 다 쓰므로 옆에 띄우면 좌석을
+       덮는다. 그때는 원래대로 맨 위 줄을 쓰면 된다. 확대 모드에서도 안 붙인다(그쪽은
+       미니맵이 같은 역할을 하고, 층 이동도 미니맵 좌표로 한다). */
+    const floornav = document.getElementById('floornav');
+    const floornavSlot = floornav?.parentElement;
+    const DOCK_MIN_WIDTH = 1100;
+
+    function syncFloornavDock() {
+        if (!floornav) return;
+        const slotTop = floornavSlot.getBoundingClientRect().top;
+        const stickyH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) || 0;
+        const shouldDock = !zoomed
+                && window.innerWidth >= DOCK_MIN_WIDTH
+                && slotTop < stickyH;
+
+        if (shouldDock === floornav.classList.contains('is-docked')) return;
+        if (shouldDock) {
+            // 흐름에서 빠지기 직전 높이를 슬롯에 넘겨둔다. 안 하면 아래 내용이 그만큼 위로 튄다.
+            floornavSlot.style.height = floornav.offsetHeight + 'px';
+            floornav.classList.add('is-docked');
+        } else {
+            floornav.classList.remove('is-docked');
+            floornavSlot.style.height = '';
+        }
+    }
+    window.addEventListener('resize', syncFloornavDock);
+    syncFloornavDock();
+
     window.addEventListener('scroll', () => {
         if (zoomed) return;   // 확대 모드는 위 scroller 스크롤 핸들러가 맡는다.
         if (miniFrame !== null) return;
-        miniFrame = requestAnimationFrame(() => { miniFrame = null; syncActiveFloorChip(); });
+        miniFrame = requestAnimationFrame(() => {
+            miniFrame = null;
+            syncActiveFloorChip();
+            syncFloornavDock();
+        });
     }, { passive: true });
     syncActiveFloorChip();
 
     /* 미니맵을 누르거나 끌면 그 지점이 화면 가운데로 오게 지도를 옮긴다.
        미니맵은 격자 바깥의 fixed 요소라 격자의 끌기 처리와 겹치지 않는다. */
     let miniDrag = false;
+    /* 뷰 상자를 잡은 지점과 상자 중심의 차이. 끄는 동안 이 차이를 유지해야 상자가 손을 따라온다.
+       0,0 이면 "누른 지점을 화면 가운데로"가 된다(상자 바깥을 눌렀을 때). */
+    let miniGrab = { dx: 0, dy: 0 };
+
+    /** 미니맵 좌표(clientX/Y)를 격자 스크롤 위치로 옮긴다. */
     function miniScrollTo(clientX, clientY) {
         if (!miniK) return;
         const r = minimapInner.getBoundingClientRect();
-        scroller.scrollLeft = (clientX - r.left) / miniK - scroller.clientWidth / 2;
-        scroller.scrollTop = (clientY - r.top) / miniK - scroller.clientHeight / 2;
+        scroller.scrollLeft = (clientX - miniGrab.dx - r.left) / miniK - scroller.clientWidth / 2;
+        scroller.scrollTop = (clientY - miniGrab.dy - r.top) / miniK - scroller.clientHeight / 2;
         syncMinimapView();
     }
+
+    /*
+       상자를 잡았으면 그 자리에서 끌고, 바깥을 눌렀으면 거기로 옮긴 뒤 끈다.
+
+       종전에는 누른 지점이 무조건 화면 가운데가 됐다 — 지금 보고 있는 상자 안을 잡아도
+       지도가 먼저 튀고 나서 손을 따라왔다. 상자를 "잡아서 옮기는" 게 아니라 매번 다시
+       조준하는 느낌이라, 조금만 옮기려 해도 화면이 크게 흔들렸다.
+    */
     minimap.addEventListener('pointerdown', (e) => {
         miniDrag = true;
         try { minimap.setPointerCapture(e.pointerId); } catch (ignored) { /* 캡처 없이 진행 */ }
+
+        const view = minimapView.getBoundingClientRect();
+        const inside = e.clientX >= view.left && e.clientX <= view.right
+                    && e.clientY >= view.top && e.clientY <= view.bottom;
+        miniGrab = inside
+                ? { dx: e.clientX - (view.left + view.width / 2), dy: e.clientY - (view.top + view.height / 2) }
+                : { dx: 0, dy: 0 };
+
+        minimap.classList.add('is-dragging');
         miniScrollTo(e.clientX, e.clientY);
         e.preventDefault();
     });
-    minimap.addEventListener('pointermove', (e) => { if (miniDrag) miniScrollTo(e.clientX, e.clientY); });
+
+    /* 여기서는 프레임 묶음(rAF)을 쓰지 않는다. 하는 일이 스크롤 값 둘과 상자 스타일 넷을
+       쓰는 것뿐이라 프레임마다 몰아줄 만큼 무겁지 않고, rAF 로 감싸면 창이 비활성이라
+       프레임이 멈춘 동안 끌기가 통째로 죽는 실패 경로만 새로 생긴다(같은 이유로 홈 화면
+       커서 스포트라이트에서도 rAF 묶음을 걷어냈다). 무거운 재계산은 syncMinimap 쪽이고
+       그건 이미 따로 미뤄져 있다. */
+    minimap.addEventListener('pointermove', (e) => {
+        if (miniDrag) miniScrollTo(e.clientX, e.clientY);
+    });
+
     function endMiniDrag(e) {
         if (!miniDrag) return;
         miniDrag = false;
+        miniGrab = { dx: 0, dy: 0 };
+        minimap.classList.remove('is-dragging');
         if (minimap.hasPointerCapture(e.pointerId)) minimap.releasePointerCapture(e.pointerId);
     }
     minimap.addEventListener('pointerup', endMiniDrag);
@@ -1053,39 +1174,223 @@
         });
     });
 
+    /* ---------- 키보드로 좌석 고르기 (roving tabindex) ----------
+       좌석이 전부 탭 정지점이면 가운데 좌석 하나를 고르려고 Tab 을 백 번 눌러야 한다
+       (2,481석짜리 홀에서는 천 번이 넘는다). 격자 UI 의 표준은 "정지점 하나, 안에서는
+       방향키"다 — 구역마다 정지점을 하나만 두고 그 안에서 ←→↑↓ 로 옮긴다. 3구역짜리
+       좌석도라면 Tab 세 번이면 전 좌석에 닿을 수 있다.
+
+       고를 수 없는 좌석(판매 완료·결제 대기)은 이동에서 건너뛴다 — 고르러 다니는 길에
+       못 고르는 자리를 계속 밟게 하지 않는다.
+
+       tabindex 는 이제 여기서만 관리한다 — markUnavailable/markAvailable 이 각자 건드리면
+       구역의 유일한 정지점이 사라져 Tab 이 그 구역을 통째로 건너뛴다. */
+    const seatGrids = [...document.querySelectorAll('.house')]
+            .map(house => ({
+                house,
+                rows: [...house.querySelectorAll('.row')]
+                        .map(row => [...row.querySelectorAll('.seat')])
+                        .filter(seats => seats.length > 0)
+            }))
+            .filter(grid => grid.rows.length > 0);
+
+    function gridOf(seat) {
+        return seatGrids.find(grid => grid.house.contains(seat));
+    }
+
+    function positionOf(grid, seat) {
+        for (let r = 0; r < grid.rows.length; r++) {
+            const c = grid.rows[r].indexOf(seat);
+            if (c !== -1) return { r, c };
+        }
+        return null;
+    }
+
+    function isSelectable(seat) {
+        return seat.getAttribute('aria-disabled') !== 'true';
+    }
+
+    /** 구역의 첫 고를 수 있는 좌석. 전 좌석이 나간 구역이면 첫 좌석으로 돌아간다 —
+        정지점이 아예 없으면 Tab 이 그 구역을 통째로 건너뛰어 존재조차 알 수 없다. */
+    function firstSelectable(grid) {
+        for (const row of grid.rows) {
+            const found = row.find(isSelectable);
+            if (found) return found;
+        }
+        return grid.rows[0][0];
+    }
+
+    function setTabStop(grid, seat) {
+        grid.rows.forEach(row => row.forEach(s => { s.tabIndex = -1; }));
+        seat.tabIndex = 0;
+        grid.stop = seat;
+    }
+
+    seatGrids.forEach(grid => setTabStop(grid, firstSelectable(grid)));
+
+    /* 정지점이던 좌석이 나가면(실시간 갱신으로 수시로 일어난다) 정지점을 옮긴다. 안 하면
+       Tab 이 이제 못 고르는 좌석에 내려앉고, 거기서 방향키를 눌러도 건너뛸 기준이 없다. */
+    function reseatTabStopIfNeeded(seat) {
+        const grid = gridOf(seat);
+        if (grid && grid.stop === seat && !isSelectable(seat)) {
+            setTabStop(grid, firstSelectable(grid));
+        }
+    }
+
+    /* 클릭이나 Tab 으로 들어온 좌석을 그 구역의 정지점으로 삼는다. 안 하면 방향키로 한참
+       옮겨놓고 다른 곳에 갔다 Tab 으로 돌아왔을 때 매번 첫 좌석으로 되돌아간다. */
+    document.addEventListener('focusin', e => {
+        const seat = e.target.closest?.('.seat');
+        if (!seat) return;
+        const grid = gridOf(seat);
+        if (grid && grid.stop !== seat) setTabStop(grid, seat);
+    });
+
+    /**
+     * 한 칸씩 옮기되 고를 수 없는 좌석은 지나쳐 계속 간다. 그 방향에 고를 수 있는 좌석이
+     * 하나도 없으면 null — 호출부는 제자리에 둔다.
+     *
+     * <p>위아래로 옮길 때 열을 그 줄 길이로 자르는 건 부채꼴 구역 때문이다(줄마다 좌석
+     * 수가 다르다). 자른 값을 다음 반복에 물려줘야 계속 올라가면서 점점 왼쪽으로
+     * 밀리지 않는다.
+     */
+    function step(grid, from, dr, dc) {
+        let r = from.r, c = from.c;
+        for (let guard = 0; guard < 500; guard++) {
+            r += dr;
+            c += dc;
+            if (r < 0 || r >= grid.rows.length) return null;
+            const row = grid.rows[r];
+            if (dr !== 0) c = Math.min(c, row.length - 1);
+            if (c < 0 || c >= row.length) return null;
+            if (isSelectable(row[c])) return row[c];
+        }
+        return null;
+    }
+
+    /** 줄의 끝에서 안쪽으로 훑어 첫 고를 수 있는 좌석. dir 1 이면 왼쪽 끝(Home), -1 이면 오른쪽 끝(End). */
+    function edge(grid, r, dir) {
+        const row = grid.rows[r];
+        const start = dir === 1 ? 0 : row.length - 1;
+        for (let i = start; i >= 0 && i < row.length; i += dir) {
+            if (isSelectable(row[i])) return row[i];
+        }
+        return null;
+    }
+
+    document.addEventListener('keydown', e => {
+        const seat = e.target.closest?.('.seat');
+        if (!seat || e.ctrlKey || e.altKey || e.metaKey) return;
+        const grid = gridOf(seat);
+        if (!grid) return;
+        const pos = positionOf(grid, seat);
+        if (!pos) return;
+
+        let target = null;
+        switch (e.key) {
+            case 'ArrowLeft':  target = step(grid, pos,  0, -1); break;
+            case 'ArrowRight': target = step(grid, pos,  0,  1); break;
+            case 'ArrowUp':    target = step(grid, pos, -1,  0); break;
+            case 'ArrowDown':  target = step(grid, pos,  1,  0); break;
+            case 'Home':       target = edge(grid, pos.r, 1);    break;
+            case 'End':        target = edge(grid, pos.r, -1);   break;
+            default: return;
+        }
+
+        // 방향키는 페이지 스크롤도 일으킨다. 좌석을 옮기는 중에 화면까지 같이 흐르면
+        // 방금 고른 좌석이 어디로 갔는지 놓친다. 갈 곳이 없어도 막는다 — 안 그러면
+        // 줄 끝에서 방향키를 누를 때만 화면이 툭 움직여 더 이상해 보인다.
+        e.preventDefault();
+
+        if (!target || target === seat) return;
+        setTabStop(grid, target);
+        target.focus();
+    });
+
     const PENDING_HOLD_KEY = 'pendingHold';
+
+    /* 주기 갱신을 잠시 멈추는 스위치. 선언이 여기 있는 이유는 아래 resumePendingHold() 가
+       스크립트를 읽는 도중 곧바로 실행되면서 attemptHold() 를 부르기 때문이다 — 갱신 코드
+       옆(스크립트 끝)에 두면 그 시점엔 아직 초기화 전이라 로그인 후 복귀 흐름이 통째로 죽는다. */
+    let pollPaused = false;
 
     /** 좌석 선점을 시도한다. 비로그인 상태면 authRequired 만 true 로 반환하고 리다이렉트는 호출부가 처리한다. */
     async function attemptHold(seatIds) {
-        const res = await fetch('/api/reservations/hold', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                [CSRF_HEADER]: CSRF_TOKEN
-            },
-            body: JSON.stringify({ seatIds, strategy: 'PESSIMISTIC' })
-        });
+        // 선점이 오가는 동안에는 주기 갱신을 멈춘다. 응답이 돌아와 실패 좌석을 표시하는 사이
+        // 갱신이 끼어들면 같은 좌석을 두 곳이 건드려 화면이 어느 쪽 결과인지 알 수 없게 된다.
+        pollPaused = true;
+        try {
+            const res = await fetch('/api/reservations/hold', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [CSRF_HEADER]: CSRF_TOKEN
+                },
+                body: JSON.stringify({ seatIds, strategy: 'PESSIMISTIC' })
+            });
 
-        if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
-            return { authRequired: true };
+            if (res.redirected || !res.headers.get('content-type')?.includes('application/json')) {
+                return { authRequired: true };
+            }
+            return { authRequired: false, ok: res.ok, data: await res.json() };
+        } finally {
+            pollPaused = false;
         }
-        return { authRequired: false, ok: res.ok, data: await res.json() };
+    }
+
+    /* ---------- 좌석 상태 전환 ----------
+       상태를 바꾸는 곳이 두 군데다 — 선점 실패(내가 눌렀는데 남이 먼저 가져감)와 주기적
+       갱신(내가 보는 동안 남이 가져감/놓음). 같은 좌석을 두고 표시가 달라지면 안 되므로
+       두 곳이 같은 함수를 쓴다.
+
+       바꿔야 하는 게 다섯 가지라 손으로 반복하면 하나씩 빠진다: 화면 색(data-status),
+       호버·탭 안내 문구(data-tooltip), 스크린리더 이름(aria-label), 선택 가능 여부
+       (aria-disabled/tabindex), 그리고 "눌린 상태" 개념의 유무(aria-pressed). */
+    const STATUS_REASON = { HELD: '결제 대기 중', SOLD: '이미 판매된 좌석' };
+
+    /** 예매 가능 상태의 문구. 서버(SeatMapRow)와 같은 형식이어야 한다 — 갱신으로 되살아난
+        좌석만 문구가 다르면 같은 좌석이 새로고침 전후로 다르게 읽힌다. */
+    function availableTexts(seat) {
+        const price = Number(seat.dataset.price).toLocaleString('en-US');
+        return {
+            tooltip: `${seat.dataset.grade}석 · ${price}원`,
+            aria: `${seat.dataset.label} ${seat.dataset.grade}석 ${price}원`
+        };
+    }
+
+    function markUnavailable(seat, status) {
+        const reason = STATUS_REASON[status] || '선택할 수 없는 좌석';
+        seat.dataset.status = status;
+        seat.dataset.tooltip = reason;
+        seat.setAttribute('aria-label', `${seat.dataset.label} ${reason}`);
+        seat.setAttribute('aria-disabled', 'true');
+        // tabindex 는 건드리지 않는다 — 키보드 이동(roving tabindex)이 관리한다. 여기서
+        // -1 을 박으면 그 좌석이 구역의 정지점이었을 때 Tab 이 구역을 통째로 건너뛴다.
+        // 대신 이제 못 고르는 자리가 됐으니 정지점을 옮겨준다.
+        seat.classList.remove('selected');
+        // 이제 누를 수 없는 좌석이라 "눌린 상태" 개념이 없어진다 — 템플릿이 예매 가능한
+        // 좌석에만 aria-pressed 를 주는 것과 같은 규칙으로 속성 자체를 뗀다.
+        seat.removeAttribute('aria-pressed');
+        reseatTabStopIfNeeded(seat);
+    }
+
+    /** 선점이 만료돼 다시 살 수 있게 된 좌석. markUnavailable 이 바꾼 것을 전부 되돌린다. */
+    function markAvailable(seat) {
+        const texts = availableTexts(seat);
+        seat.dataset.status = 'AVAILABLE';
+        seat.dataset.tooltip = texts.tooltip;
+        seat.setAttribute('aria-label', texts.aria);
+        seat.removeAttribute('aria-disabled');
+        // tabindex 는 markUnavailable 과 같은 이유로 건드리지 않는다(roving tabindex 소관).
+        seat.setAttribute('aria-pressed', 'false');
     }
 
     /** 실패한 좌석만 선택 해제하고 판매 불가로 표시한다. 나머지는 여전히 선택된 채로 둬서
         사용자가 실패한 좌석만 바꿔 다시 시도할 수 있게 한다 (전체 재선택 강요 X). */
     function markFailedSeats(failedSeatIds) {
         const failedIds = new Set(failedSeatIds || []);
-        selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId))).forEach(s => {
-            s.dataset.status = 'HELD';
-            s.dataset.tooltip = '결제 대기 중';
-            s.setAttribute('aria-disabled', 'true');
-            s.tabIndex = -1;
-            s.classList.remove('selected');
-            // 이제 누를 수 없는 좌석이라 "눌린 상태" 개념이 없어진다 — 템플릿이 예매 가능한
-            // 좌석에만 aria-pressed 를 주는 것과 같은 규칙으로 속성 자체를 뗀다.
-            s.removeAttribute('aria-pressed');
-        });
+        selectedSeats.filter(s => failedIds.has(Number(s.dataset.seatId)))
+                     .forEach(s => markUnavailable(s, 'HELD'));
         selectedSeats = selectedSeats.filter(s => !failedIds.has(Number(s.dataset.seatId)));
     }
 
@@ -1161,6 +1466,91 @@
         bookBtn.textContent = '예매하기';
         bookBtn.disabled = selectedSeats.length === 0;
     })();
+
+    /* ---------- 좌석 상태 주기 갱신 ----------
+       이게 없으면 좌석도는 화면을 연 순간의 사진으로 굳는다. 그 사이 남이 채간 좌석도 계속
+       예매 가능한 색으로 보이고, 사용자는 「예매하기」를 누른 뒤에야 실패를 안다. 한 좌석을
+       놓고 벌어지는 경쟁을 제어하는 게 이 프로젝트의 요지인데, 정작 경쟁이 벌어지는 화면이
+       그걸 안 보여주고 있었다.
+
+       양방향이다 — 남이 가져가면 회색으로 물러나고, 선점(10분)이 만료되면 다시 살아난다.
+       서버는 "고를 수 없는 좌석"만 주므로 목록에서 빠지는 것이 곧 되살아남을 뜻한다.
+
+       화면이 안 보일 때는 멈춘다(다른 탭·최소화). 안 그러면 열어둔 탭 하나가 하루 종일
+       5초마다 서버를 두드린다 — 메모리가 빠듯한 서버라 이런 게 쌓이면 부담이 된다.
+       다시 보이는 순간 곧바로 한 번 맞춰서, 자리를 비운 사이 바뀐 것을 바로 반영한다. */
+    const SCHEDULE_ID = /*[[${schedule.id}]]*/ 0;
+    const POLL_MS = 5000;
+    const seatsById = new Map([...document.querySelectorAll('.seat')]
+            .map(s => [Number(s.dataset.seatId), s]));
+
+    let pollTimer = null;
+
+    /* 화면이 보이는지는 여기서 안 본다 — 부르는 쪽(tick)이 정한다. "갱신하라"는 함수가
+       탭 상태에 따라 조용히 아무 일도 안 하면, 다시 보이게 된 순간 즉시 맞추는 경로까지
+       같은 검사에 걸려 한 주기를 헛돈다. */
+    async function refreshSeatStatuses() {
+        if (pollPaused) return;
+
+        let unavailable;
+        try {
+            const res = await fetch(`/api/schedules/${SCHEDULE_ID}/seat-status`, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            unavailable = new Map((await res.json()).seats.map(s => [s.seatId, s.status]));
+        } catch (e) {
+            // 잠깐 끊긴 것뿐일 수 있다. 조용히 넘기고 다음 주기에 다시 시도한다 —
+            // 여기서 토스트를 띄우면 지하철에서 좌석 고르는 내내 경고가 깜빡인다.
+            return;
+        }
+
+        const takenFromMe = [];
+        seatsById.forEach((seat, id) => {
+            const status = unavailable.get(id);
+            if (status) {
+                if (seat.dataset.status === status) return;
+                if (seat.classList.contains('selected')) takenFromMe.push(seat.dataset.label);
+                markUnavailable(seat, status);
+                selectedSeats = selectedSeats.filter(s => s !== seat);
+            } else if (seat.dataset.status !== 'AVAILABLE') {
+                markAvailable(seat);
+            }
+        });
+
+        if (takenFromMe.length > 0) {
+            // 고르고 있던 좌석이 눈앞에서 사라지는 건 설명 없이 두면 안 되는 변화다.
+            window.__toast(`${takenFromMe.join(', ')} 좌석이 방금 예매되었습니다.`, 4000);
+            renderPicked();
+            bookBtn.disabled = selectedSeats.length === 0;
+        }
+    }
+
+    /** 주기 실행분. 화면이 안 보이면 건너뛴다 — 열어둔 탭 하나가 하루 종일 서버를 두드리지
+        않게. 타이머는 그대로 두고 호출만 거른다(다시 보일 때 바로 이어지도록). */
+    function tick() {
+        if (document.visibilityState !== 'visible') return;
+        refreshSeatStatuses();
+    }
+
+    function startPolling() {
+        if (pollTimer) return;
+        pollTimer = setInterval(tick, POLL_MS);
+    }
+
+    function stopPolling() {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            refreshSeatStatuses();
+            startPolling();
+        } else {
+            stopPolling();
+        }
+    });
+
+    startPolling();
 </script>
 </body>
 </html>

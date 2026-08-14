@@ -3,6 +3,7 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.external.PerformanceSyncScheduler;
 import com.portfolio.ticket.external.PerformanceSyncService;
+import com.portfolio.ticket.mapper.SeatMapper;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.HoldStrategy;
 import com.portfolio.ticket.service.PartialSeatHoldException;
@@ -31,6 +32,7 @@ public class ReservationApiController {
     private final PerformanceSyncScheduler syncScheduler;
     private final PerformanceSyncService syncService;
     private final SeatRegenerationService seatRegenerationService;
+    private final SeatMapper seatMapper;
 
     /** 좌석 선점. strategy 파라미터로 동시성 전략을 바꿔가며 측정할 수 있다. */
     @PostMapping("/seats/{seatId}/hold")
@@ -43,6 +45,24 @@ public class ReservationApiController {
                 "amount", reservation.getAmount(),
                 "holdExpiresAt", reservation.getHoldExpiresAt()
         ));
+    }
+
+    /**
+     * 좌석도를 열어둔 화면이 주기적으로 물어보는 좌석 상태. 고를 수 없는 좌석만 돌려준다.
+     *
+     * <p>이게 없으면 좌석도는 열린 순간의 사진으로 굳는다 — 그 사이 남이 채간 좌석도 계속
+     * 예매 가능한 색으로 보이고, 사용자는 「예매하기」를 누른 뒤에야 실패를 안다. 한 좌석을
+     * 놓고 벌어지는 경쟁을 제어하는 게 이 프로젝트의 요지인데, 정작 경쟁이 벌어지는 화면이
+     * 그 사실을 안 보여주고 있었다.
+     *
+     * <p>로그인을 요구하지 않는다. 좌석도 자체가 비로그인으로 볼 수 있는 화면이라 여기만
+     * 막으면 그 화면의 좌석 상태만 안 바뀐다. 노출되는 것도 이미 화면에 그려진 사실뿐이다.
+     */
+    @GetMapping("/schedules/{scheduleId}/seat-status")
+    public ResponseEntity<?> seatStatus(@PathVariable Long scheduleId) {
+        return ResponseEntity.ok(Map.of("seats", seatMapper.selectSeatStatuses(scheduleId).stream()
+                .map(row -> Map.of("seatId", row.getSeatId(), "status", row.getStatus()))
+                .toList()));
     }
 
     /** 좌석 여러 개를 한 번에 선점해 예매번호 하나로 묶는다. */

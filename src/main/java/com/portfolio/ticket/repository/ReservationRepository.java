@@ -59,6 +59,23 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByStatusAndHoldExpiresAtBefore(ReservationStatus status, LocalDateTime now);
 
     /**
+     * 확정된 예매 중 회차 시각이 구간 안에 있는 것. 공연 임박 알림(내일 회차)과 관람평
+     * 요청(어제 지난 회차) 배치가 같은 모양의 조회를 쓰므로 구간만 다르게 받아 공유한다.
+     *
+     * <p>취소·만료·결제대기 건은 호출부가 status 로 걸러낸다 — 안 볼 공연을 임박하다고
+     * 알리거나, 돈을 안 낸 건에 관람평을 요청할 이유가 없다({@link
+     * com.portfolio.ticket.service.ReviewService}가 CONFIRMED 만 인정하는 것과 같은 기준).
+     */
+    @Query("select r from Reservation r " +
+            "join fetch r.schedule sc " +
+            "join fetch sc.performance " +
+            "where r.status = :status " +
+            "and sc.showAt >= :from and sc.showAt < :to")
+    List<Reservation> findByStatusAndScheduleShowAtBetween(
+            @Param("status") ReservationStatus status,
+            @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
      * 이 공연에 예매가 하나라도 걸려 있는지. 수집 대상이 아닌 항목을 지울 때, 이미 표를 산
      * 사람이 있으면 지우지 않기 위해 쓴다 — 예매는 지난 내역으로 남아야 한다.
      */
