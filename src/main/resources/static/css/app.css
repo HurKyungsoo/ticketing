@@ -1593,6 +1593,44 @@ body.page-error { background: var(--paper); color: var(--ink); }
   .dashfilter { flex-wrap: wrap; }
   .resrow { flex-direction: column; align-items: flex-start; }
   .resaction { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+  /*
+     좁은 화면의 세로 예산 되찾기.
+
+     실측(375×812): 위쪽 고정물 332px + 아래 예매 바 235px 를 빼면 좌석 지도에 남는 건
+     233px — 화면의 29% 뿐이었다. 게다가 지도 높이 하한이 280px 라 아래 47px 가 예매 바
+     뒤로 들어갔다. 좌석을 고르는 화면에서 세로가 가장 아까운 자원이라는 건 이미
+     `.floornav.is-docked` 주석에서 세운 원칙인데, 넓은 화면에서만 지키고 있었다.
+     (옆에 붙이는 방식은 DOCK_MIN_WIDTH 미만에서 꺼지므로 좁은 화면엔 적용되지 않는다.)
+
+     범인은 줄바꿈으로 두 줄이 된 띠 두 개였다 — 층 바로가기 84px, 등급 가격표 68px.
+     둘 다 "가로로 늘어선 짧은 목록"이라 모바일에서는 접는 대신 가로로 스크롤시킨다.
+     칩을 지우거나 글자를 줄이지 않으므로 정보는 그대로다.
+  */
+  .floornav:not(.is-docked) {
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;              /* Firefox */
+    -ms-overflow-style: none;           /* 구형 Edge */
+  }
+  .floornav:not(.is-docked)::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .floornav:not(.is-docked) .floorchip { flex: none; }
+
+  .bookbar .legend-grades {
+    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .bookbar .legend-grades::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .bookbar .legend-grades button { flex: none; }
+  /* 띠가 한 줄이 된 만큼 위아래 여백도 같이 조인다. */
+  .bookbar .legend { margin-bottom: 6px; padding-bottom: 6px; }
+
   .bookbar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   .bookbar .inner { flex-direction: column; align-items: stretch; }
   .bookbar .picked {

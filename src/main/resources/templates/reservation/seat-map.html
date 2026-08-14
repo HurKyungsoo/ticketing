@@ -389,8 +389,16 @@
            상한 자체를 없애지는 않는다. 세로로 아주 긴 창에서는 좌석이 한 화면에 다
            들어와도 지도가 계속 늘어나 아래쪽이 텅 비게 되고, 미니맵 배율도 그만큼
            작아져 쓸모가 없어진다.
+
+           하한은 280 에서 220 으로 낮췄다. available 이 하한보다 작으면 그 차이만큼
+           지도 아래가 예매 바 뒤로 들어가는데(실측 375×812 에서 available 233 vs 하한
+           280 → 47px), 이 함수가 애초에 "바에 가리지 않게" 하려고 있는 것이라 하한이
+           그 목적을 거스르고 있었다. 화면 밖으로 밀린 부분은 페이지를 스크롤하면
+           볼 수는 있지만, 미니맵 뷰포트 사각형이 실제 보이는 것보다 넓게 잡혀 지금
+           어디를 보는지가 어긋난다. 220 은 24px 좌석 기준 일곱 줄쯤으로, 지도가
+           의미를 잃지 않는 선이다.
         */
-        scroller.style.height = Math.round(Math.max(280, Math.min(1600, available))) + 'px';
+        scroller.style.height = Math.round(Math.max(220, Math.min(1600, available))) + 'px';
     }
 
     /**
@@ -419,8 +427,14 @@
     // 못 받는 문제가 있다(elementsFromPoint 로 확인 — 그 좌석 자리 클릭이 항상
     // .minimap 으로 간다). 근본 해결은 아니지만 패널을 줄이면 겹치는 면적 자체가
     // 줄어든다. 아래 .minimap 의 opacity 와 함께 본다.
-    const MINI_MAX_W = 130;
-    const MINI_MAX_H = 95;
+    /* 좁은 화면에서는 더 줄인다. 130×95 는 데스크톱 기준으로 정한 값인데, 375px 폰에서는
+       지도 폭의 35%·높이의 30% 를 덮어 "겹치는 면적을 줄인다"는 원래 의도가 무색해진다.
+       지도가 작을수록 미니맵이 상대적으로 커지는 역설이라, 지도 크기에 맞춰 같이 줄인다.
+       없애지는 않는다 — 2,481석 홀을 한 번에 열 줄씩 보는 화면에서는 지금 어디쯤인지가
+       오히려 더 필요하다. */
+    const MINI_NARROW = window.matchMedia('(max-width: 720px)').matches;
+    const MINI_MAX_W = MINI_NARROW ? 92 : 130;
+    const MINI_MAX_H = MINI_NARROW ? 66 : 95;
     const minimap = document.getElementById('minimap');
     const minimapInner = document.getElementById('minimapInner');
     const minimapZones = document.getElementById('minimapZones');
@@ -616,6 +630,28 @@
     function setActiveChip(chip) {
         floorChipTargets.forEach(({ chip: other }) => other.removeAttribute('aria-current'));
         chip.setAttribute('aria-current', 'true');
+        keepChipVisible(chip);
+    }
+
+    /**
+     * 활성 칩이 층 바로가기 띠 밖으로 나가 있으면 띠만 가로로 움직여 다시 보이게 한다.
+     *
+     * 좁은 화면에서는 이 띠가 줄바꿈 대신 가로 스크롤 한 줄이라(CSS `.floornav:not(.is-docked)`),
+     * 지도를 스크롤해 다른 층으로 넘어가면 그 층 칩이 띠 밖에 있어 표시가 안 보인다.
+     * 바로 위 주석대로 이 칩은 "지금 어디를 보고 있는가"의 표시이기도 해서, 안 보이면
+     * 표시가 없는 것과 같다.
+     *
+     * scrollIntoView 를 쓰지 않는다 — 조상까지 스크롤해서 페이지가 같이 움직이는데,
+     * 이 함수는 지도를 스크롤하는 도중에 계속 불리므로 화면이 흔들린다. 띠 자신의
+     * scrollLeft 만 건드리면 그럴 일이 없다.
+     */
+    function keepChipVisible(chip) {
+        if (!floornav || floornav.scrollWidth <= floornav.clientWidth) return;   // 넘치지 않으면 할 일이 없다
+        const nav = floornav.getBoundingClientRect();
+        const c = chip.getBoundingClientRect();
+        const pad = 12;   // 칩이 가장자리에 딱 붙지 않게 — 옆에 더 있다는 것도 같이 보인다
+        if (c.left < nav.left + pad) floornav.scrollLeft -= (nav.left + pad) - c.left;
+        else if (c.right > nav.right - pad) floornav.scrollLeft += c.right - (nav.right - pad);
     }
 
     /* 누른 칩을 곧바로 활성으로 표시한다.
