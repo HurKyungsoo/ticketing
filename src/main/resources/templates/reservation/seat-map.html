@@ -998,6 +998,78 @@
     }, { passive: true });
     scroller.addEventListener('touchcancel', cancelPinch, { passive: true });
 
+    /* ---------- 터치: 더블탭으로 확대·축소 ----------
+       핀치는 두 손가락이라 한 손으로 들고 볼 때는 쓰기 어렵다. 지도 UI 의 관례대로
+       같은 자리를 두 번 두드리면 그 지점을 기준으로 키우고, 이미 커져 있으면 되돌린다.
+
+       「전체 보기」 버튼을 대신하지는 않는다 — 그쪽은 크기가 아니라 모드를 바꾼다(지도를
+       페이지 흐름에 자연 높이로 펴서 홀 전체를 한 화면에 담는다). 핀치·더블탭으로는 좌석을
+       9px 까지 줄여도 지도 창 안에서 스크롤하는 상태 그대로라 전체 조망에 도달할 수 없다.
+    */
+    const DOUBLE_TAP_MS = 300;
+    const TAP_SLOP = 24;         // 이만큼 넘게 움직였으면 탭이 아니라 스와이프다
+    const SEAT_DOUBLETAP = 40;   // 더블탭으로 키웠을 때의 좌석 크기(핀치 상한 44 바로 아래)
+
+    let tapStart = null;   // 지금 탭의 시작점(움직였는지 보려고)
+    let lastTap = null;    // 직전 탭(더블탭 판정용)
+
+    scroller.addEventListener('touchstart', (e) => {
+        tapStart = e.touches.length === 1
+                ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    }, { passive: true });
+
+    scroller.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0];
+        const isTap = tapStart && !pinch && e.touches.length === 0 && e.changedTouches.length === 1
+                && Math.abs(t.clientX - tapStart.x) < TAP_SLOP
+                && Math.abs(t.clientY - tapStart.y) < TAP_SLOP;
+        tapStart = null;
+        if (!isTap) { lastTap = null; return; }
+
+        const now = Date.now();
+        const isDouble = lastTap && now - lastTap.at < DOUBLE_TAP_MS
+                && Math.abs(t.clientX - lastTap.x) < TAP_SLOP
+                && Math.abs(t.clientY - lastTap.y) < TAP_SLOP;
+        if (!isDouble) { lastTap = { at: now, x: t.clientX, y: t.clientY }; return; }
+        lastTap = null;
+
+        /*
+           첫 탭의 click 은 이 시점에 이미 지나갔다(순서: touchend → click). 그게 고를 수 있는
+           좌석이었다면 선택이 한 번 일어난 상태인데, 두 번째 탭의 click 을 그대로 통과시키면
+           같은 좌석을 다시 눌러 원래 상태로 돌아간다 — 선택 토글이 자기 자신의 역함수라
+           되돌리는 코드를 따로 두지 않아도 된다.
+
+           그 외(빈 자리·판매 완료 좌석)는 통과시켜도 같은 토스트가 한 번 더 뜰 뿐이라 삼킨다.
+           swallowClick 은 끌기에서 쓰던 것을 그대로 재사용한다(아래 capture 단계 click 처리).
+        */
+        const target = t.target;
+        const selectable = target instanceof Element
+                && target.closest('.seat:not([aria-disabled="true"])');
+        swallowClick = !selectable;
+
+        const anchor = elementAt(t.clientX, t.clientY);
+        const before = anchor && anchor.getBoundingClientRect();
+        const wasZoomed = zoomed;
+        zoomSize = (zoomed && currentSeatSize() >= SEAT_DOUBLETAP) ? SEAT_ZOOM : SEAT_DOUBLETAP;
+        if (!zoomed) setZoomed(true); else applySeatSize();
+        if (!wasZoomed) {
+            /* 맞춤 모드에서 들어온 경우엔 버튼과 같은 자리로 맞춘다. 지도를 화면 위로
+               끌어오지 않으면 남는 높이가 그만큼 줄어 하한(220px)에 걸린다 — 같은
+               "지도 모드로 들어간다"인데 버튼으로 들어오면 317px, 더블탭으로 들어오면
+               220px 가 되는 건 앞뒤가 안 맞는다. */
+            const controls = document.querySelector('.partysize');
+            window.scrollTo({ top: controls.getBoundingClientRect().top + window.scrollY - 8 });
+            sizeMapViewport();
+        }
+        if (anchor) {
+            // 핀치 확정과 같은 방식 — 두드린 자리에 있던 요소가 제자리에 남도록 스크롤을 되돌린다.
+            const after = anchor.getBoundingClientRect();
+            scroller.scrollLeft += (after.left + after.width / 2) - (before.left + before.width / 2);
+            scroller.scrollTop += (after.top + after.height / 2) - (before.top + before.height / 2);
+        }
+        syncMinimap();
+    }, { passive: true });
+
     // 창 크기가 바뀌면 다시 맞춘다. 리사이즈는 연속으로 들어오므로 한 프레임에 한 번만 계산한다.
     let fitPending = false;
     window.addEventListener('resize', () => {
