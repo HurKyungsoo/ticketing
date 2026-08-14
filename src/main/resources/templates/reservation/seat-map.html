@@ -229,10 +229,10 @@
        기준은 렌더된 줄의 실제 너비를 그대로 재서 얻는다. 좌석 수·통로 개수·간격 비율을
        여기서 다시 계산하면 통로 규칙(SeatMapView)과 간격 비율(CSS)을 JS 가 중복으로
        알아야 하고, 한쪽만 바뀌면 조용히 어긋난다. */
-    /* 맞춤 모드의 하한. 여기까지 줄여서라도 가로 스크롤 없이 다 보여준다.
-       한 층이 75석 폭인 홀(콘서트홀 3층 A~G, 세종 3층 A~H)은 누르기 좋은 크기(14px 이상)로는
-       1,400px 화면에 물리적으로 안 들어간다 — 좌석만 1,050px 이고 열마다 행 라벨이 붙는다.
-       그래서 기본은 "전체가 보이는 지도", 좌석을 고를 때는 확대 버튼으로 키우게 나눴다. */
+    /* 맞춤 모드의 절대 하한. 자동으로는 여기까지 내려가지 않는다(SEAT_MIN 밑이면 지도 모드로
+       넘어간다) — 사용자가 「전체 보기」로 스스로 맞춤 모드를 고른 경우에만, 한 층이 75석
+       폭인 홀(콘서트홀 3층 A~G, 세종 3층 A~H)처럼 SEAT_MIN 으로도 물리적으로 안 들어가는
+       화면에서 좌석을 아예 못 그리는 사고를 막는 마지노선이다. */
     const SEAT_FIT_MIN = 9;
     const SEAT_MIN = 14;   // 확대 모드의 하한이자, 누르기 편한 최소 크기.
     const SEAT_MAX = 26;   // 기본 크기. 여유가 있어도 이보다 크게는 안 키운다.
@@ -740,10 +740,13 @@
 
     applySeatSize();
 
-    /* 맞춤이 아예 불가능한 홀·화면은 지도 모드로 시작한다.
-       좁은 화면에서는 하한(9px)까지 줄여도 안 들어간다 — 한 층이 75석 폭인 홀은 그것만 675px 라
-       휴대폰 폭을 넘는다. 그때 맞춤 모드로 두면 "작은 좌석 + 가로 스크롤"로 양쪽을 다 잃는다. */
-    if (requiredFitSize() < SEAT_FIT_MIN) {
+    /* 맞춤 모드로는 누르기 편한 크기(SEAT_MIN)가 안 나오는 홀·화면은 지도 모드로 시작한다.
+       예전엔 이 기준이 SEAT_FIT_MIN(9px)이라 "전혀 안 들어가는" 극단적인 경우만 걸렸는데,
+       흔한 소극장(블루스퀘어 8석/줄)도 실제 휴대폰 폭에서는 13px 까지 내려간다 — 화면에는
+       다 들어오니 안내문(FIT_SMALL_HINT)만 뜨고 사용자가 직접 「확대」를 눌러야 했다.
+       시스템이 이미 "작다"고 판단했으면 그 판단대로 바로 지도 모드로 열어서, 첫 화면부터
+       손가락으로 정확히 짚을 수 있는 크기(24px)를 보여준다. */
+    if (requiredFitSize() < SEAT_MIN) {
         setZoomed(true);
         scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
     }
@@ -967,8 +970,8 @@
         requestAnimationFrame(() => {
             fitPending = false;
             applySeatSize();
-            // 화면을 좁히거나 기기를 돌려서 맞춤이 불가능해졌으면 지도 모드로 넘긴다.
-            if (!zoomed && requiredFitSize() < SEAT_FIT_MIN) {
+            // 화면을 좁히거나 기기를 돌려서 누르기 편한 크기 밑으로 내려가면 지도 모드로 넘긴다.
+            if (!zoomed && requiredFitSize() < SEAT_MIN) {
                 setZoomed(true);
                 scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
             }
