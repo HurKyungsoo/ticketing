@@ -264,6 +264,10 @@ a { color: inherit; text-decoration: none; }
 .spec { border-top: 1px solid var(--line); margin-top: 24px; }
 .spec div { display: flex; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .spec dt { width: 84px; color: var(--mute); flex: none; margin: 0; }
+/* 관람료 "VIP 180,000원 · R 144,000원 · …". 등급+금액은 붙여 두고 구분점에서만 줄을 바꾼다 —
+   그냥 두면 숫자와 '원' 사이가 끊겨 "144,000" 다음 줄에 "원" 만 남는다(실측 360px). */
+.spec .fee { white-space: nowrap; }
+.spec .feesep { white-space: normal; }
 
 /* ---------- 좌석 배치도 (시그니처) ---------- */
 /*
@@ -289,6 +293,11 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid var(--line);
 }
 .partysize label { color: var(--paper); font-weight: 600; }
+/* 헤더 내비와 같은 문제·같은 해법. flex 아이템 기본 min-width:auto 라 좁은 화면에서
+   내용보다 눌리는데, 공백 없는 CJK 라벨("인원수", "전체 보기")은 그때 글자 단위로
+   쪼개진다 — 실측 375px 에서 라벨이 16px 폭 / 62px 높이(세 줄)까지 갔다. 줄바꿈 대신
+   요소 통째로 다음 줄로 넘어가게 막는다(아래 media query 의 flex-wrap 과 한 쌍). */
+.partysize label, .partysize .zoomtoggle { white-space: nowrap; }
 .partysize select {
   background: var(--ink-soft); color: var(--paper);
   border: 1px solid var(--line); border-radius: 999px;
@@ -1443,7 +1452,17 @@ body.page-error { background: var(--paper); color: var(--ink); }
 }
 
 .chartgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-.chartbox { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+/*
+   min-width:0 이 없으면 좁은 화면에서 칸이 캔버스보다 작아지지 못한다. 그리드 아이템은
+   기본 min-width:auto(=min-content)인데, Chart.js 는 아직 리사이즈 전이면 캔버스를 기본
+   300px 로 들고 있어서 칸의 min-content 가 300+패딩·테두리=342px 로 굳는다. 그러면 칸이
+   못 줄고 → 캔버스도 줄 이유가 없어 그대로 멈춘다(서로가 서로를 붙잡는 상태).
+   실측: 360px 폭에서 쓸 수 있는 자리는 327px 인데 칸이 342px 라 6px 가 넘쳐 페이지
+   전체에 가로 스크롤이 생겼다. 375px 에서는 우연히 들어가서 안 드러났는데, 안드로이드
+   상당수가 360px 다. max-width 는 Chart.js 리사이즈 전에도 캔버스가 칸을 밀지 않게 하는 보험.
+*/
+.chartbox { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-width: 0; }
+.chartbox canvas { max-width: 100%; }
 .chartbox h3 {
   font-family: var(--display); font-size: 15px; font-weight: 600;
   margin: 0 0 16px; color: var(--paper);
@@ -3911,6 +3930,18 @@ body.page-seatmap.tone-light .bookbar .inner button:not(:disabled):hover { trans
   body.page-seatmap.tone-light .masthead { padding: 14px 20px; flex-wrap: wrap; row-gap: 4px; }
   body.page-seatmap.tone-light .masthead h1 { white-space: nowrap; }
   body.page-seatmap.tone-light .masthead .tag { flex-basis: 100%; }
+
+  /*
+     인원수 줄을 두 줄로 나눈다. 한 줄로 밀어넣으면 다섯 요소가 전부 내용보다 눌려서
+     제각각 세로로 늘어나고(실측 375px: 라벨 62px, 안내 58px, 버튼 70·89px), 가장 큰
+     요소가 바 높이를 정해 110px 를 먹는다. 이 바는 sticky 라 그만큼이 좌석도에서
+     영구히 빠지는 높이다 — 좁은 화면에서 좌석이 안 보이던 원인의 하나였다.
+
+     안내문만 order 로 맨 뒤로 보내 자기 줄을 통째로 쓰게 한다. 문장이라 한 줄로 읽혀야
+     하고, 조작 요소(라벨·선택·버튼 둘)는 합쳐도 375px 안에 들어간다.
+  */
+  body.page-seatmap.tone-light .partysize { flex-wrap: wrap; row-gap: 8px; }
+  body.page-seatmap.tone-light .partysize .hint { order: 9; flex-basis: 100%; text-align: center; }
 }
 
 /* ==================================================================
@@ -4570,7 +4601,22 @@ body.page-payment.tone-light .paydone-share:focus-visible {
 @media (max-width: 860px) {
   body.page-payment.tone-light .masthead { padding: 16px 20px; }
   body.page-payment.tone-light .paysteps { padding: 18px 20px 8px; }
-  body.page-payment.tone-light .paylayout { padding: 24px 20px 72px; gap: 32px; }
+  /*
+     2단 → 1단 접기와 sticky 해제를 여기서 다시 선언해야 한다. 위쪽 다크 규칙
+     (`body.page-payment .paylayout`, `.paypanel`)에 이미 같은 내용이 있지만 **둘 다
+     죽어 있었다** — 라이트 톤을 나중에 얹으면서 모바일 대응을 같이 안 옮긴 탓이다.
+       · 열 접기: `body.page-payment .paylayout`(클래스 2개)이
+         `body.page-payment.tone-light .paylayout`(클래스 3개)에 명시도로 진다.
+         미디어 쿼리는 명시도를 올려주지 않으므로 폭과 무관하게 2단이 유지됐다.
+       · sticky 해제: `position: static` 이 같은 명시도의 뒤쪽 규칙(2347행 sticky)에 밀렸다.
+     그 결과 375px 에서 결제 패널이 x=329~503 으로 화면 밖에 놓여, 타이머·총액은 물론
+     「결제하기」 버튼까지 못 누르는 상태였다. `.rowlabel` 배경에서 겪은 것과 같은 함정이다.
+  */
+  body.page-payment.tone-light .paylayout {
+    padding: 24px 20px 72px; gap: 32px;
+    grid-template-columns: 1fr;
+  }
+  body.page-payment.tone-light .paypanel { position: static; }
 }
 
 @media (max-width: 860px) {

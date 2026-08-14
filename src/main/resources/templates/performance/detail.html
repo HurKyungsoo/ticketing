@@ -160,9 +160,13 @@
                 <div th:if="${!gradePrices.isEmpty()}">
                     <dt>관람료</dt>
                     <dd>
-                        <span th:each="g, iter : ${gradePrices}">
+                        <!--/* fee 는 "등급 + 금액"을 한 덩어리로 묶는다(CSS 에서 nowrap).
+                               좁은 화면에서 기본 줄바꿈 규칙이 숫자와 '원' 사이를 끊어
+                               "144,000" / "원" 으로 갈라놓기 때문이다. 등급 사이에서는
+                               줄이 바뀌어야 하므로 구분점(feesep)만 다시 풀어준다. */-->
+                        <span class="fee" th:each="g, iter : ${gradePrices}">
                             <span th:text="${g.grade}">VIP</span>
-                            <span th:text="${g.price == 0} ? '무료' : ${#numbers.formatInteger(g.price,0,'COMMA')} + '원'"></span><span th:unless="${iter.last}"> · </span>
+                            <span th:text="${g.price == 0} ? '무료' : ${#numbers.formatInteger(g.price,0,'COMMA')} + '원'"></span><span class="feesep" th:unless="${iter.last}"> · </span>
                         </span>
                     </dd>
                 </div>
