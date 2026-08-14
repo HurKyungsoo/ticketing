@@ -3,6 +3,7 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.external.PerformanceSyncScheduler;
 import com.portfolio.ticket.external.PerformanceSyncService;
+import com.portfolio.ticket.external.SyncAlreadyRunningException;
 import com.portfolio.ticket.mapper.SeatMapper;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.HoldStrategy;
@@ -101,10 +102,21 @@ public class ReservationApiController {
     /**
      * 배치를 기다리지 않고 수동으로 공공데이터를 당겨올 때. 소스별 결과를 분리해서 반환한다.
      * KOPIS 는 기본이 증분 수집이라, 전체를 다시 받으려면 {@code ?full=true} 를 붙인다.
+     *
+     * <p>새벽 4시 cron 과 겹치면 {@link PerformanceSyncScheduler} 가 락으로 막고
+     * {@link SyncAlreadyRunningException} 을 던진다 — 여기서 409 로 알려서 관리자가
+     * 재시도 시점을 판단하게 한다(실데이터 배치가 몇 시간씩 걸릴 수 있어 그냥 기다리게
+     * 두지 않는다).
      */
     @PostMapping("/admin/sync")
     public ResponseEntity<?> sync(@RequestParam(defaultValue = "false") boolean full) {
-        PerformanceSyncScheduler.SyncSummary summary = syncScheduler.runSync(full);
+        PerformanceSyncScheduler.SyncSummary summary;
+        try {
+            summary = syncScheduler.runSync(full);
+        } catch (SyncAlreadyRunningException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage()));
+        }
 
         Map<String, Object> body = new java.util.HashMap<>();
         body.put("standard", toResponse(summary.standard()));

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 
 /**
@@ -37,9 +38,22 @@ public class PerformanceSyncScheduler {
      */
     private static final int OVERLAP_DAYS = 1;
 
+    /**
+     * 수동 트리거와 새벽 4시 cron 의 상호배제. 실데이터 배치는 몇 시간씩 걸릴 수 있어
+     * 겹칠 가능성이 실재하고, 겹치면 같은 PERFORMANCE_SCHEDULE 행을 두 트랜잭션이 동시에
+     * 써서 Concurrent update → 롤백 실패 → 커넥션 파손까지 갔던 사고가 있었다.
+     * 앱이 단일 인스턴스로 운영되므로(Lightsail 1대) JVM 안 플래그만으로 충분하다 —
+     * 여러 인스턴스로 늘어나면 그때 분산 락으로 바꿀 것.
+     */
+    private final AtomicBoolean syncRunning = new AtomicBoolean(false);
+
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
     public void syncDaily() {
-        runSync();
+        try {
+            runSync();
+        } catch (SyncAlreadyRunningException e) {
+            log.warn("이미 동기화가 진행 중이라 새벽 4시 배치를 건너뜁니다.");
+        }
     }
 
     /** 소스별 동기화 결과. 한쪽이 실패해도 error 에 사유만 담고 나머지 소스는 계속 진행한다. */
@@ -71,8 +85,24 @@ public class PerformanceSyncScheduler {
         return runSync(false);
     }
 
-    /** @param full true 면 마지막 수집 이력을 무시하고 전체를 다시 받는다. */
+    /**
+     * @param full true 면 마지막 수집 이력을 무시하고 전체를 다시 받는다.
+     * @throws SyncAlreadyRunningException 이미 다른 동기화가 진행 중이면 시작하지 않고
+     *         바로 던진다 — 락 획득에 실패한 이 호출은 아무 작업도 하지 않았으므로
+     *         재시도는 호출자(스케줄러의 다음 tick, 관리자의 재요청) 몫으로 남긴다.
+     */
     public SyncSummary runSync(boolean full) {
+        if (!syncRunning.compareAndSet(false, true)) {
+            throw new SyncAlreadyRunningException();
+        }
+        try {
+            return doSync(full);
+        } finally {
+            syncRunning.set(false);
+        }
+    }
+
+    private SyncSummary doSync(boolean full) {
         SourceSyncResult standard = syncSource("표준데이터", performanceClient::fetchPage);
         SourceSyncResult culture = syncSource("문화정보", cultureClient::fetchPage);
 
