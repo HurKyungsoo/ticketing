@@ -172,7 +172,7 @@ a { color: inherit; text-decoration: none; }
 }
 .masthead .authnav {
   margin-left: auto;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; row-gap: 6px;
   font-size: 13px; color: var(--mute);
 }
 .masthead .authnav a { color: var(--brass); }
@@ -181,6 +181,17 @@ a { color: inherit; text-decoration: none; }
 .masthead .authnav .linklike {
   background: none; border: 0; padding: 0;
   font: inherit; color: var(--brass); cursor: pointer;
+}
+/* 좁은 화면에서 pill 이 내용 폭보다 더 눌리면 "로그인" 같은 두세 글자 텍스트가
+   공백 없이 한 글자씩 줄바꿈된다(CJK 기본 줄바꿈 규칙). flex 아이템은 기본
+   min-width:auto 라 내용보다 눌릴 수 있으므로, 줄바꿈 대신 pill 전체가
+   다음 줄로 넘어가게 막는다. */
+.masthead .authnav .navlink,
+.masthead .authnav .who,
+.masthead .authnav .linklike,
+.masthead .authnav .btn-login,
+.masthead .authnav .btn-signup {
+  white-space: nowrap;
 }
 
 /* ---- 내비 링크(공연 찾기 · 마이페이지) ----
@@ -2977,6 +2988,10 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
 
 @media (max-width: 860px) {
   body.page-home .masthead { padding: 16px 20px; }
+  /* 데스크톱용 gap:20px/font-size:14.5px(위 body.page-home .masthead .authnav) 그대로면
+     pill 5개가 한 줄에 다른 페이지보다 더 넓게 필요해 좁은 화면에서 줄바꿈이 더 자주 난다.
+     다른 페이지 기본값(gap:10px/13px)으로 맞춘다. */
+  body.page-home .masthead .authnav { gap: 10px; font-size: 13px; }
   body.page-home .hero { padding: 48px 20px 36px; }
   body.page-home .hero-inner { grid-template-columns: 1fr; gap: 28px; align-items: start; }
   body.page-home .hero-stat { text-align: left; border-left: 0; padding-left: 0; }
