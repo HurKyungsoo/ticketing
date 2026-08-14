@@ -31,7 +31,13 @@
         <a th:href="@{/mypage/reservations}" class="navlink"
            th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'active'"
            th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'page' : null">마이페이지</a>
-        <span class="navdivider" aria-hidden="true"></span>
+        <!--
+            navdivider 를 여기 독립 span 으로 두면 좁은 화면에서 authnav 가 줄바꿈될 때
+            구분선만 홀로 첫 줄 끝에 남고, 뒤따르는 로그인/닉네임 묶음은 다음 줄로 떨어져
+            어색했다. navactions 로 묶어서 구분선을 그 묶음의 ::before 로 옮기면
+            줄바꿈 시에도 항상 묶음과 함께 움직인다.
+        -->
+        <span class="navactions">
         <!--
             닉네임 앞의 이니셜 원. 로그인한 사람이 누구인지 글자만으로 알리는 것보다
             눈에 먼저 걸린다. 장식이라 aria-hidden 이다 — 바로 옆에서 닉네임을 읽어준다.
@@ -62,6 +68,7 @@
                th:href="${currentPath} != null ? @{/login(returnTo=${currentPath})} : @{/login}">로그인</a>
             <a class="btn-signup"
                th:href="${currentPath} != null ? @{/signup(returnTo=${currentPath})} : @{/signup}">회원가입</a>
+        </span>
         </span>
     </nav>
 </header>

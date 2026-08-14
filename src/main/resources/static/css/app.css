@@ -176,7 +176,11 @@ a { color: inherit; text-decoration: none; }
   font-size: 13px; color: var(--mute);
 }
 .masthead .authnav a { color: var(--brass); }
-.masthead .navdivider { flex: none; width: 1px; height: 16px; background: var(--line-strong); }
+/* 이전엔 navdivider 가 authnav 의 독립 flex 아이템이었는데, 좁은 화면에서 authnav 가
+   줄바꿈되면 구분선만 첫 줄 끝에 홀로 남고 로그인/닉네임 묶음은 다음 줄로 떨어졌다.
+   navactions(로그인/닉네임+로그아웃 묶음)의 ::before 로 옮기면 묶음과 항상 같이 움직인다. */
+.masthead .navactions { display: inline-flex; align-items: center; gap: 10px; }
+.masthead .navactions::before { content: ''; flex: none; width: 1px; height: 16px; background: var(--line-strong); }
 .masthead .authnav form { margin: 0; }
 .masthead .authnav .linklike {
   background: none; border: 0; padding: 0;
@@ -1010,6 +1014,16 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
 @media (max-width: 720px) {
   /* 좁은 화면에서는 지도 자체가 좁으니 미니맵도 자리를 덜 차지하게 줄인다. */
   .minimap { right: 12px; bottom: calc(var(--footer-h, 150px) + 10px); }
+  /*
+     크기(JS 의 MINI_MAX_W/H)를 줄여도 겹침 자체는 없앨 수 없다 — position:fixed 로
+     좌석 스크롤 영역 안쪽에 얹히는 구조라(위 미니맵 크기 계산 주석 참고), 화면에
+     남는 세로 공간을 최대로 쓰는 이 화면에서 미니맵이 좌석과 안 겹치는 "빈 자리"는
+     애초에 없다. 그래서 완전히 안 겹치게 만드는 대신, 평소 불투명도를 낮춰 겹친
+     자리의 좌석 색이 비쳐 보이게 한다 — 적어도 "여기 좌석이 있다"는 건 알 수 있고,
+     조금만 스크롤하면 그대로 눌린다. hover/focus 시 원래 불투명도(.82)로 돌아온다
+     (터치 기기는 hover 가 없지만, 드래그 시작 시 focus-within 이 걸려 잡는 동안은 또렷해진다).
+  */
+  .minimap { opacity: .5; }
 }
 
 /* 가격표. 예매 바 안에 고정으로 들어간다. 바깥 여백은 바가 갖고 있다. */
@@ -2558,7 +2572,7 @@ body.page-home .masthead .authnav a { color: var(--ink); transition: color .2s; 
 body.page-home .masthead .authnav a:hover { color: var(--brass-dim); }
 body.page-home .masthead .linklike { color: var(--ink); }
 body.page-home .masthead .linklike:hover { color: var(--brass-dim); }
-body.page-home .masthead .navdivider { background: rgba(17, 18, 20, .18); }
+body.page-home .masthead .navactions::before { background: rgba(17, 18, 20, .18); }
 /* 홈의 라이트 배경용 색 뒤집기. 모양·크기는 공통 규칙(.authbtns a)이 정하고 여기서는
    색만 바꾼다 — 종전에는 여기서 padding 까지 따로 줘서 홈만 회원가입 알약이 4px 컸다.
 
@@ -3262,7 +3276,7 @@ body.tone-light .masthead .authnav a { color: var(--ink); transition: color .2s;
 body.tone-light .masthead .authnav a:hover { color: var(--brass-ink); }
 body.tone-light .masthead .linklike { color: var(--ink); }
 body.tone-light .masthead .linklike:hover { color: var(--brass-ink); }
-body.tone-light .masthead .navdivider { background: rgba(17, 18, 20, .18); }
+body.tone-light .masthead .navactions::before { background: rgba(17, 18, 20, .18); }
 
 /* .authbtns a 는 body.page-list/.page-detail 쪽 다크용 규칙이 color 를 !important 로
    박고 있어(--paper) 스코프를 하나 더 얹는 것만으로는 못 이긴다. 홈에서 로그인 링크가

@@ -431,10 +431,19 @@
        지도 폭의 35%·높이의 30% 를 덮어 "겹치는 면적을 줄인다"는 원래 의도가 무색해진다.
        지도가 작을수록 미니맵이 상대적으로 커지는 역설이라, 지도 크기에 맞춰 같이 줄인다.
        없애지는 않는다 — 2,481석 홀을 한 번에 열 줄씩 보는 화면에서는 지금 어디쯤인지가
-       오히려 더 필요하다. */
+       오히려 더 필요하다.
+
+       92×66 로도 부족하다는 게 실측으로 드러났다 — 390px 폰에서 확대 직후(스크롤 맨 위)
+       뒷줄 좌석 6석이 미니맵 뒤로 완전히 들어가 보이지도 눌리지도 않았다. 미니맵은
+       position:fixed 로 좌석 스크롤 영역 안쪽 모서리에 얹히는 구조라(#housescroll 자체가
+       화면에 남는 세로 공간을 최대로 채우도록 짜여 있어 미니맵이 앉을 "빈 자리"가 애초에
+       없다), 겹침을 완전히 없애려면 세로 공간을 미니맵 높이만큼 항상 비워둬야 하는데
+       그건 "좌석을 고르는 화면에서 세로가 가장 아까운 자원"이라는 이 화면의 원칙과
+       정면으로 부딪힌다. 더 줄여 겹치는 면적 자체를 줄이고, 아래 opacity 로 겹친 자리의
+       좌석이 비쳐 보이게 해서 "그 자리에 좌석이 있다"는 것만은 알 수 있게 한다. */
     const MINI_NARROW = window.matchMedia('(max-width: 720px)').matches;
-    const MINI_MAX_W = MINI_NARROW ? 92 : 130;
-    const MINI_MAX_H = MINI_NARROW ? 66 : 95;
+    const MINI_MAX_W = MINI_NARROW ? 76 : 130;
+    const MINI_MAX_H = MINI_NARROW ? 54 : 95;
     const minimap = document.getElementById('minimap');
     const minimapInner = document.getElementById('minimapInner');
     const minimapZones = document.getElementById('minimapZones');
