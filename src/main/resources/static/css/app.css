@@ -2432,11 +2432,15 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
   */
   body.page-detail .toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
   /*
-     위 88px 은 데스크톱 헤더 기준이라 여기서는 모자란다 — 좁은 화면 헤더는 로고/내비/
-     로그인이 세 줄로 접혀 실측 160px 다. 그대로 두면 바의 CTA 로 점프했을 때 정작
-     「회차 선택」 제목이 헤더 뒤로 들어가, 어디로 온 건지 모르는 채 회차만 보인다.
+     위 88px 은 데스크톱 헤더 기준이라 여기서는 모자란다 — 그대로 두면 바의 CTA 로
+     점프했을 때 정작 「회차 선택」 제목이 sticky 헤더 뒤로 들어가, 어디로 온 건지
+     모르는 채 회차만 보인다.
+
+     값은 좁은 화면 헤더 높이(실측 117px)에 숨 쉴 여백을 더한 것이다. 헤더 높이가
+     바뀌면 여기도 같이 바뀌어야 한다 — 처음엔 헤더가 세 줄이던 시절의 160px 를 기준으로
+     172px 였는데, 헤더를 두 줄로 압축하면서 55px 이 빈 채로 남았다.
   */
-  body.page-detail #schedule-pick { scroll-margin-top: 172px; }
+  body.page-detail #schedule-pick { scroll-margin-top: 130px; }
   /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
   body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
   body.page-detail .sd-date { width: auto; }
@@ -3190,8 +3194,10 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
   body.page-home .masthead { padding: 16px 20px; }
   /* 데스크톱용 gap:20px/font-size:14.5px(위 body.page-home .masthead .authnav) 그대로면
      pill 5개가 한 줄에 다른 페이지보다 더 넓게 필요해 좁은 화면에서 줄바꿈이 더 자주 난다.
-     다른 페이지 기본값(gap:10px/13px)으로 맞춘다. */
-  body.page-home .masthead .authnav { gap: 10px; font-size: 13px; }
+     다른 페이지와 같은 값으로 맞춘다 — 이 규칙이 화면을 짚고 있어(명시도가 높아) 파일
+     끝의 「좁은 화면 헤더 압축」 블록을 이겨버리므로, 거기서 정한 8px 을 여기도 같이 쓴다.
+     한 곳만 고치면 홈만 헤더가 세 줄로 남는다. */
+  body.page-home .masthead .authnav { gap: 6px 8px; font-size: 13px; }
   body.page-home .hero { padding: 48px 20px 36px; }
   body.page-home .hero-inner { grid-template-columns: 1fr; gap: 28px; align-items: start; }
   body.page-home .hero-stat { text-align: left; border-left: 0; padding-left: 0; }
@@ -4862,4 +4868,63 @@ body.page-payment.tone-light .paydone-share:focus-visible {
      확대 버그가 되살아난다. 그래서 열거하는 쪽을 "예외"로 두고 기본을 하한선으로 잡았다.
   */
   body.page-home .hero-search input { font-size: 17px !important; }
+}
+
+/* ==================================================================
+   좁은 화면 헤더 압축
+
+   좁은 화면에서 헤더가 세 줄이었다 — ① 로고 ② 공연 찾기·마이페이지 ③ 로그인·회원가입.
+   실측(390px) 160~166px 로, sticky 라 스크롤 내내 화면의 19~20% 를 붙잡고 있었다.
+   좌석도만 93px 인데 그건 압축해서가 아니라 그 화면이 내비를 아예 안 쓰기 때문이다
+   (showAuthNav=false) — 나머지 화면에는 해법이 없었던 셈이다.
+
+   세 줄이 된 이유는 딱 19px 이었다. 내비 한 줄에 필요한 폭이 354px(76 + 84 + 174 +
+   여백 20)인데 쓸 수 있는 건 335px 이라, 로그인 묶음만 다음 줄로 떨어졌다. 그래서
+   글자나 항목을 빼지 않고 알약 여백만 조여 한 줄에 넣는다 — 정보는 그대로 두고
+   줄 수만 셋에서 둘로 줄이는 게 목적이다.
+
+   터치 목표가 작아지지 않도록 세로 여백은 거의 안 건드린다(가로만 줄인다). 알약
+   자체가 작아 보이지 않게 gap 도 같이 좁혀, 항목 사이가 알약 안쪽 여백보다 넓어
+   따로 노는 일이 없게 한다.
+   ================================================================== */
+@media (max-width: 860px) {
+  .masthead .authnav { gap: 6px 8px; }
+  /* 가로만 14 → 10px. 세로 8px 은 그대로 둬서 누를 높이를 지킨다. */
+  .masthead .authnav .navlink { padding: 8px 10px; }
+  .masthead .navactions { gap: 8px; }
+  .masthead .authbtns { gap: 6px; }
+  /* 가로만 18 → 12px. 이 둘이 가장 넓어서(163px) 여기서 가장 많이 줄어든다. */
+  .masthead .authbtns a { padding: 9px 12px; }
+
+  /*
+     로그인 상태에서는 닉네임이 이 줄의 폭을 정한다 — 길이 제한이 서버에 있어도
+     긴 닉네임 하나면 애써 한 줄로 만든 내비가 다시 두 줄이 된다. 폭을 잘라 말줄임으로
+     막는다. 이니셜 원(24px)은 그대로 두므로 누구인지는 계속 보인다.
+  */
+  .masthead .authnav .who { min-width: 0; }
+  .masthead .authnav .who > span:last-child {
+    min-width: 0;
+    /* 한 줄을 지키는 상한은 9ch(내비에 필요한 폭 323 vs 쓸 수 있는 335)로 실측됐다.
+       여유 12px 은 기기·폰트에 따라 넘길 수 있어 8ch 로 한 칸 물러섰다. 한글 기준
+       4~5자, 영문 8자쯤이라 흔한 닉네임은 잘리지 않고 그대로 다 보인다. */
+    max-width: 8ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/*
+   더 좁은 폭에서 한 번 더 조인다.
+
+   위 값으로 390px 은 한 줄에 들어갔지만(필요 306 / 가용 335) 360px 에서는 가용이
+   305px 라 1px 이 모자라 다시 세 줄이 됐다. 갤럭시 S 계열 기본 폭이 360px 이라
+   그냥 두면 국내 사용자 상당수가 압축 효과를 전혀 못 본다.
+
+   가로 여백만 더 줄인다 — gap 은 홈이 화면 스코프로 따로 갖고 있어(명시도가 높다)
+   여기서 바꾸면 홈만 안 먹는다. 여백은 화면별로 덮는 규칙이 없어 여기 한 곳이면 된다.
+*/
+@media (max-width: 400px) {
+  .masthead .authnav .navlink { padding: 8px 8px; }
+  .masthead .authbtns { gap: 4px; }
+  .masthead .authbtns a { padding: 9px 10px; }
 }
