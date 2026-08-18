@@ -4960,3 +4960,77 @@ body.page-payment.tone-light .paydone-share:focus-visible {
   body.page-list:not(.page-home) .card .meta { font-size: 12px; }
   body.page-list:not(.page-home) .card .m-date { font-size: 11px; }
 }
+
+/* ==================================================================
+   터치 타깃 최소 크기
+
+   실측(390px)에서 손가락으로 누르기엔 작은 컨트롤이 여럿 있었다 — 공유 시트 닫기
+   23×23, 필터 닫기 25×24, 비밀번호 보기 38×27, 그리고 본문 속 인라인 링크들이
+   글자 높이 그대로 16~26px 이었다(「비밀번호를 잊으셨나요?」·「지도에서 찾기」·
+   「전체 보기 →」). 손가락 접촉면은 대략 9mm 라 24px 짜리 ✕ 는 정확히 겨냥해야 눌린다.
+
+   두 가지 방법을 쓴다. 어느 쪽인지는 **그 컨트롤이 눈에 보이는 상자를 갖는지**로 가른다.
+
+   ① 상자를 실제로 키운다 — 아이콘 버튼과 알약처럼 배경·테두리로 "여기가 눌리는
+      범위"를 이미 보여주는 것들. 이런 건 히트 영역만 넓히면 보이는 것보다 넓은 데가
+      눌려서, 화면이 사용자에게 거짓말을 하게 된다.
+
+   ② 히트 영역만 넓힌다(::after) — 본문 흐름 속 인라인 링크. 상자를 키우면 글줄 간격이
+      밀려 문단이 헝클어진다. 보이는 건 그대로 두고 누를 수 있는 범위만 위아래로 넓힌다.
+      투명한 판이라 옆 글자를 가리지도 않는다.
+
+   조건은 3번(입력창 16px)과 같다 — 폭만으로는 아이패드를 놓치고, pointer 만으로는
+   개발 중에 확인할 수가 없다.
+   ================================================================== */
+@media (max-width: 860px), (pointer: coarse) {
+  /* ---- ① 상자를 키우는 쪽 ---- */
+  body.page-list .fp-close,
+  .sharesheet-close,
+  .pwtoggle {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* 알약은 이미 37~42px 라 조금만 모자랐다. 세로만 채우면 되므로 가로 여백(4번에서
+     한 줄에 넣으려고 조인 값)은 건드리지 않는다 — 건드리면 내비가 다시 두 줄이 된다. */
+  .masthead .authnav .navlink,
+  .masthead .authbtns a,
+  body.page-detail .sd-times .sd-chip {
+    min-height: 44px;
+    display: inline-flex; align-items: center;
+  }
+  body.page-detail .sd-times .sd-chip { justify-content: center; }
+
+  /* ---- ② 히트 영역만 넓히는 쪽 ---- */
+  /*
+     로고는 알약과 달리 눌리는 범위를 배경으로 보여주지 않는다(글자뿐이다). 그래서
+     상자를 키우는 대신 이쪽에 둔다 — 키우면 헤더 첫 줄이 9px 높아지는데, 바로 앞
+     작업에서 줄인 높이를 되돌릴 이유가 없다.
+  */
+  .masthead .brandlink,
+  .authlink a,
+  .map-link,
+  body.page-home .hs-more,
+  body.page-home .allmore a { position: relative; }
+  .masthead .brandlink::after,
+  .authlink a::after,
+  .map-link::after,
+  body.page-home .hs-more::after,
+  body.page-home .allmore a::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%; transform: translateY(-50%);
+    height: 44px;
+  }
+}
+
+/*
+   비밀번호 입력창의 오른쪽 여백. 미디어 쿼리 밖에 두는 이유는 이게 크기 조정이 아니라
+   **겹침 버그 수정**이기 때문이다 — 좁은 화면만의 문제가 아니다.
+
+   .pwfield input 의 padding-right: 62px 가 뒤에 오는 body.tone-light .authform input 의
+   padding 단축 속성(13px 14px)에 명시도로 져서 14px 로 덮여 있었다. 그래서 「보기」
+   토글이 입력 글자 위에 30px 겹쳤다 — 긴 비밀번호를 치면 글자가 버튼 밑으로 들어간다.
+   위에서 토글을 44px 로 키우면 더 겹치므로 같이 잡는다.
+*/
+body.tone-light .authform .pwfield input { padding-right: 56px; }
