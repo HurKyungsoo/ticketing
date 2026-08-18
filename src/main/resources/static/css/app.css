@@ -2170,6 +2170,13 @@ body.page-detail .sc-cta:hover {
   border-color: var(--brass); color: var(--brass);
   background: rgba(255, 201, 64, 0.08);
 }
+
+/* ---- 좁은 화면 하단 고정 예매 바 ----
+   위 요약 카드가 숨겨지는 폭에서만 나타나 그 역할을 대신한다(아래 860px 블록).
+   기본은 숨김이다 — 넓은 화면에는 이미 카드가 있고, 둘이 같이 뜨면 같은 CTA 가
+   화면에 둘이 된다. */
+body.page-detail .mobilebar { display: none; }
+
 /* 헤더가 sticky 라 앵커로 점프하면 제목이 그 아래 가린다. */
 body.page-detail #schedule-pick { scroll-margin-top: 88px; }
 
@@ -2308,6 +2315,58 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
      제목 위로 올라간다 — 공연명보다 최저가가 먼저 읽히는 이상한 순서가 되고, 같은 정보가
      바로 아래 공연 정보 표에 다시 나온다. 그래서 숨긴다. */
   body.page-detail .summarycard { display: none; }
+  /*
+     대신 카드가 들고 있던 예매 진입점을 하단 고정 바로 옮긴다. 두 규칙이 같은 860px 를
+     쓰는 게 중요하다 — 중단점이 갈리면 카드도 바도 없는 폭이 생긴다.
+
+     면은 요약 카드(tone-light)와 같은 --ink 로 둔다. 이 라이트 화면에서 "어두운 덩어리 =
+     예매" 라는 언어가 이미 서 있고, 배경과 같은 색이면 본문이 바 뒤로 지나갈 때 경계가
+     사라진다.
+  */
+  body.page-detail .mobilebar {
+    display: flex; align-items: center; gap: 14px;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    /* 헤더(20)와 같은 층. 토스트(60)·공유 시트(70)보다는 아래라 그 둘은 바를 덮는다. */
+    z-index: 20;
+    /* 아이폰 홈 인디케이터에 CTA 가 물리지 않게 한다(좌석도 .bookbar 와 같은 처리). */
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    background: var(--ink);
+    border-top: 1px solid rgba(248, 244, 236, .12);
+  }
+  body.page-detail .mb-price { display: flex; flex-direction: column; gap: 2px; }
+  body.page-detail .mb-label { font-size: 11.5px; font-weight: 600; color: rgba(248, 244, 236, .55); }
+  /* 숫자와 '원' 사이가 끊기면 두 줄이 된다 — 공연 정보 표의 .fee 와 같은 문제다. */
+  body.page-detail .mb-price strong {
+    font-family: var(--display); font-size: 18px; font-weight: 800;
+    color: var(--brass); white-space: nowrap;
+  }
+  /* 남는 폭을 전부 갖는다. 가격이 미상인 공연에서는 바 전체가 CTA 가 된다. */
+  body.page-detail .mb-cta {
+    flex: 1; min-width: 0;
+    padding: 14px 20px;
+    border-radius: 999px;
+    background: var(--brass); color: var(--ink);
+    text-align: center; font-size: 15px; font-weight: 800;
+    white-space: nowrap;
+  }
+  /* 바에 가리는 만큼 본문 끝(관람평)에 자리를 만드는 건 아래 tone-light 블록의
+     .detail padding 에서 한다 — 그쪽이 padding 단축 속성이라 여기서 padding-bottom 만
+     따로 주면 명시도가 같고 뒤에 있는 그 규칙이 이긴다(실제로 72px 로 덮였다). */
+  /*
+     토스트는 bottom:32px 라 바와 겹친다 — z-index 가 위(60 vs 20)여서 찜·알림 안내가
+     뜰 때마다 CTA 를 덮는다. 바 높이만큼 올린다.
+
+     바가 없는 공연(예매할 회차 없음)에서도 그냥 올린다. :has(.mobilebar) 로 정확히
+     가를 수는 있지만, 그 선택자를 모르는 브라우저는 규칙을 통째로 버려서 토스트가
+     바 뒤로 들어간다 — 가리는 쪽이 조금 높이 뜨는 쪽보다 나쁘다.
+  */
+  body.page-detail .toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  /*
+     위 88px 은 데스크톱 헤더 기준이라 여기서는 모자란다 — 좁은 화면 헤더는 로고/내비/
+     로그인이 세 줄로 접혀 실측 160px 다. 그대로 두면 바의 CTA 로 점프했을 때 정작
+     「회차 선택」 제목이 헤더 뒤로 들어가, 어디로 온 건지 모르는 채 회차만 보인다.
+  */
+  body.page-detail #schedule-pick { scroll-margin-top: 172px; }
   /* 좁은 화면에서는 날짜를 시각 위로 올린다 — 96px 를 떼면 시각 칩이 들어갈 폭이 안 남는다. */
   body.page-detail .scheduleday { flex-direction: column; align-items: stretch; gap: 10px; }
   body.page-detail .sd-date { width: auto; }
@@ -4673,7 +4732,11 @@ body.page-payment.tone-light .paydone-share:focus-visible {
 
 @media (max-width: 860px) {
   body.page-detail.tone-light .masthead { padding: 16px 20px; }
-  body.page-detail.tone-light .detail { padding: 28px 20px 72px; gap: 28px; }
+  /* 아래 여백 72 → 132px: 이 폭에서는 하단 고정 예매 바(.mobilebar, 실측 77px)가
+     본문 위에 얹히므로, 그만큼 자리를 비워야 마지막 관람평이 바 뒤로 들어가지 않는다.
+     바 높이가 내용에 따라 변하지 않아 상수로 둔다(좌석도 .bookbar 는 고른 좌석 수에
+     따라 늘어나서 JS 가 --footer-h 로 실측해 넘긴다 — 여기는 그 장치가 필요 없다). */
+  body.page-detail.tone-light .detail { padding: 28px 20px 132px; gap: 28px; }
   body.page-detail.tone-light h2 { font-size: 26px; }
   /* 좁은 화면에서는 요약 카드가 숨겨지므로(위 다크 규칙 그대로) 찜·공유가 포스터
      바로 밑에 오는데, 그때는 위 여백이 카드용으로 잡힌 18px 보다 넉넉해야 한다. */

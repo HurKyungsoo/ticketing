@@ -334,6 +334,36 @@
     </div>
 </div>
 
+<!--
+    좁은 화면 전용 하단 고정 예매 바.
+
+    넓은 화면에서는 포스터 옆 sticky 요약 카드(.summarycard)가 최저가와 「회차 선택하기」를
+    스크롤 내내 들고 있다. 그런데 그 카드는 좁은 화면에서 CSS 가 숨긴다 — 칸이 sticky 가
+    아니라 제목 위로 올라가서 공연명보다 최저가가 먼저 읽히는 순서가 되기 때문이다.
+    그 결과 모바일에는 예매 진입점이 화면 어디에도 남지 않았다. 실측(390px)으로 회차 칩이
+    문서 2,488px 중 1,480px — 59% 지점이라, 스크롤을 한참 내려야만 예매를 시작할 수 있었다.
+
+    카드가 하던 두 가지(최저가 보여주기 + 회차로 보내기)만 그대로 옮긴다. 좌석도의
+    .bookbar 와 달리 내용이 변하지 않는 한 줄이라 높이가 고정이고, 그래서 JS 로 높이를
+    실측해 여백을 맞추는 장치(--footer-h)가 필요 없다.
+
+    회차가 없으면 띄우지 않는다 — 누를 곳이 없는 바는 자리만 먹는다. 그 경우의 안내
+    (공연 종료 / 아직 회차 없음 + 찜하기)는 이미 본문 .empty-inline 이 하고 있다.
+    조건을 요약 카드의 .sc-cta 와 같은 식으로 두는 이유도 같다 — 두 진입점이 서로 다른
+    조건으로 뜨면 폭에 따라 있다 없다 한다.
+-->
+<div class="mobilebar" th:if="${summary.nextSchedule() != null}">
+    <!-- 가격이 미상인 공연도 있다. 그때는 CTA 가 바 전체를 갖는다. -->
+    <div class="mb-price" th:if="${summary.lowestPrice() != null}">
+        <span class="mb-label">최저가</span>
+        <strong th:text="${summary.lowestPrice() == 0} ? '무료'
+                         : ${#numbers.formatInteger(summary.lowestPrice(),0,'COMMA')} + '원~'">62,000원~</strong>
+    </div>
+    <!-- 특정 회차로 바로 보내지 않는 건 요약 카드와 같은 이유다 — 관람일은 사용자가
+         고르는 것이지 가장 빠른 회차가 기본값이 아니다. -->
+    <a class="mb-cta" href="#schedule-pick">회차 선택하기</a>
+</div>
+
 <th:block th:replace="~{fragment/toast :: toast}"></th:block>
 
 <th:block th:replace="~{fragment/sharesheet :: sheetScript}"></th:block>
