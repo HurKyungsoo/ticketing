@@ -580,6 +580,11 @@ a { color: inherit; text-decoration: none; }
    안 된다 — 컨테이너가 블록이라 폭이 100% 여서 테두리가 화면 전체로 늘어난다.
 */
 .floornav-slot { display: flex; justify-content: center; }
+/* 알약 배경색을 슬롯에 변수로 둔다 — 좁은 화면에서 넘친 칩을 가리는 그라데이션
+   (.floornav-slot::before/::after)이 알약과 같은 색이어야 하는데, 그 그라데이션은
+   슬롯에 얹히므로 색을 알약에서 위로 물려받을 수 없다(커스텀 속성은 아래로만 흐른다).
+   한 곳에서 정하고 양쪽이 같이 읽는다. */
+.floornav-slot { --floornav-bg: var(--ink-soft); }
 .floornav {
   display: flex; flex-wrap: wrap; gap: 4px;
   width: fit-content;
@@ -588,7 +593,7 @@ a { color: inherit; text-decoration: none; }
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--ink-soft);
+  background: var(--floornav-bg, var(--ink-soft));
 }
 /*
    원래 자리를 지나 스크롤하면 화면 왼쪽에 세로로 붙는다.
@@ -1644,6 +1649,71 @@ body.page-error { background: var(--paper); color: var(--ink); }
   .bookbar .legend-grades button { flex: none; }
   /* 띠가 한 줄이 된 만큼 위아래 여백도 같이 조인다. */
   .bookbar .legend { margin-bottom: 6px; padding-bottom: 6px; }
+
+  /*
+     ---- 가로 스크롤 띠의 "옆에 더 있다" 표시 ----
+
+     위에서 두 띠를 가로 스크롤로 바꾸면서 스크롤바까지 같이 껐는데(디자인상 맞다 —
+     모바일 오버레이 스크롤바는 어차피 스크롤 중에만 잠깐 보인다), 그 결과 넘친 항목이
+     있다는 신호가 화면에서 완전히 사라졌다.
+
+     실측(390px): 등급 가격표는 327px 칸에 527px 이 들어 있어 A석 버튼이 통째로 화면
+     밖이었고, 층 바로가기는 325px 칸에 495px 이라 4층짜리 홀의 3층 칩이 안 보였다.
+     둘 다 잘린 자리가 딱 떨어져서 "여기서 끝"처럼 보인다 — 등급 필터에 A석이 아예
+     없는 줄 알고, 3층 좌석은 찾지 못한다.
+
+     그래서 넘치는 쪽 가장자리에서 내용을 흐린다. 잘린 글자가 사라져 가는 모양 자체가
+     "계속된다"는 신호다. 띠를 덮는 별도 요소를 얹지 않고 mask 로 처리하는 이유는,
+     스크롤 컨테이너 안에 넣은 오버레이는 내용과 같이 흘러가 버리고 밖에 두려면
+     감싸는 요소가 하나 더 필요하기 때문이다.
+
+     양쪽 폭은 JS 가 스크롤 위치를 보고 --fade-l/--fade-r 로 넘긴다(seat-map.html).
+     기본값 0 이면 gradient 가 곧바로 불투명해져 아무것도 안 흐려지므로, JS 가 없거나
+     넘치지 않을 때는 지금까지와 똑같이 보인다.
+
+     두 띠의 방식이 다른 이유는 띠 자신이 그려지는 물건인지가 다르기 때문이다.
+     등급 가격표(.legend-grades)는 배경도 테두리도 없는 맨 줄이라 mask 를 걸면 딱
+     버튼만 흐려진다. 층 바로가기(.floornav)는 테두리 있는 알약이라 같은 방법을 쓰면
+     알약 자체가 가장자리에서 녹아 "내용이 이어진다"가 아니라 "덜 그려졌다"로 보인다
+     (실제로 걸어보고 확인했다). 그래서 그쪽은 알약 배경색 그라데이션을 위에 얹어
+     칩만 덮는다.
+  */
+  .bookbar .legend-grades {
+    --fade-l: 0px;
+    --fade-r: 0px;
+    -webkit-mask-image: linear-gradient(to right,
+        transparent 0, #000 var(--fade-l),
+        #000 calc(100% - var(--fade-r)), transparent 100%);
+    mask-image: linear-gradient(to right,
+        transparent 0, #000 var(--fade-l),
+        #000 calc(100% - var(--fade-r)), transparent 100%);
+  }
+
+  /*
+     알약 안쪽에만 얹는다 — 위아래 1px 은 테두리, 아래 24px 은 .floornav 의 margin-bottom
+     이라 슬롯 높이에 포함돼 있다. 오른쪽 끝을 둥글리는 건 알약과 같은 색을 칠하기
+     때문이다: 각진 채로 두면 둥근 마구리 바깥으로 색이 삐져나와 모서리가 각져 보인다.
+
+     슬롯에 얹는 이유: 스크롤 컨테이너(.floornav) 안에 넣은 것은 내용과 같이 흘러가
+     가장자리에 머물지 못한다. 절대 위치라 flex 인 슬롯의 배치에는 끼어들지 않는다.
+  */
+  .floornav-slot { position: relative; }
+  .floornav-slot::before,
+  .floornav-slot::after {
+    content: '';
+    position: absolute; top: 1px; bottom: 25px;
+    z-index: 1; pointer-events: none;
+  }
+  .floornav-slot::before {
+    left: 1px; width: var(--fade-l, 0px);
+    border-radius: 999px 0 0 999px;
+    background: linear-gradient(to right, var(--floornav-bg), transparent);
+  }
+  .floornav-slot::after {
+    right: 1px; width: var(--fade-r, 0px);
+    border-radius: 0 999px 999px 0;
+    background: linear-gradient(to left, var(--floornav-bg), transparent);
+  }
 
   .bookbar { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
   .bookbar .inner { flex-direction: column; align-items: stretch; }
@@ -3921,8 +3991,10 @@ body.page-seatmap.tone-light .bandname em b { color: var(--brass-ink); }
 body.page-seatmap.tone-light .floorname { color: rgba(17, 18, 20, .45); }
 
 /* 층 바로가기 */
+/* 배경색은 슬롯의 변수로 정한다(위 .floornav-slot 주석 참고) — 알약과 넘침
+   그라데이션이 같은 값을 쓰게 하려는 것이다. */
+body.page-seatmap.tone-light .floornav-slot { --floornav-bg: #fff; }
 body.page-seatmap.tone-light .floornav {
-  background: #fff;
   border-color: rgba(17, 18, 20, .12);
 }
 /* 옆으로 붙었을 때는 좌석 위에 뜨므로, 뒤가 비쳐 글자가 묻히지 않게 흰 배경을 유지하고

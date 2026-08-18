@@ -1672,5 +1672,72 @@
 
     startPolling();
 </script>
+
+<!--
+    가로 스크롤 띠(층 바로가기 · 등급 가격표)의 "옆에 더 있다" 표시.
+
+    좁은 화면에서 두 띠는 줄바꿈 대신 가로 스크롤 한 줄이고, 스크롤바는 CSS 가 껐다.
+    그래서 넘친 항목이 있다는 신호가 화면에서 완전히 사라져 있었다 — 실측(390px)으로
+    등급 가격표는 327px 칸에 527px 이 들어 있어 A석 버튼이 통째로 화면 밖이었고,
+    층 바로가기는 4층짜리 홀의 3층 칩이 안 보였다. 잘린 자리가 딱 떨어지게 끝나서
+    "여기까지가 전부"로 읽힌다.
+
+    넘치는 쪽 가장자리를 흐려서(CSS 의 mask + --fade-l/--fade-r) 잘린 글자가 사라져 가는
+    모양을 만든다. 여기서는 스크롤 위치를 보고 그 폭만 넘긴다.
+
+    별도 IIFE 로 두는 이유: 위 스크립트들은 좌석 격자·미니맵이 있어야 도는데, 이 처리는
+    두 띠 중 하나만 있어도(층이 하나뿐인 공연장은 층 바로가기가 아예 없다) 독립적으로
+    의미가 있다.
+-->
+<script>
+(function () {
+    var FADE = 28;   // 흐리는 폭. 칩 하나를 다 가리지 않으면서 잘린 게 보일 만큼.
+
+    /* 넘치지 않으면 양쪽 다 0 이라 아무것도 안 흐려진다.
+       끝에서 1px 여유를 두는 건 소수점 스크롤 위치(확대 배율·고해상도) 때문이다 —
+       정확히 같아지지 않아 맨 끝까지 밀어도 오른쪽이 계속 흐려 보이는 경우가 있다.
+
+       값을 띠 자신이 아니라 .floornav-slot 에 쓰는 경우가 있다: 층 바로가기는 알약
+       테두리를 살리려고 흐림을 슬롯의 그라데이션으로 얹기 때문이다(CSS 주석 참고).
+       커스텀 속성은 아래로만 흐르므로 띠에 써두면 슬롯이 못 읽는다. 등급 가격표는
+       슬롯이 없어 자기 자신에게 쓴다. */
+    function sync(el) {
+        var target = el.closest('.floornav-slot') || el;
+        var max = el.scrollWidth - el.clientWidth;
+        var left = max > 0 ? el.scrollLeft : 0;
+        target.style.setProperty('--fade-l', (left > 1 ? FADE : 0) + 'px');
+        target.style.setProperty('--fade-r', (left < max - 1 ? FADE : 0) + 'px');
+    }
+
+    ['floornav', 'gradeFilter'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+
+        var frame = null;
+        function schedule() {
+            if (frame !== null) return;
+            frame = requestAnimationFrame(function () { frame = null; sync(el); });
+        }
+
+        el.addEventListener('scroll', schedule, { passive: true });
+        /*
+           넘침 여부는 칸의 폭과 내용의 폭 양쪽에서 변하는데, 창 크기 변화만으로는 둘 다
+           놓친다. 특히 내용 쪽이 그렇다 — 등급 가격표는 가격 글자를 JS 가 나중에 채우고
+           (.legend-price), 그 뒤에도 웹폰트(font-display: swap)가 늦게 도착하면서 글자
+           폭이 한 번 더 바뀐다. 그래서 띠 자신과 칩들을 같이 관찰한다: 띠는 칸의 폭,
+           칩은 내용의 폭을 알려준다(띠는 width:100% 라 내용이 늘어도 자기 상자는 그대로다).
+        */
+        if (window.ResizeObserver) {
+            var ro = new ResizeObserver(schedule);
+            ro.observe(el);
+            Array.prototype.forEach.call(el.children, function (chip) { ro.observe(chip); });
+        } else {
+            window.addEventListener('resize', schedule);
+        }
+
+        sync(el);
+    });
+})();
+</script>
 </body>
 </html>
