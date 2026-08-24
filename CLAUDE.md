@@ -133,4 +133,3 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 2. 토스페이먼츠 테스트 결제 + 웹훅
 3. 관리자 대시보드 (`selectDailySales` + Chart.js)
 4. Docker + GitHub Actions CI
-5. AWS EC2 + RDS 배포
