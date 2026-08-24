@@ -71,6 +71,9 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      # 예매 확정 안내 메일의 링크 주소. 빠뜨리면 기능이 죽는 게 아니라 링크만 localhost 를
+      # 가리켜 조용히 틀린다 — 여기 나열되지 않은 변수는 .env 에 있어도 컨테이너에 안 들어간다.
+      APP_BASE_URL: ${APP_BASE_URL}
       # TOSS_MOCK 은 여기에 두지 않는다. prod 프로파일에서 켜지면 MockPaymentGuard 가
       # 기동을 거부한다 — 결제 없이 예매가 확정되는 경로라 조용히 넘어가면 안 된다.
     ports:
