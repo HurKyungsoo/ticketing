@@ -120,8 +120,9 @@ management:
     mail:
       # 위 redis 와 완전히 같은 이유다. spring-boot-starter-mail 을 넣으면 JavaMailSender
       # 빈이 생기면서 MailHealthIndicator 가 자동 등록되고, 그게 매번 SMTP 에 접속을 시도한다.
-      # 메일은 비밀번호 재설정에만 쓰는 보조 경로이고 발송 실패는 PasswordResetMailSender 가
-      # 이미 삼키도록 설계했는데(앱은 정상 동작), 헬스체크만 DOWN 이 되면 설계와 어긋난다.
+      # 메일은 비밀번호 재설정·예매 확인 안내에 쓰는 보조 경로이고, 두 발송기(PasswordResetMailSender,
+      # ReservationMailSender)가 실패를 이미 삼키도록 설계했는데(앱은 정상 동작),
+      # 헬스체크만 DOWN 이 되면 설계와 어긋난다.
       # 실제로 이 설정 없이는 SMTP 미설정(REPLACE_ME) 로컬에서 /actuator/health 가 503 이었다.
       enabled: false
 
@@ -147,11 +148,15 @@ toss:
   secret-key: ${TOSS_SECRET_KEY:REPLACE_ME}
   api-base-url: https://api.tosspayments.com
 
-# 비밀번호 재설정 메일의 발신자 표시값(MailProperties). SMTP 인증 계정(spring.mail.username)과는
+# 메일 발신자 표시값(MailProperties). SMTP 인증 계정(spring.mail.username)과는
 # 별개 값이다 - Gmail 등 일부 제공자는 발신 주소가 인증 계정과 같아야 하므로, 운영에서는
 # 보통 MAIL_FROM_ADDRESS 를 MAIL_USERNAME 과 같은 값으로 둔다.
+# base-url 은 예매 확인 메일의 마이페이지 링크에 쓴다. 이 메일은 커밋 후 이벤트에서 나가
+# 요청 주소를 못 쓰므로 설정으로 받는다(MailProperties.baseUrl 주석). 배포에서 반드시 실제
+# 도메인으로 덮을 것 - 기본값 그대로면 메일 링크가 localhost 를 가리킨다.
 mail:
   from-address: ${MAIL_FROM_ADDRESS:REPLACE_ME}
+  base-url: ${APP_BASE_URL:http://localhost:8080}
 
 # 네이버 지도 JS API - 절대 커밋하지 말 것
 naver:

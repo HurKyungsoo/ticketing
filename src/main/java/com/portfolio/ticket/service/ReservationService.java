@@ -241,6 +241,10 @@ public class ReservationService {
             seatHoldRepository.deleteById(seat.getId());
         }
         externalInventoryClient.notifySold(seats.get(0).getSchedule().getId(), seats.size());
+
+        // 확인 메일은 커밋 후에 나간다. 지금 이 트랜잭션은 좌석을 FOR UPDATE 로 쥐고 있어서
+        // 여기서 SMTP 를 기다리면 락이 그만큼 길어진다(ReservationConfirmedEvent 주석).
+        events.publishEvent(new ReservationConfirmedEvent(reservation.getId()));
         return reservation;
     }
 
