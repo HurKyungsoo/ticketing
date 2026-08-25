@@ -2156,7 +2156,10 @@ body.page-list .card .meta {
      제목과의 간격은 h3 의 margin-bottom 하나로만 만든다. */
   margin: auto 0 0;   /* 위쪽 auto = 카드 바닥에 붙인다 (위 .card 플렉스 주석 참고) */
   display: grid;
-  gap: 2px;
+  /* 2px 은 글자 세 줄만 있을 때의 값이었다. 가운데가 알약이 되면서 줄끼리 붙어 보여
+     6px 로 넓혔다 — 알약은 자기 padding 만큼 이미 시각적 부피가 있어서, 글자끼리
+     붙여 두던 간격을 그대로 쓰면 답답하다. */
+  gap: 6px;
   color: var(--mute);
   line-height: 1.5;
 }
@@ -2185,8 +2188,14 @@ body.page-list .card .m-venue {
 body.page-list .card .m-date {
   justify-self: start;
   display: inline-flex; align-items: center;
-  margin: 2px 0 3px;
-  padding: 3px 10px;
+  /*
+     왼쪽 padding 만큼 당겨 놓는다. 알약의 "상자"를 0 에 맞추면 안쪽 글자가 10px
+     들여쓰기돼서, 제목·공연장·기간이 이루는 세로 열에서 이 줄만 혼자 밀려 보인다
+     (실측: 나머지 세 줄 left 0, 알약 글자만 left 10). 상자가 왼쪽으로 10px 나가지만
+     카드 사이 간격이 28px 이라 옆 카드를 침범하지 않고, 색이 옅은 판이라 튀지도 않는다.
+  */
+  margin-left: -10px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 12.5px; font-weight: 700;
   letter-spacing: -.01em;
@@ -3310,8 +3319,16 @@ body.page-home .homesec .grid {
   gap: 24px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  padding-bottom: 4px;
-  margin-bottom: -4px;
+  /* 아래위로 4px 을 빼 두는 것과 같은 수법을 왼쪽에도 쓴다. 회차 알약이 글자 열을 맞추려고
+     왼쪽으로 10px 나가 있는데(.m-date margin-left 주석 참고), 여기가 overflow-x 컨테이너라
+     그대로 두면 첫 카드의 알약만 잘린다. 안쪽으로 10px 밀고 상자를 같은 만큼 왼쪽으로
+     늘려서, 보이는 위치는 그대로 두고 잘림만 없앤다. */
+  padding: 0 0 4px 10px;
+  margin: 0 0 -4px -10px;
+  /* 스냅이 카드의 왼쪽 모서리를 스크롤 영역 시작에 붙이는데, 그 "시작"은 padding 을
+     안 본다 — 그대로 두면 브라우저가 10px 만큼 스스로 스크롤해서(실측 scrollLeft: 10)
+     방금 만든 자리를 도로 없애고 알약이 또 잘린다. 스냅 기준을 padding 만큼 밀어준다. */
+  scroll-padding-left: 10px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -3481,7 +3498,10 @@ body.page-home .editorial-card .ec-venue {
    (아이보리 배경에서 잉크를 쓰던 것과 반대), 채웠을 때만 잉크로 뒤집는다. */
 body.page-home .editorial-card .ec-next {
   display: inline-flex; align-items: center;
-  padding: 3px 10px;
+  /* 카드 목록과 같은 이유로 왼쪽 padding 만큼 당긴다 — 공연장·기간과 글자 열을 맞춘다.
+     이쪽은 카드가 padding: 26px 을 갖고 있어서 10px 나가도 카드 안이다. */
+  margin-left: -10px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: rgba(233, 180, 76, .18);
   color: var(--brass);
