@@ -53,6 +53,15 @@ public class PerformanceListService {
         RECOMMENDED("recommended", "추천순"),
         CLOSING("closing", "마감 임박순"),
         NEWEST("newest", "최신 등록순"),
+        /**
+         * 지금 이후로 가장 가까운 회차가 빠른 순.
+         *
+         * <p>기간을 건 목록(월·요일·시간대)에서 기본 정렬은 쓸모가 없다 — 개막일
+         * 오름차순이라 "가장 먼저 개막해서 아직 안 끝난" 장기 공연만 위에 쌓이고,
+         * 그 공연이 끝나기 전에는 순서가 안 바뀐다. 홈의 「N월 공연」 밴드가 한 달 내내
+         * 같은 여섯 개였던 게 그것이다.
+         */
+        UPCOMING("upcoming", "공연 임박순"),
         PRICE_ASC("priceAsc", "낮은 가격순");
 
         private final String code;
@@ -181,9 +190,13 @@ public class PerformanceListService {
         sections.add(section("곧 막을 내려요", "예매할 수 있는 날이 얼마 남지 않았습니다",
                 "/performances?status=ongoing&sort=closing", HOME_RAIL_SIZE,
                 f -> f.setSort(Sort.CLOSING.code())));
-        sections.add(section(month + "월 공연", "이번 달에 열리는 회차가 있는 공연",
-                "/performances?status=ongoing&month=" + month, HOME_BAND_SIZE * HOME_BAND_PAGES,
-                f -> f.setMonth(month)));
+        // 임박순으로 뽑는다. 기본 정렬(개막일 오름차순)로 두면 이 섹션만 유독 오래된
+        // 장기 공연으로 채워진다 — 「전체 보기」 주소에도 같은 sort 를 실어야 홈에서 본
+        // 순서와 넘어간 목록의 순서가 같다.
+        sections.add(section(month + "월 공연", "이번 달에 볼 수 있는 회차가 가까운 순",
+                "/performances?status=ongoing&sort=upcoming&month=" + month,
+                HOME_BAND_SIZE * HOME_BAND_PAGES,
+                f -> { f.setMonth(month); f.setSort(Sort.UPCOMING.code()); }));
         sections.add(section("새로 들어온 공연", "가장 최근에 등록된 순서",
                 "/performances?status=ongoing&sort=newest", HOME_RAIL_SIZE,
                 f -> f.setSort(Sort.NEWEST.code())));

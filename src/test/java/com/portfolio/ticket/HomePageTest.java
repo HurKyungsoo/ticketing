@@ -21,7 +21,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.portfolio.ticket.mapper.dto.PerformanceListRow;
+
 import java.time.LocalDate;
+import java.util.List;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -81,6 +84,65 @@ class HomePageTest {
         scheduleRepository.save(PerformanceSchedule.builder()
                 .performance(performance)
                 .showAt(LocalDateTime.now().plusDays(1).withHour(19).withMinute(0).withSecond(0).withNano(0))
+                .totalSeats(100)
+                .remainingSeats(100)
+                .build());
+    }
+
+    /**
+     * 임박순. 이 정렬이 없을 때 홈의 「N월 공연」이 한 달 내내 같은 여섯 개였다 —
+     * 기본 정렬(개막일 오름차순)이 "가장 먼저 개막해서 아직 안 끝난" 장기 공연만
+     * 위에 쌓았기 때문이다. 개막일이 이른 순서와 회차가 가까운 순서가 <b>서로 반대가
+     * 되도록</b> 데이터를 만들어야 정렬이 실제로 바뀌었는지 알 수 있다.
+     */
+    @DisplayName("임박순은 개막일이 아니라 다음 회차가 가까운 순으로 세운다")
+    @Test
+    void upcomingSortsByNextSchedule() {
+        // 오래 전에 개막(=기본 정렬 1위)했지만 다음 회차는 가장 멀다.
+        withSchedule("장기공연", LocalDate.now().minusDays(90), LocalDateTime.now().plusDays(20));
+        withSchedule("어제개막", LocalDate.now().minusDays(1), LocalDateTime.now().plusDays(2));
+        withSchedule("오늘개막", LocalDate.now(), LocalDateTime.now().plusDays(9));
+
+        assertThat(titles("recommended")).containsExactly("장기공연", "어제개막", "오늘개막");
+        assertThat(titles("upcoming")).containsExactly("어제개막", "오늘개막", "장기공연");
+    }
+
+    /**
+     * 남은 회차가 없는 공연. 기간 필터에는 걸리지만(그 달에 회차가 있었다) 이제 볼 수는
+     * 없으므로 맨 뒤로 보낸다. NULL 순서는 H2 와 MariaDB 가 기본 동작이 달라 매퍼가
+     * CASE 로 직접 민다 — 그게 실제로 먹는지 본다.
+     */
+    @DisplayName("남은 회차가 없는 공연은 임박순에서 맨 뒤로 간다")
+    @Test
+    void upcomingPushesPastOnlyToTheEnd() {
+        withSchedule("지난회차뿐", LocalDate.now().minusDays(10), LocalDateTime.now().minusDays(3));
+        withSchedule("다가오는회차", LocalDate.now().minusDays(10), LocalDateTime.now().plusDays(5));
+
+        assertThat(titles("upcoming")).containsExactly("다가오는회차", "지난회차뿐");
+    }
+
+    private List<String> titles(String sort) {
+        return listService.search(null, null, null, null, "ongoing", null, null, null, sort, 0)
+                .performances().stream().map(PerformanceListRow::getTitle).toList();
+    }
+
+    /** 개막일과 회차 시각을 따로 정해서 만든다 — 둘이 어긋나야 정렬 차이가 드러난다. */
+    private void withSchedule(String title, LocalDate startDate, LocalDateTime showAt) {
+        Performance performance = performanceRepository.save(Performance.builder()
+                .externalId("SORT-" + title + "-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title(title)
+                .category(PerformanceCategory.MUSICAL)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(startDate)
+                .endDate(LocalDate.now().plusDays(60))
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build());
+        scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(performance)
+                .showAt(showAt.withNano(0))
                 .totalSeats(100)
                 .remainingSeats(100)
                 .build());
