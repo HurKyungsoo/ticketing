@@ -403,6 +403,40 @@ class HomePageTest {
     }
 
     /**
+     * 이슈 #1. 에디토리얼 밴드(이달의 공연)는 공연장 다음에 운영 기간, 그다음에 다음 회차
+     * 순으로 적어야 한다 — 기간과 회차가 둘 다 날짜라, 순서가 뒤바뀌면 어느 쪽인지
+     * 헷갈린다(라벨은 스크린리더용이라 화면에는 순서로만 구분된다).
+     *
+     * <p>일반 목록 카드(list.html, 홈의 가로 슬라이드 두 섹션)는 이슈 범위 밖이라 손대지
+     * 않았다 — 그쪽은 여전히 다음 회차가 기간보다 먼저 온다. 그래서 이 테스트는 밴드가
+     * 있는 두 번째 섹션(homesec--editorial)만 본다.
+     */
+    @DisplayName("이달의 공연 밴드는 공연장 · 운영 기간 · 다음 회차 순으로 적는다")
+    @Test
+    void editorialBandOrdersRunPeriodBeforeNextShowing() throws Exception {
+        createOngoing("이달공연", PerformanceCategory.MUSICAL);
+
+        String html = mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // 전체 문서가 아니라 밴드 구간만 잘라서 본다 - 가로 슬라이드 카드에도 같은 클래스
+        // 접두어(m-run 등)가 있는 건 아니지만, 실수로 셀렉터를 넓게 잡았을 때를 대비한다.
+        int bandStart = html.indexOf("homesec--editorial");
+        assertThat(bandStart).as("에디토리얼 밴드가 렌더링됐어야 한다").isPositive();
+        String band = html.substring(bandStart);
+
+        // 닫는 따옴표까지 찾으면 안 된다 - "오늘/내일" 회차는 th:classappend 로
+        // ec-next--soon 이 같은 class 속성에 더 붙어("ec-next ec-next--soon") 매치가
+        // 안 된다. 클래스명 접두어까지만 본다.
+        int runIndex = band.indexOf("class=\"ec-run");
+        int nextIndex = band.indexOf("class=\"ec-next");
+        assertThat(runIndex).as("ec-run 이 렌더링됐어야 한다").isPositive();
+        assertThat(nextIndex).as("ec-next 가 렌더링됐어야 한다(createOngoing 이 내일 회차를 만든다)").isPositive();
+        assertThat(runIndex).as("운영 기간이 다음 회차보다 먼저 나와야 한다").isLessThan(nextIndex);
+    }
+
+    /**
      * 이 테스트가 이번 변경의 핵심이다. "/" 가 목록이던 시절의 주소가 조건을 그대로 들고
      * 목록으로 넘어가야 한다 — 파라미터를 흘리면 사용자는 "필터가 안 걸린 다른 화면"을
      * 보게 되고, 에러가 안 나므로 아무도 눈치채지 못한다.

@@ -174,12 +174,16 @@
                         -->
                         <p class="ec-meta" th:with="next=${p.nextShow(home.today)}">
                             <span class="ec-venue" th:text="${p.venue}">세종문화회관 대극장</span>
+                            <!-- 공연장 다음은 운영 기간, 그다음이 다음 회차다(이슈 #1) - 기간과
+                                 회차가 둘 다 날짜라 순서가 뒤바뀌면 어느 쪽인지 헷갈린다.
+                                 sr-only 라벨은 순서와 무관하게 유지 - 스크린리더에는 둘 다
+                                 날짜로만 들리는 건 시각 순서를 붙여도 똑같기 때문이다. -->
+                            <span class="ec-run">
+                                <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${p.runPeriod(home.today)}">6.4 – 8.30</span>
+                            </span>
                             <span class="ec-next" th:if="${next != null}"
                                   th:classappend="${next.soon} ? 'ec-next--soon'">
                                 <span class="sr-only">다음 공연 </span><span th:text="${next.text}">8/27(목) 19:30</span>
-                            </span>
-                            <span class="ec-run">
-                                <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${p.runPeriod(home.today)}">6.4 – 8.30</span>
                             </span>
                         </p>
                     </div>
