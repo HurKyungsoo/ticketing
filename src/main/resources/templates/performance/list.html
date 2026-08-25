@@ -164,7 +164,9 @@
             <input type="hidden" name="keyword" th:value="${keyword}">
             <input type="hidden" name="page" value="0">
             <label class="sr-only" for="sortSelect">정렬</label>
-            <select id="sortSelect" name="sort" onchange="this.form.submit()">
+            <!-- requestSubmit 인 이유는 위 필터 패널과 같다 — submit() 은 submit 이벤트를
+                 안 일으켜 진행 막대가 이 이동만 놓친다. -->
+            <select id="sortSelect" name="sort" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
                 <option th:each="s : ${result.sorts}" th:value="${s.value}" th:text="${s.label}"
                         th:selected="${s.selected}">추천순</option>
             </select>
@@ -247,7 +249,13 @@
         el.addEventListener('change', function () {
             var pageInput = form.querySelector('input[name=page]');
             if (pageInput) { pageInput.value = '0'; }
-            if (isDesktop()) { form.submit(); }
+            // submit() 이 아니라 requestSubmit(). submit() 은 submit 이벤트를 아예
+            // 안 일으켜서, 필터를 바꿔 화면이 통째로 다시 뜨는 이 이동에만 진행 막대가
+            // 안 떴다(fragment/navprogress).
+            // requestSubmit 이 없는 옛 브라우저(사파리 16 미만)에서는 막대만 못 뜨고
+            // 필터는 종전대로 동작해야 한다.
+            if (!isDesktop()) return;
+            if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
         });
     });
 

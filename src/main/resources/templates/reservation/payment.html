@@ -209,6 +209,11 @@
 
         payBtn.addEventListener('click', async () => {
             if (payBtn.disabled) return;
+            /* 위젯이 뜨기까지 한 박자 빈다 — 그 사이 아무 표시가 없으면 안 눌린 줄 알고
+               다시 누른다. 링크도 폼 제출도 아니라 공통 리스너에 안 걸리므로 여기서
+               직접 켠다(fragment/navprogress 가 window.__navProgress 로 열어 둔다). */
+            payBtn.classList.add('is-pending');
+            if (window.__navProgress) window.__navProgress.start();
             try {
                 await payment.requestPayment({
                     method: "CARD",
@@ -220,6 +225,11 @@
                     card: { useEscrow: false },
                 });
             } catch (e) {
+                // 위젯이 안 떴거나 사용자가 닫았다. 화면은 그대로 있으므로 대기 표시를
+                // 걷어 다시 누를 수 있게 되돌린다 — 여기서 안 지우면 결제 버튼이 영영
+                // 흐린 채로 남는다.
+                payBtn.classList.remove('is-pending');
+                if (window.__navProgress) window.__navProgress.stop();
                 // reload 가 뒤따르지 않는 실패 안내라 마이페이지 취소와 달리 sessionStorage 로
                 // 넘길 필요가 없다 — 화면은 그대로 있고 다시 시도할 수 있으니 바로 띄운다.
                 window.__toast('결제 요청 중 오류가 발생했습니다: ' + (e.message || e), 4000);
