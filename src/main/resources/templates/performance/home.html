@@ -162,8 +162,26 @@
                     <div>
                         <p class="ec-cat" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">뮤지컬</p>
                         <h3 th:text="${p.title}">공연명</h3>
-                        <p class="ec-meta"
-                           th:text="|${p.venue} · ${#temporals.format(p.startDate, 'MM.dd')}–${#temporals.format(p.endDate, 'MM.dd')}|">세종문화회관 대극장 · 08.01–08.31</p>
+                        <!--
+                            카드(.card .meta)와 같은 규칙으로 회차 알약 + 기간을 둔다.
+                            여기만 「공연장 · 06.15–08.25」 한 줄로 두면, 같은 홈 안에서
+                            위아래 섹션이 서로 다른 걸 말하게 된다 — 이 밴드가 하필
+                            「N월 공연」이라 "언제 볼 수 있나"가 제일 궁금한 자리다.
+
+                            마크업이 카드와 다른 건 이 섹션이 3열 에디토리얼 레이아웃이라
+                            그렇고(클래스를 공유하면 4열 카드 그리드 규칙과 충돌한다),
+                            알약 색은 다크 판 위라 따로 정한다.
+                        -->
+                        <p class="ec-meta" th:with="next=${p.nextShow(home.today)}">
+                            <span class="ec-venue" th:text="${p.venue}">세종문화회관 대극장</span>
+                            <span class="ec-next" th:if="${next != null}"
+                                  th:classappend="${next.soon} ? 'ec-next--soon'">
+                                <span class="sr-only">다음 공연 </span><span th:text="${next.text}">8/27(목) 19:30</span>
+                            </span>
+                            <span class="ec-run">
+                                <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${p.runPeriod(home.today)}">6.4 – 8.30</span>
+                            </span>
+                        </p>
                     </div>
                 </a>
             </div>
