@@ -35,17 +35,17 @@ public class WishlistService {
      * <p>찜 건수만큼 한 건씩 묻지 않고 한 번에 받는다. 회차가 남지 않은 공연은 결과에
      * 없으므로 화면에서 {@code null} 이 되고, 그때는 종전대로 기간을 적는다.
      */
-    public Map<Long, String> nextShowsFor(List<Wishlist> wishes) {
+    public Map<Long, PerformanceListRow.NextShow> nextShowsFor(List<Wishlist> wishes) {
         if (wishes.isEmpty()) {
             return Map.of();   // IN () 은 문법 오류라 아예 안 묻는다
         }
         LocalDate today = LocalDate.now();
         List<Long> ids = wishes.stream().map(w -> w.getPerformance().getId()).toList();
-        // 문구까지 여기서 만들어 넘긴다. 시각만 넘기면 "오늘/내일" 판정을 템플릿에서 다시
-        // 짜야 하고, 그러면 목록·홈과 찜의 표기가 갈릴 자리가 생긴다.
+        // 문구와 "오늘/내일이냐"까지 여기서 정해 넘긴다. 시각만 넘기면 그 판정을 템플릿에서
+        // 다시 짜야 하고, 그러면 목록·홈과 찜의 표기가 갈릴 자리가 생긴다.
         return performanceMapper.selectNextShowAt(ids, today).stream()
                 .collect(Collectors.toMap(NextShowRow::getPerformanceId,
-                        r -> PerformanceListRow.labelFor(r.getNextShowAt(), today)));
+                        r -> PerformanceListRow.nextShowFor(r.getNextShowAt(), today)));
     }
 
     /**

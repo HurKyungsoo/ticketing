@@ -2175,13 +2175,31 @@ body.page-list .card .m-venue {
    카드에서 가장 행동에 가까운 정보라 공연장보다 뒤에 둘 이유가 없어졌다.
    opacity 를 걷고 크기도 공연장과 같은 13px 로 맞춘다(대비는 tone-light 쪽에서 5.08).
 */
-body.page-list .card .m-date { font-size: 13px; }
+/*
+   회차 알약. 메타의 나머지가 전부 맨 글자라, 여기 하나만 "면"을 주면 색이나 굵기를
+   올리는 것보다 훨씬 먼저 눈에 걸린다 — 제목과 크기 경쟁을 하지 않고도 띈다.
+
+   grid 안에서 폭이 늘어나지 않게 justify-self 를 준다. 안 주면 알약이 카드 폭 전체로
+   늘어나 "면"이 아니라 띠가 된다.
+*/
+body.page-list .card .m-date {
+  justify-self: start;
+  display: inline-flex; align-items: center;
+  margin: 2px 0 3px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px; font-weight: 700;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
 /*
    공연 기간. 회차 줄(.m-date) 뒤에 한 단계 물러서 놓는다 — 「언제 가지」가 먼저고
    「언제까지 하지」가 다음이다. 종전 .m-date 가 쓰던 12px 자리를 그대로 물려받되,
    흐리기를 두 번 걸던 opacity 는 안 가져온다(그게 대비 2.67 의 원인이었다).
    색은 .meta 가 주는 값을 그대로 쓴다 — 라이트 톤에서 4.04 다.
 */
+body.page-list .card .m-date { background: rgba(233, 180, 76, .16); color: var(--brass); }
+body.page-list .card .m-date--soon { background: var(--brass); color: var(--ink); }
 body.page-list .card .m-run { font-size: 12px; }
 
 /*
@@ -3775,7 +3793,24 @@ body.tone-light .card:hover h3 { color: var(--brass-ink); }
 body.tone-light .card .meta { color: rgba(17, 18, 20, .55); }
 /* 날짜만 한 단계 진하게(.62 → 대비 5.08). 「오늘 19:30」이 카드에서 제일 먼저 눈에
    걸려야 하는 줄인데 종전에는 제일 안 보였다 — 위 .m-date 주석의 실측값 참고. */
-body.tone-light .card .m-date { color: rgba(17, 18, 20, .62); font-weight: 600; }
+/*
+   라이트 배경 위 알약. 글자는 두 경우 다 잉크를 쓴다 — 옅은 브라스 판 위에서 15.8,
+   채운 브라스 위에서 9.9 로 둘 다 넉넉하다. --brass-ink 를 얹어 보면 판이 살짝 노래진
+   만큼 대비가 4.18 로 떨어져서 본문 기준(4.5)을 못 넘긴다.
+
+   채움은 오늘·내일뿐이다. 브라스는 이 화면에서 "지금 급한 것"을 뜻해야 하는데,
+   카드마다 채우면 그냥 배경색이 된다.
+*/
+body.tone-light .card .m-date,
+body.page-home .homesec .card .m-date {
+  background: rgba(233, 180, 76, .16);
+  color: var(--ink);
+}
+body.tone-light .card .m-date--soon,
+body.page-home .homesec .card .m-date--soon {
+  background: var(--brass);
+  color: var(--ink);
+}
 /* 공연장·기간 앞 핀/달력 아이콘은 뺀다. data URI 안에 --mute(#B6B0A7)가 문자열로
    박혀 있어 라이트 배경에서는 거의 안 보이는데, 색을 맞추려면 아이콘마다 data URI 를
    한 벌 더 두어야 한다. 목업도 아이콘 없이 두 줄로 두고 있어 그쪽을 따른다. */

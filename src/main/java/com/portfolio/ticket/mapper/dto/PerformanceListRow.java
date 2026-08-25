@@ -64,27 +64,39 @@ public class PerformanceListRow {
      *
      * <p>기준일을 인자로 받는 이유는 {@link #daysUntilClose(LocalDate)} 와 같다.
      */
-    public String nextShowLabel(LocalDate today) {
-        return labelFor(nextShowAt, today);
+    public NextShow nextShow(LocalDate today) {
+        return nextShowFor(nextShowAt, today);
     }
 
     /**
-     * 위와 같은 문구를 이 DTO 없이도 만들 수 있게 뺀 것. 찜 목록은 카드가 JPA 엔티티라
-     * 이 DTO 를 안 거치는데, 거기만 문구가 다르면 같은 모양의 카드가 화면에 따라 다르게
+     * 카드의 회차 알약에 넣을 것.
+     *
+     * @param text 알약 안에 적을 문구. 「다음 공연」 같은 머리말은 안 붙인다 — 알약이라는
+     *             모양 자체가 그 뜻을 하고, 좁은 카드에서 알약이 길어지면 오히려 안 읽힌다.
+     *             스크린리더용 머리말은 화면이 {@code .sr-only} 로 따로 붙인다.
+     * @param soon 오늘이나 내일이냐. 화면이 이때만 알약을 브라스로 <b>채운다</b> — 색은
+     *             "지금 급한 것"에만 쓴다는 이 프로젝트의 규칙에 맞춘다(마감 임박 배지가
+     *             로즈를 그렇게 쓴다). 전부 채우면 카드마다 브라스가 깔려 뜻이 사라진다.
+     */
+    public record NextShow(String text, boolean soon) {}
+
+    /**
+     * 위와 같은 값을 이 DTO 없이도 만들 수 있게 뺀 것. 찜 목록은 카드가 JPA 엔티티라
+     * 이 DTO 를 안 거치는데, 거기만 표기가 다르면 같은 모양의 카드가 화면에 따라 다르게
      * 읽힌다.
      */
-    public static String labelFor(LocalDateTime nextShowAt, LocalDate today) {
+    public static NextShow nextShowFor(LocalDateTime nextShowAt, LocalDate today) {
         if (nextShowAt == null) {
             return null;
         }
         long days = ChronoUnit.DAYS.between(today, nextShowAt.toLocalDate());
         if (days == 0) {
-            return "오늘 " + nextShowAt.format(TIME_ONLY);
+            return new NextShow("오늘 " + nextShowAt.format(TIME_ONLY), true);
         }
         if (days == 1) {
-            return "내일 " + nextShowAt.format(TIME_ONLY);
+            return new NextShow("내일 " + nextShowAt.format(TIME_ONLY), true);
         }
-        return "다음 공연 " + nextShowAt.format(NEXT_SHOW);
+        return new NextShow(nextShowAt.format(NEXT_SHOW), false);
     }
 
     private static final DateTimeFormatter TIME_ONLY = DateTimeFormatter.ofPattern("HH:mm");

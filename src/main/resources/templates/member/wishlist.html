@@ -39,8 +39,13 @@
             <p class="meta" th:with="next=${nextShows[w.performance.id]},
                                      run=${T(com.portfolio.ticket.mapper.dto.PerformanceListRow).periodFor(w.performance.startDate, w.performance.endDate, today)}">
                 <span class="m-venue" th:text="${w.performance.venue}">공연장</span>
-                <span class="m-date" th:text="${next} ?: ${run}">다음 공연 8/27(수) 19:30</span>
-                <span class="m-run" th:if="${next != null}" th:text="${run}">6.4 – 8.30</span>
+                <span class="m-date" th:if="${next != null}"
+                      th:classappend="${next.soon} ? 'm-date--soon'">
+                    <span class="sr-only">다음 공연 </span><span th:text="${next.text}">8/27(목) 19:30</span>
+                </span>
+                <span class="m-run">
+                    <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${run}">6.4 – 8.30</span>
+                </span>
             </p>
         </a>
     </div>

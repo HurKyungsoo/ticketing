@@ -197,14 +197,21 @@ class HomePageTest {
         PerformanceListRow row = new PerformanceListRow();
 
         row.setNextShowAt(today.atTime(19, 30));
-        assertThat(row.nextShowLabel(today)).isEqualTo("오늘 19:30");
+        assertThat(row.nextShow(today).text()).isEqualTo("오늘 19:30");
+        // soon 이 화면에서 알약을 브라스로 채우는 스위치다.
+        assertThat(row.nextShow(today).soon()).isTrue();
 
         row.setNextShowAt(today.plusDays(1).atTime(15, 0));
-        assertThat(row.nextShowLabel(today)).isEqualTo("내일 15:00");
+        assertThat(row.nextShow(today).text()).isEqualTo("내일 15:00");
+        assertThat(row.nextShow(today).soon()).isTrue();
+
+        // 모레부터는 안 채운다 — 전부 채우면 카드마다 브라스가 깔려 뜻이 사라진다.
+        row.setNextShowAt(today.plusDays(2).atTime(15, 0));
+        assertThat(row.nextShow(today).soon()).isFalse();
 
         // 남은 회차가 없으면 null — 화면이 그때만 종전대로 기간을 적는다.
         row.setNextShowAt(null);
-        assertThat(row.nextShowLabel(today)).isNull();
+        assertThat(row.nextShow(today)).isNull();
     }
 
     /**
@@ -220,9 +227,9 @@ class HomePageTest {
             PerformanceListRow row = new PerformanceListRow();
             row.setNextShowAt(LocalDateTime.of(2026, 8, 27, 19, 30));
 
-            String label = row.nextShowLabel(LocalDate.of(2026, 8, 25));
+            String label = row.nextShow(LocalDate.of(2026, 8, 25)).text();
 
-            assertThat(label).startsWith("다음 공연 8/27(").endsWith(") 19:30");
+            assertThat(label).startsWith("8/27(").endsWith(") 19:30");
             String weekday = label.substring(label.indexOf('(') + 1, label.indexOf(')'));
             assertThat("월화수목금토일").contains(weekday);
         } finally {
