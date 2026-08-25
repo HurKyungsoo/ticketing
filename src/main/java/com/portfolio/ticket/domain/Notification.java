@@ -12,8 +12,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * 사용자에게 보여줄 알림 한 건. 종류는 {@link NotificationType} 네 가지 — 찜한 공연 회차
- * 오픈, 구독한(매진) 회차의 좌석 풀림, 확정 예매 임박(D-1), 관람평 요청.
+ * 사용자에게 보여줄 알림 한 건. 종류는 {@link NotificationType} 다섯 가지 — 찜한 공연 회차
+ * 오픈, 구독한(매진) 회차의 좌석 풀림, 확정 예매 임박(D-1), 관람평 요청, 저장한 검색 조건에
+ * 맞는 신규 공연.
  *
  * <p>{@code schedule} 은 {@link NotificationType#SEAT_AVAILABLE} 에서만 채워진다 —
  * {@link NotificationType#SCHEDULE_OPENED} 는 어느 회차인지가 아니라 "회차가 생겼다"는
@@ -114,6 +115,7 @@ public class Notification {
             case SEAT_AVAILABLE -> " " + schedule.getShowAt().format(SHOW_AT_FORMAT) + "회차에 자리가 났습니다.";
             case SCHEDULE_REMINDER -> " 공연이 내일입니다.";
             case REVIEW_REQUESTED -> " 관람은 어떠셨나요? 관람평을 남겨보세요.";
+            case SAVED_SEARCH_MATCH -> " 공연이 저장한 검색 조건에 새로 등록됐습니다.";
         };
     }
 
@@ -123,6 +125,9 @@ public class Notification {
             case SCHEDULE_OPENED, SEAT_AVAILABLE -> "예매하기";
             case SCHEDULE_REMINDER -> "예매 확인";
             case REVIEW_REQUESTED -> "후기 남기기";
+            // 방금 등록된 공연은 회차·좌석 생성이 아직 안 끝났을 수 있어(수집 배치 안에서
+            // 순서대로 진행) "예매하기"라고 단정하면 안 된다 — 공연 상세로만 보낸다.
+            case SAVED_SEARCH_MATCH -> "공연 보기";
         };
     }
 }

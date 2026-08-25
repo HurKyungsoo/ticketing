@@ -7,12 +7,15 @@ import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.domain.Reservation;
 import com.portfolio.ticket.domain.ReservationStatus;
 import com.portfolio.ticket.domain.RestockSubscription;
+import com.portfolio.ticket.domain.SavedSearch;
 import com.portfolio.ticket.domain.Wishlist;
 import com.portfolio.ticket.repository.NotificationRepository;
 import com.portfolio.ticket.repository.PerformanceRepository;
+import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
 import com.portfolio.ticket.repository.RestockSubscriptionRepository;
 import com.portfolio.ticket.repository.ReviewRepository;
+import com.portfolio.ticket.repository.SavedSearchRepository;
 import com.portfolio.ticket.repository.WishlistRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +41,8 @@ public class NotificationService {
     private final RestockSubscriptionRepository restockSubscriptionRepository;
     private final ReservationRepository reservationRepository;
     private final ReviewRepository reviewRepository;
+    private final SavedSearchRepository savedSearchRepository;
+    private final PerformanceScheduleRepository performanceScheduleRepository;
 
     /**
      * 회차가 열린 공연을 찜해 둔 사람들에게 알림을 만든다.
@@ -133,6 +138,55 @@ public class NotificationService {
         }
         if (created > 0) {
             log.info("취소표 알림 생성. scheduleId={}, 대상 {}명", scheduleId, created);
+        }
+    }
+
+    /**
+     * 새로 등록된 공연을 저장해 둔 검색 조건과 맞춰 보고, 맞는 사람에게 알림을 만든다.
+     *
+     * <p>{@code onScheduleOpened} 와 같은 이유로 {@code AFTER_COMMIT} + {@code REQUIRES_NEW} 다 —
+     * 발행 지점(PerformanceSyncService.sync)이 수백 건을 도는 배치라, 그 트랜잭션 안에서
+     * 알림까지 만들면 알림 실패가 정상 수집분까지 롤백시킬 수 있다.
+     *
+     * <p>저장 검색을 전부 훑는다({@code findAll}) — 공연 하나가 등록될 때마다 도는 배치라
+     * 저장 검색이 아주 많아지면 부담이 늘 수 있지만, 지금 규모(회원 수·저장 검색 수)에서는
+     * 전체를 인메모리로 거르는 편이 회원마다 개별 쿼리를 날리는 것보다 단순하고 빠르다.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onPerformanceRegistered(PerformanceRegisteredEvent event) {
+        try {
+            matchSavedSearches(event.performanceId());
+        } catch (Exception e) {
+            log.warn("저장 검색 매칭 알림 생성 실패(무시하고 계속). performanceId={}, msg={}",
+                    event.performanceId(), e.getMessage());
+        }
+    }
+
+    private void matchSavedSearches(Long performanceId) {
+        List<SavedSearch> searches = savedSearchRepository.findAll();
+        if (searches.isEmpty()) {
+            return;
+        }
+        Performance performance = performanceRepository.findById(performanceId).orElse(null);
+        if (performance == null) {
+            return;   // 알림을 만들기 전에 정제 배치가 지운 경우
+        }
+        List<PerformanceSchedule> schedules =
+                performanceScheduleRepository.findByPerformanceIdOrderByShowAtAsc(performanceId);
+
+        LocalDateTime now = LocalDateTime.now();
+        int created = 0;
+        for (SavedSearch search : searches) {
+            if (!search.matches(performance, schedules)) {
+                continue;
+            }
+            if (createIfAbsent(search.getMemberId(), performance, NotificationType.SAVED_SEARCH_MATCH, now)) {
+                created++;
+            }
+        }
+        if (created > 0) {
+            log.info("저장 검색 매칭 알림 생성. performanceId={}, 대상 {}명", performanceId, created);
         }
     }
 

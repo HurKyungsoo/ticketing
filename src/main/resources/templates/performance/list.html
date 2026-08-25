@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title>공연 목록 - 객석</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
@@ -165,6 +167,21 @@
         <!-- 결과가 0건일 때는 빈 화면 쪽에 더 눈에 띄는 초기화 버튼이 있으므로 여기서는 뺀다. -->
         <a class="resultreset" th:if="${filtersApplied and !result.performances.isEmpty()}"
            th:href="@{/performances}">필터 초기화</a>
+
+        <!--
+            이 조건 저장. 로그인 상태에서만 그린다 — 비로그인 사용자에게 눌러도 로그인부터
+            요구하는 버튼을 보여주는 대신, 아예 안 보이게 하는 쪽을 택했다(공연 상세의
+            찜하기 버튼과 달리 여기는 "누가 봐도 하고 싶은 주 동작"이 아니라 부가 기능이라
+            로그인 유도 흐름까지 만들 정도는 아니라고 판단했다).
+
+            요일·시간대·공연장은 저장 대상에서 뺐다 — 이유는 SavedSearch 도메인 주석 참고.
+            지금 필터 상태가 다 hidden input 으로 이미 올라와 있는(genre/month/area/keyword)
+            자리라 여기에 얹는다.
+        -->
+        <button type="button" class="savebtn" id="saveSearchBtn" sec:authorize="isAuthenticated()"
+                th:attr="data-genre=${genre}, data-area=${area}, data-month=${month}, data-keyword=${keyword}">
+            이 조건 저장
+        </button>
 
         <!--
             정렬은 필터 폼과 따로 둔다 — 위치가 결과바라 같은 폼에 넣을 수 없어서, 현재
@@ -342,6 +359,51 @@
 
     grid.querySelectorAll('.card').forEach(function (card) { io.observe(card); });
 })();
+
+(function () {
+    // 로그인 상태가 아니면 버튼 자체가 안 그려진다(sec:authorize) — 여기 안까지 왔다면
+    // 이미 인증된 상태다.
+    var btn = document.getElementById('saveSearchBtn');
+    if (!btn) return;
+
+    var csrfToken = document.querySelector('meta[name="_csrf"]').content;
+    var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+    // "all" 센티넬은 필터 폼의 값이지, 저장 조건에는 없는 축이다(SavedSearch 는 그 축을
+    // null 로 이해한다) — 여기서 걷어내지 않으면 "월 전체"를 저장했는데 나중에 아무 공연도
+    // 안 걸리는 조건이 저장된다.
+    function toParam(v) { return (!v || v === 'all') ? null : v; }
+
+    btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        try {
+            var monthParam = toParam(btn.dataset.month);
+            var res = await fetch('/api/saved-searches', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', [csrfHeader]: csrfToken },
+                body: JSON.stringify({
+                    category: toParam(btn.dataset.genre),
+                    region: toParam(btn.dataset.area),
+                    month: monthParam ? Number(monthParam) : null,
+                    keyword: toParam(btn.dataset.keyword)
+                })
+            });
+
+            if (res.ok) {
+                var data = await res.json();
+                window.__toast('"' + data.label + '" 조건을 저장했습니다. 새 공연이 등록되면 알려드릴게요.', 3500);
+            } else {
+                var err = await res.json().catch(function () { return {}; });
+                window.__toast(err.message || '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.', 4000);
+            }
+        } catch (e) {
+            window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.', 4000);
+        }
+        btn.disabled = false;
+    });
+})();
 </script>
+
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
 </body>
 </html>

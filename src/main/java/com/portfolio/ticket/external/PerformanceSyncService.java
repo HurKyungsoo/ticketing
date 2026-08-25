@@ -10,6 +10,7 @@ import com.portfolio.ticket.repository.NotificationRepository;
 import com.portfolio.ticket.repository.RestockSubscriptionRepository;
 import com.portfolio.ticket.repository.ReviewRepository;
 import com.portfolio.ticket.repository.WishlistRepository;
+import com.portfolio.ticket.service.PerformanceRegisteredEvent;
 import com.portfolio.ticket.service.ScheduleOpenedEvent;
 import com.portfolio.ticket.service.SeatGenerator;
 import lombok.RequiredArgsConstructor;
@@ -108,6 +109,9 @@ public class PerformanceSyncService {
                 performance = performanceRepository.save(toEntity(external));
                 createSchedules(performance, external);
                 saved++;
+                // 저장한 검색과의 매칭은 "새로 나타난 공연"에만 반응한다 — 이미 있던 공연이
+                // 회차만 보충되는 topUpSchedules 경로는 안 걸린다(PerformanceRegisteredEvent 주석).
+                events.publishEvent(new PerformanceRegisteredEvent(performance.getId()));
             } else {
                 performance.updateFromExternal(
                         external.getTitle(), external.getGenre(), external.getVenue(),

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>마이페이지 - 저장한 검색</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<!-- 예매 내역·알림과 같은 세로 목록이라 page-list 는 안 단다(그건 카드 그리드용이다). -->
+<body class="page-mypage tone-light">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='마이페이지', showAuthNav=true)}"></header>
+
+    <div class="mypageinner">
+
+    <nav th:replace="~{fragment/mypagetabs :: tabs('savedSearches')}"></nav>
+
+    <div class="savedlist" th:if="${!searches.isEmpty()}">
+        <!--
+            조건마다 저장 당시의 축(장르·지역·월·검색어)을 다시 쿼리 파라미터로 만들어
+            목록으로 보낸다. status=ongoing 을 고정으로 붙이는 이유는 목록 화면의
+            "이 조건 저장" 버튼이 항상 진행·예정작 화면(list.html)에서만 뜨기 때문이다 —
+            저장할 때 본 것과 다시 봤을 때가 같은 기준이어야 한다.
+        -->
+        <div class="savedrow" th:each="s : ${searches}">
+            <a class="savedinfo" th:href="@{/performances(genre=${s.category != null} ? ${s.category} : 'all',
+                                                            area=${s.region != null} ? ${s.region} : 'all',
+                                                            month=${s.month != null} ? ${s.month} : 'all',
+                                                            keyword=${s.keyword},
+                                                            status='ongoing')}">
+                <p class="savedlabel" th:text="${s.label}">서울 · 뮤지컬 · 9월</p>
+                <p class="savedmeta">
+                    <span th:text="'저장일 ' + ${#temporals.format(s.createdAt, 'yyyy.M.d')}">저장일 2026.8.25</span>
+                </p>
+            </a>
+            <button type="button" class="btn-delete" th:attr="data-saved-search-id=${s.id}">삭제</button>
+        </div>
+    </div>
+
+    <div class="empty-state" th:if="${searches.isEmpty()}">
+        <p>저장한 검색 조건이 없습니다.</p>
+        <!-- 검색어까지 조건에 있으면 문장이 길어져서, 대표로 예시가 되는 두 축(지역·장르)만
+             적는다 — 실제로 저장 가능한 축은 넷(장르·지역·월·검색어) 전부다. -->
+        <p>목록 화면에서 조건을 걸고 <strong>「이 조건 저장」</strong>을 누르면 여기에 모입니다. 새 공연이 등록될 때마다 알려드립니다.</p>
+        <a class="emptyreset" th:href="@{/performances(status='ongoing')}">공연 찾아보기</a>
+    </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+
+<script th:inline="javascript">
+    const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
+    const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
+
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('저장한 검색 조건을 삭제하시겠습니까? 이후 새 공연이 등록돼도 더 이상 알려드리지 않습니다.')) return;
+
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/saved-searches/${btn.dataset.savedSearchId}`, {
+                    method: 'DELETE',
+                    headers: { [CSRF_HEADER]: CSRF_TOKEN }
+                });
+                if (res.ok) {
+                    btn.closest('.savedrow').remove();
+                } else {
+                    window.__toast('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.', 4000);
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                window.__toast('요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.', 4000);
+                btn.disabled = false;
+            }
+        });
+    });
+</script>
+</body>
+</html>

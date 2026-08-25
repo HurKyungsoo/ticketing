@@ -2316,6 +2316,18 @@ body.page-list .resultreset {
 }
 body.page-list .resultreset:hover { color: var(--brass); border-color: var(--brass); }
 
+/* 이 조건 저장. resultreset(텍스트 링크)과 달리 실제 쓰기 동작이라 알약 버튼으로 무게를
+   준다 — 결과 초기화는 "링크를 되돌리는" 탐색이고 이건 서버에 뭔가를 만드는 동작이라
+   같은 모양이면 안 된다. */
+body.page-list .savebtn {
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--paper);
+  background: none; border: 1px solid var(--line-strong); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+body.page-list .savebtn:hover { border-color: var(--brass); color: var(--brass); }
+body.page-list .savebtn:disabled { opacity: .5; cursor: not-allowed; }
+
 /* 정렬 드롭다운. 결과바 오른쪽 끝에 붙인다 — 목록을 훑다가 "다르게 정렬해볼까" 할 때
    눈이 가는 자리이고, 왼쪽의 건수/초기화와 역할이 달라서 붙여두면 셋이 한 덩어리로 읽힌다.
    모양은 필터 패널의 드롭다운(.fp-dropdowns select)과 같은 규칙을 따른다. */
@@ -4063,6 +4075,11 @@ body.page-list.tone-light .resultreset {
   border-bottom-color: rgba(17, 18, 20, .25);
 }
 body.page-list.tone-light .resultreset:hover { color: var(--brass-ink); border-color: var(--brass-ink); }
+body.page-list.tone-light .savebtn {
+  color: var(--ink);
+  border-color: rgba(17, 18, 20, .25);
+}
+body.page-list.tone-light .savebtn:hover { border-color: var(--brass-ink); color: var(--brass-ink); }
 
 /* 빈 화면의 출구 버튼. 다크 규칙은 body.page-list 안에만 있어서 목록·찜 목록에서만
    모양이 잡혔는데, 마이페이지 예매 내역의 빈 화면도 같은 버튼을 쓴다. 라이트 쪽은
@@ -4759,6 +4776,27 @@ body.page-mypage.tone-light .notigo:focus-visible { background: var(--ink); colo
   body.page-mypage.tone-light .notirow { flex-wrap: wrap; }
   body.page-mypage.tone-light .notigo { margin-left: auto; }
 }
+
+/* ---- 저장한 검색 목록 ---- 알림 목록(.notilist/.notirow)과 같은 행 모양을 쓴다 —
+   둘 다 "조건 하나 + 행동 하나"인 목록이라 같은 리듬이 자연스럽다. 삭제 버튼은
+   예매 내역의 .btn-delete 를 그대로 재사용한다(같은 뜻·같은 자리). */
+body.page-mypage.tone-light .savedlist { display: flex; flex-direction: column; gap: 10px; }
+body.page-mypage.tone-light .savedrow {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid rgba(17, 18, 20, .1);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color .2s, transform .2s;
+}
+body.page-mypage.tone-light .savedrow:hover { border-color: rgba(17, 18, 20, .28); }
+body.page-mypage.tone-light .savedinfo { flex: 1; min-width: 0; }
+body.page-mypage.tone-light .savedinfo:hover .savedlabel { color: var(--brass-ink); }
+body.page-mypage.tone-light .savedlabel {
+  margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--ink);
+  transition: color .12s;
+}
+body.page-mypage.tone-light .savedmeta { margin: 0; font-size: 13px; color: rgba(17, 18, 20, .5); }
 
 /* ---- 예매 카드 ---- */
 body.page-mypage.tone-light .reslist { gap: 14px; }

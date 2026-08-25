@@ -3,10 +3,12 @@ package com.portfolio.ticket.controller;
 import com.portfolio.ticket.domain.Notification;
 import com.portfolio.ticket.domain.NotificationType;
 import com.portfolio.ticket.domain.Reservation;
+import com.portfolio.ticket.domain.SavedSearch;
 import com.portfolio.ticket.domain.Wishlist;
 import com.portfolio.ticket.security.CustomUserDetails;
 import com.portfolio.ticket.service.NotificationService;
 import com.portfolio.ticket.service.ReservationService;
+import com.portfolio.ticket.service.SavedSearchService;
 import com.portfolio.ticket.service.ShareMetaView;
 import com.portfolio.ticket.service.WishlistService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class MyPageController {
     private final WishlistService wishlistService;
     private final NotificationService notificationService;
     private final ShareMetaView shareMetaView;
+    private final SavedSearchService savedSearchService;
 
     @GetMapping("/mypage/reservations")
     public String reservations(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
@@ -61,6 +64,14 @@ public class MyPageController {
         model.addAttribute("nextShows", wishlistService.nextShowsFor(wishes));
         addUnreadCount(principal, model);
         return "member/wishlist";
+    }
+
+    @GetMapping("/mypage/saved-searches")
+    public String savedSearches(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
+        List<SavedSearch> searches = savedSearchService.findMine(principal.getMemberId());
+        model.addAttribute("searches", searches);
+        addUnreadCount(principal, model);
+        return "member/saved-searches";
     }
 
     @GetMapping("/mypage/notifications")
