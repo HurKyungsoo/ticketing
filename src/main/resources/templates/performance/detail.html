@@ -553,5 +553,7 @@
 </th:block>
 
 <th:block th:replace="~{fragment/sharesheet :: sdk}"></th:block>
+<!-- 이 공연을 「최근 본 공연」에 남긴다. 화면에는 아무것도 안 그린다. -->
+<th:block th:replace="~{fragment/recentviewed :: record(${performance})}"></th:block>
 </body>
 </html>

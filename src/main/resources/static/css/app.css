@@ -3075,6 +3075,94 @@ body.page-home .genrenav em {
   font-style: normal; font-weight: 600; opacity: .5;
 }
 
+/* ---- 최근 본 공연 (장르 칩과 첫 섹션 사이) ----
+
+   편집 섹션(.homesec)이 아니라 도구에 가깝다. 그래서 제목을 26px 디스플레이체로
+   두지 않고 13px 라벨로 낮춘다 — 같은 크기로 두면 「곧 막을 내려요」와 나란히
+   서면서 홈에 큰 제목이 넷이 되고, 정작 편집한 섹션이 묻힌다.
+
+   포스터도 카드(240px)의 절반이 안 되는 92px 이다. 훑는 대상이 아니라 "아까 그거"를
+   집어내는 자리라 알아볼 수 있을 만큼만 크면 된다. */
+body.page-home .recentsec {
+  max-width: 1240px; margin: 0 auto;
+  padding: 6px 48px 0;
+}
+body.page-home .rs-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; margin-bottom: 14px;
+}
+body.page-home .rs-head h2 {
+  margin: 0;
+  font-size: 13px; font-weight: 800; letter-spacing: .08em;
+  /* .55 는 아이보리 위 대비 4.04 로 본문 기준(4.5)에 못 미친다. 작은 글씨라 여기서
+     한 단계 더 내리면 라벨이 배경으로 가라앉는다. */
+  color: rgba(17, 18, 20, .6);
+}
+body.page-home .rs-clear {
+  flex: none;
+  background: none; border: 0; padding: 0;
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: rgba(17, 18, 20, .6);
+  cursor: pointer;
+  transition: color .2s;
+}
+/* 호버는 --brass-dim(2.88) 대신 잉크로 올린다. 기록을 지우는 버튼이라 "눌리는 중"이
+   흐려지면 안 되고, .hs-more 처럼 훑다가 지나치는 링크와는 성격이 다르다. */
+body.page-home .rs-clear:hover { color: var(--ink); }
+
+/* 카드형 섹션(.homesec .grid)과 같은 가로 스크롤·스냅. 스크롤바를 감추는 것도 같다 —
+   두 띠가 같은 화면에 세로로 놓이므로 미는 느낌이 달라지면 어긋나 보인다. */
+body.page-home .rs-rail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  margin-bottom: -4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+body.page-home .rs-rail::-webkit-scrollbar { width: 0; height: 0; display: none; }
+body.page-home .rs-item {
+  flex: none;
+  width: 92px;
+  scroll-snap-align: start;
+  color: var(--ink);
+  transition: transform .2s;
+}
+body.page-home .rs-item:hover { transform: translateY(-3px); }
+body.page-home .rs-item:hover .rs-title { color: var(--brass-dim); }
+body.page-home .rs-poster {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  margin-bottom: 8px;
+  border-radius: var(--radius-poster);
+  overflow: hidden;
+  /* 라이트 화면의 카드 포스터와 같은 바탕(body.tone-light .card .poster.no-img).
+     포스터가 뜨는 동안에도 이 색이 깔려 있어야 흰 칸이 깜빡이지 않는다. */
+  background: var(--ink);
+}
+body.page-home .rs-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 포스터가 없거나 주소가 죽었을 때만. 스크립트가 .no-img 를 붙인다. */
+body.page-home .rs-fallback {
+  display: none;
+  position: absolute; inset: 0;
+  align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 30px; font-weight: 800;
+  color: rgba(248, 244, 236, .45);
+}
+body.page-home .rs-poster.no-img .rs-fallback { display: flex; }
+body.page-home .rs-title {
+  /* 두 줄까지만. 92px 폭이라 긴 공연명은 네댓 줄이 되는데, 그러면 항목마다 높이가
+     달라져서 띠가 들쭉날쭉해진다. 말줄임으로 끊고 전체 제목은 상세에서 본다. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12.5px; font-weight: 600; line-height: 1.35;
+  transition: color .2s;
+}
+
 /* 섹션 공통(카드형 · 에디토리얼형 모두). 제목 줄과 카드 사이 간격이 섹션 사이
    간격보다 뚜렷하게 좁아야 "이 카드들이 이 제목에 속한다"가 읽힌다. */
 body.page-home .homesec {
@@ -3280,6 +3368,9 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
   body.page-home .hero-collage { justify-content: flex-start; margin-bottom: 24px; }
   body.page-home .hero h2 { font-size: 32px; white-space: normal; }
   body.page-home .genrenav { padding: 20px; }
+  /* 좌우 여백은 다른 띠와 같이 20px 로. 포스터는 그대로 92px 를 쓴다 — 카드(240→180px)와
+     달리 이미 작아서 더 줄이면 어느 공연이었는지 알아볼 수가 없다. */
+  body.page-home .recentsec { padding: 0 20px; }
   body.page-home .homesec { padding: 28px 20px 16px; }
   body.page-home .homesec .card { width: 180px; }
   body.page-home .homesec--editorial .hs-inner { padding: 40px 20px; }
