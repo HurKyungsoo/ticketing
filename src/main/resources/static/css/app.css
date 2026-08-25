@@ -1678,6 +1678,16 @@ body.page-error { background: var(--paper); color: var(--ink); }
 .restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; transition: color .12s; }
 .resmeta { font-size: 13px; color: var(--paper); margin: 0 0 4px; }
 .resno { font-size: 12px; color: var(--mute); margin: 0; }
+/* 공연 상세·길찾기. resno 와 같은 톤(작고 흐림)이 기본이고, 실제로 다른 화면으로
+   보낸다는 걸 알리는 밑줄만 얹는다 — 위 두 줄(제목·메타)과 같은 강조를 주면 이
+   행이 예매 정보의 일부처럼 읽혀서 "눌러서 어딘가로 간다"는 게 묻힌다. */
+.reslinks { margin: 6px 0 0; }
+.reslink {
+  font-size: 12px; color: var(--mute);
+  border-bottom: 1px solid var(--line);
+  margin-right: 12px;
+}
+.reslink:hover { color: var(--brass); border-color: var(--brass-dim); }
 
 /* ---- 예매 요약 팝업 ----
    공유 시트(공연 상세)와 같은 배경+dialog 구조 — 그때 정한 opacity/pointer-events 전환,
@@ -1743,6 +1753,7 @@ body.page-error { background: var(--paper); color: var(--ink); }
 }
 .badge-CONFIRMED { color: var(--brass); border-color: var(--brass-dim); }
 .badge-CANCELED, .badge-EXPIRED { color: var(--rose); opacity: .75; }
+.refundhint { font-size: 12px; color: var(--mute); margin: 0; text-align: right; }
 
 .btn-pay, .btn-cancel, .btn-delete {
   font-family: var(--body); font-size: 13px; font-weight: 600;
@@ -4770,6 +4781,11 @@ body.page-mypage.tone-light .resinfo:hover .restitle { color: var(--ink); }
 body.page-mypage.tone-light .resinfo:focus-visible { outline-color: var(--ink); }
 body.page-mypage.tone-light .resmeta { font-size: 13.5px; color: rgba(17, 18, 20, .55); margin-bottom: 6px; }
 body.page-mypage.tone-light .resno { font-size: 12.5px; color: rgba(17, 18, 20, .4); }
+body.page-mypage.tone-light .reslink { color: rgba(17, 18, 20, .4); border-color: rgba(17, 18, 20, .16); }
+body.page-mypage.tone-light .reslink:hover { color: var(--brass-ink); border-color: var(--brass-ink); }
+/* 취소 시 얼마가 남는지. 다른 상태 문구(badge)와 헷갈리지 않게 배지보다 흐리고 작게 둔다 —
+   이건 상태가 아니라 "지금 누르면 어떻게 되는지"에 대한 미리보기다. */
+body.page-mypage.tone-light .refundhint { font-size: 12px; color: rgba(17, 18, 20, .5); margin: 0; text-align: right; }
 
 /* 액션 줄. 다크에서는 세로로 쌓아 오른쪽 끝에 붙였는데, 카드가 밝아지면서 배지와
    버튼이 한 줄에 나란히 있어도 안 복잡해 보인다(목업도 한 줄이다). */

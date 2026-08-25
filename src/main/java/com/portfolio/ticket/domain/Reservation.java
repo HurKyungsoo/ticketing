@@ -146,4 +146,35 @@ public class Reservation {
         }
         throw new IllegalStateException("공연 당일에는 취소할 수 없습니다.");
     }
+
+    /**
+     * 마이페이지에서 "취소" 버튼을 누르기 전에 보여줄 안내. {@code feeRate}/{@code refundAmount} 는
+     * 지금 취소하면 실제로 청구·환불될 값이고, {@code cancelable} 이 false 면(공연 당일) 그
+     * 값들은 의미가 없다 — 화면은 그때 수수료율 대신 "취소할 수 없습니다" 를 보여줘야 한다.
+     *
+     * @param feeRate 결제 전(PENDING)이면 항상 0이다 — 취소 서비스가 결제 안 된 건은 토스
+     *                환불 호출 자체를 건너뛰므로 수수료 개념이 없다.
+     */
+    public record RefundPreview(boolean cancelable, int feeRate, int refundAmount) {}
+
+    /**
+     * {@link #refundFeeRate} 를 화면에서 안전하게 쓰기 위한 래퍼. 그 메서드는 당일이면
+     * 예외를 던지는데, Thymeleaf 에서 메서드 호출이 예외를 던지면 페이지 전체가 500 이 된다 —
+     * 마이페이지처럼 여러 예매가 한 화면에 나열될 때 그중 하나가 당일이라고 화면 전체가
+     * 죽으면 안 된다. 여기서 잡아서 {@code cancelable=false} 로 돌려준다.
+     *
+     * <p>확정(CONFIRMED) 건에만 실제 수수료를 계산한다 — 결제 대기 건은 취소해도 토스 환불을
+     * 안 부르므로(아직 결제 전이라 환불할 돈이 없다) 항상 전액(수수료 0%) 취소다.
+     */
+    public RefundPreview refundPreview(LocalDateTime now) {
+        if (status != ReservationStatus.CONFIRMED) {
+            return new RefundPreview(true, 0, amount);
+        }
+        try {
+            int feeRate = refundFeeRate(schedule.getShowAt(), now);
+            return new RefundPreview(true, feeRate, amount * (100 - feeRate) / 100);
+        } catch (IllegalStateException e) {
+            return new RefundPreview(false, 0, 0);
+        }
+    }
 }

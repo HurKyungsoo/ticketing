@@ -70,6 +70,25 @@
                         예매번호 <span th:text="${r.reservationNo}">번호</span> ·
                         <span th:text="${#temporals.format(r.createdAt, 'yyyy.M.d HH:mm')}">예매일</span>
                     </p>
+                    <!--
+                        공연 상세로 돌아갈 길과 길찾기. resinfo 전체가 클릭하면 이 요약 팝업을
+                        여는 role=button 이라, 안에 실제 링크를 그냥 두면 눌렀을 때 팝업도
+                        같이 열린다(버블링) — onclick 으로 그 버블링만 끊는다. 이동 자체는
+                        막지 않으므로 링크는 평소처럼 동작한다.
+
+                        상세 링크가 그동안 마이페이지 어디에도 없었다 — 예매한 공연의 공연장
+                        위치·관람 연령 같은 걸 다시 보려면 검색부터 다시 해야 했다.
+                    -->
+                    <p class="reslinks">
+                        <a class="reslink" th:href="@{/performances/{id}(id=${r.schedule.performance.id})}"
+                           onclick="event.stopPropagation()">공연 상세</a>
+                        <a class="reslink" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                           th:if="${r.schedule.performance.latitude != null and r.schedule.performance.longitude != null}"
+                           th:href="|https://map.naver.com/p/directions/-/${r.schedule.performance.longitude},${r.schedule.performance.latitude},${#uris.escapePathSegment(r.schedule.performance.venue)}/-/transit|">길찾기</a>
+                        <a class="reslink" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                           th:if="${r.schedule.performance.latitude == null or r.schedule.performance.longitude == null}"
+                           th:href="|https://map.naver.com/p/search/${#uris.escapePathSegment(r.schedule.performance.venue)}|">지도에서 찾기</a>
+                    </p>
                 </div>
             </div>
 
@@ -80,6 +99,20 @@
                     <th:block th:case="'CANCELED'">취소됨</th:block>
                     <th:block th:case="'EXPIRED'">선점 만료</th:block>
                 </span>
+
+                <!--
+                    "취소" 버튼을 누르기 전에 실제로 얼마가 남는지 미리 보여준다. 종전에는
+                    누를 때 뜨는 확인창이 "환불 수수료가 부과될 수 있습니다" 라고만 해서,
+                    정확한 요율·금액은 취소를 실행해야만(되돌릴 수 없는 다음에야) 알 수
+                    있었다. refundPreview 가 당일(취소 불가)을 예외 대신 값으로 돌려주므로
+                    여기서는 그냥 읽기만 한다 — Reservation.refundPreview 주석 참고.
+                -->
+                <p class="refundhint" th:if="${r.status.name() == 'CONFIRMED'}" th:with="refund=${r.refundPreview(now)}">
+                    <span th:if="${!refund.cancelable}">지금은 취소할 수 없습니다</span>
+                    <span th:if="${refund.cancelable and refund.feeRate == 0}">지금 취소하면 전액 환불</span>
+                    <span th:if="${refund.cancelable and refund.feeRate > 0}"
+                          th:text="'지금 취소하면 수수료 ' + ${refund.feeRate} + '% · 환불 예상 ' + ${#numbers.formatInteger(refund.refundAmount,0,'COMMA')} + '원'">-</span>
+                </p>
 
                 <a class="btn-pay" th:if="${r.status.name() == 'PENDING' and !r.isHoldExpired(now)}"
                    th:href="@{/reservations/{no}/payment(no=${r.reservationNo})}">결제하기</a>
