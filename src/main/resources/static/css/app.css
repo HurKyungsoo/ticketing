@@ -2008,14 +2008,19 @@ body.page-list .fp-advanced summary {
   cursor: pointer; list-style: none;
 }
 body.page-list .fp-advanced summary::-webkit-details-marker { display: none; }
+/* 화살표(::after)는 항상 "상세 조건" 글자 바로 옆에 붙어야 한다 — 소스 순서로는
+   span → em(적용됨 배지, 조건이 있을 때만) → ::after 라서, 그대로 두면 배지가 있을 때
+   화살표가 배지 뒤로 밀려나 글자와 멀어진다. flex order 로 화살표를 배지보다
+   앞에 오게 한다(열림·닫힘 상태와 무관하게 항상 이 순서). */
 body.page-list .fp-advanced summary::after {
   content: "⌄";
-  margin-left: 2px;
+  order: 1;
   font-size: 16px; line-height: 1;
   transition: transform .16s ease;
 }
 body.page-list .fp-advanced[open] summary::after { transform: rotate(180deg); }
 body.page-list .fp-advanced summary em {
+  order: 2;
   padding: 2px 7px;
   border-radius: 999px;
   background: rgba(233, 180, 76, .16);

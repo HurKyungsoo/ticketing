@@ -339,6 +339,66 @@
 })();
 
 (function () {
+    // 「상세 조건」이 펼쳐질 때 높이를 0에서 실제 높이로 부드럽게 늘린다. <details> 는
+    // 열고 닫기 자체가 네이티브 동작이라(스크립트 없이도 동작) 이 스크립트는 순전히
+    // 장식이다 — 실패하거나 아예 안 돌아도 여닫는 기능 자체는 그대로다.
+    //
+    // 접힐 때는 건드리지 않는다(요청 범위가 "펼칠 때"였고, 네이티브 닫힘도 충분히
+    // 자연스럽다). 모션을 끈 사용자에게는 아무것도 안 한다 — 위 리빌 애니메이션과
+    // 같은 관례.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var advanced = document.querySelector('.fp-advanced');
+    var body = advanced ? advanced.querySelector('.fp-advanced-body') : null;
+    if (!advanced || !body) return;
+
+    advanced.addEventListener('toggle', function () {
+        if (!advanced.open) return;   // 닫힐 때는 그대로 둔다.
+
+        // toggle 이벤트가 뜬 시점엔 이미 브라우저가 콘텐츠를 보이는 상태로 만들어 둔
+        // 뒤라, 그대로 두면 실제 높이로 한 프레임 그려졌다가 0으로 깎이는 게 아니라
+        // "다 펼쳐진 채로 갑자기 나타나는" 순서가 된다. 목표 높이부터 먼저 재고,
+        // 0으로 되돌린 뒤(리플로 강제) 다음 프레임에 다시 목표 높이로 올려야
+        // "0 → 목표"로 실제로 늘어나는 것처럼 보인다.
+        var target = body.scrollHeight;
+        body.style.overflow = 'hidden';
+        body.style.height = '0px';
+        body.offsetHeight;   // 강제 리플로 — 이게 없으면 두 스타일 변경이 한 프레임에 합쳐진다.
+
+        // 인라인 스타일을 지워 원래대로 되돌리는 지점이 두 갈래(transitionend, 타임아웃)라
+        // 하나로 모은다 — 안 지우면 이후 드롭다운이 바뀌어 콘텐츠 높이가 달라져도
+        // (예: 지역 선택 후 공연장 옵션이 늘어남) height 가 그때 값에 고정돼 내용이
+        // 잘리거나 빈 공간이 남는다.
+        var settled = false;
+        function settle() {
+            if (settled) return;
+            settled = true;
+            body.style.height = '';
+            body.style.overflow = '';
+            body.style.transition = '';
+        }
+
+        requestAnimationFrame(function () {
+            body.style.transition = 'height .22s ease';
+            body.style.height = target + 'px';
+        });
+
+        body.addEventListener('transitionend', function onEnd(e) {
+            if (e.target !== body || e.propertyName !== 'height') return;
+            body.removeEventListener('transitionend', onEnd);
+            settle();
+        });
+
+        // 장식 하나 때문에 필터가 사라지면 안 된다. rAF 가 안 도는 상황(배경 탭에서
+        // 열렸다가 포커스를 잃는 등)이면 height:0 에서 transitionend 가 영영 안 와서
+        // 위 두 정리 지점이 둘 다 발동을 못 하고, 그러면 드롭다운 전체가 접힌 채로
+        // 굳는다 — 애니메이션 실패가 기능 실패로 번지는 경우다. 넉넉한 시간 뒤에는
+        // 무조건 원래대로 되돌린다.
+        setTimeout(settle, 500);
+    });
+})();
+
+(function () {
     // 모션을 끈 사용자나 IntersectionObserver 가 없는 환경에서는 아무것도 안 한다 —
     // .reveal 이 안 붙으면 카드는 CSS 기본값(불투명)으로 그냥 보인다.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
