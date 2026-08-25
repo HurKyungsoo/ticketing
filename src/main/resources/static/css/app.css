@@ -1979,6 +1979,39 @@ body.page-list .fp-col-wide .fp-row { align-items: flex-start; }
    그대로 두면 라벨이 위로 치우쳐 보인다. 드롭다운 한 줄 높이 기준으로 세로 중앙에 오도록 내려준다. */
 body.page-list .fp-col-wide .fp-label { margin-top: 9px; }
 
+/* 드물게 쓰는 조건은 native details로 접는다. 스크립트 없이도 열고 닫히며, 적용 중인
+   조건이 있을 때는 서버가 open 속성을 내려줘 현재 결과의 근거를 숨기지 않는다. */
+body.page-list .fp-advanced {
+  margin-left: 94px;
+  border-top: 1px solid var(--line);
+}
+body.page-list .fp-advanced summary {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 42px;
+  color: var(--mute); font-size: 13px; font-weight: 700;
+  cursor: pointer; list-style: none;
+}
+body.page-list .fp-advanced summary::-webkit-details-marker { display: none; }
+body.page-list .fp-advanced summary::after {
+  content: "⌄";
+  margin-left: 2px;
+  font-size: 16px; line-height: 1;
+  transition: transform .16s ease;
+}
+body.page-list .fp-advanced[open] summary::after { transform: rotate(180deg); }
+body.page-list .fp-advanced summary em {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(233, 180, 76, .16);
+  color: var(--brass);
+  font-size: 11px; font-style: normal;
+}
+body.page-list .fp-advanced-body {
+  display: grid;
+  gap: 12px;
+  padding: 2px 0 16px;
+}
+
 body.page-list .fp-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 body.page-list .cattab {
   position: relative;
@@ -2017,10 +2050,7 @@ body.page-list .fp-dropdowns select:hover { border-color: var(--paper); }
 /* 드롭다운을 펼쳤을 때의 목록은 OS 가 그리므로 배경/글자색을 따로 지정해야 한다. */
 body.page-list .fp-dropdowns select option { background: var(--ink-soft); color: var(--paper); }
 /* 선택값 텍스트 길이에 따라 각 드롭다운 폭이 들쭉날쭉해지지 않도록 고정폭을 준다. */
-/* 드롭다운이 5개(지역·공연장·월·요일·시간대)라 920px 컨테이너에 한 줄로 들어가려면
-   합이 빠듯하다. 요일을 추가하면서 공연장 240→200, 그룹 라벨 여백 32→20 으로 줄여
-   맞췄다 — 안 줄이면 시간대만 다음 줄로 밀려 "월 · 요일 · 시간대" 라벨과 떨어진다.
-   (더 좁은 화면에서는 flex-wrap 이 자연스럽게 접는다.) */
+/* 선택값 길이가 바뀌어도 필터 줄의 폭이 흔들리지 않게 각 드롭다운 폭을 고정한다. */
 body.page-list .fp-dropdowns select[name="area"] { width: 140px; }
 body.page-list .fp-dropdowns select[name="venue"] { width: 200px; }
 body.page-list .fp-dropdowns select[name="month"] { width: 120px; }
@@ -2028,7 +2058,6 @@ body.page-list .fp-dropdowns select[name="dayOfWeek"] { width: 120px; }
 body.page-list .fp-dropdowns select[name="timeSlot"] { width: 140px; }
 /* 지역·장소 그룹과 분명히 구분되도록 간격을 주되, 행 맨 끝까지는 밀지 않는다.
    고정값이라 지역/공연장 값 길이와 상관없이 위치가 항상 동일하다. */
-body.page-list .fp-grouplabel { font-size: 13px; font-weight: 600; color: var(--mute); margin-left: 20px; }
 body.page-list .fp-hint { font-size: 12px; color: var(--mute); opacity: .7; flex-basis: 100%; }
 /* 지역을 고르면 힌트 문구가 사라지면서 줄바꿈 위치가 바뀌어 패널 전체 높이가 들쭉날쭉했다.
    엘리먼트 자체(= flex-basis:100% 의 줄바꿈 효과)는 항상 유지하고 텍스트만 숨긴다. */
@@ -2333,6 +2362,7 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
   body.page-list .fp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   body.page-list .fp-apply { display: block; }
   body.page-list .fp-label { width: auto; }
+  body.page-list .fp-advanced { margin-left: 0; }
   body.page-list .fp-backdrop {
     display: block;
     position: fixed; inset: 0; background: rgba(0, 0, 0, .35);
@@ -3927,8 +3957,13 @@ body.page-list.tone-light .fp-keyword:focus-within { border-color: var(--brass);
 body.page-list.tone-light .fp-keyword input { color: var(--ink); }
 body.page-list.tone-light .fp-keyword input::placeholder { color: rgba(17, 18, 20, .4); }
 body.page-list.tone-light .fp-label,
-body.page-list.tone-light .fp-grouplabel,
 body.page-list.tone-light .fp-hint { color: rgba(17, 18, 20, .5); }
+body.page-list.tone-light .fp-advanced { border-top-color: rgba(17, 18, 20, .1); }
+body.page-list.tone-light .fp-advanced summary { color: rgba(17, 18, 20, .62); }
+body.page-list.tone-light .fp-advanced summary em {
+  background: rgba(233, 180, 76, .18);
+  color: var(--brass-ink);
+}
 
 /* 필터 pill. 선택된 것은 브라스가 아니라 잉크로 채운다 — 이 화면에서 브라스는
    결과 건수와 예매 CTA 가 쓰는 색이고, 필터는 "지금 어디를 보고 있나" 표시라

@@ -78,31 +78,51 @@
                 </div>
             </div>
 
-            <!-- 지역/공연장/월/시간대: 전부 드롭다운. 지역을 고르면 공연장 옵션(건수)도 그 지역 것만 남는다
-                 (PerformanceListService.buildVenueOptions 가 venue 만 빼고 region 은 그대로 반영해서 집계함) -->
+            <!-- 자주 쓰는 지역·월은 바로 보이고, 공연장·요일·시간대는 상세 조건으로 접는다.
+                 첫 진입에서 모든 선택지를 훑게 만들지 않으면서도 조건은 하나도 줄이지 않는다. -->
             <div class="fp-col fp-col-wide">
                 <div class="fp-row">
-                    <span class="fp-label">지역 · 장소</span>
+                    <span class="fp-label">지역 · 날짜</span>
                     <div class="fp-dropdowns">
                         <select name="area" aria-label="지역">
                             <option value="all" th:selected="${area == 'all'}">지역 전체</option>
                             <option th:each="a : ${regions}" th:value="${a}" th:text="${a}" th:selected="${a == area}"></option>
                         </select>
-                        <select name="venue" aria-label="공연장">
-                            <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
-                            <option th:each="v : ${result.venues}" th:if="${v.value != null}"
-                                    th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
-                                    th:selected="${v.selected}">공연장명 (12)</option>
-                            <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
-                                    th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
-                        </select>
-                        <span class="fp-grouplabel">월 · 요일 · 시간대</span>
                         <select name="month" aria-label="월 선택">
                             <option value="all" th:selected="${month == 'all'}">월 전체</option>
                             <option th:each="m : ${result.months}" th:value="${m.value}"
                                     th:text="${m.label + ' (' + #numbers.formatInteger(m.count,0,'COMMA') + ')'}"
                                     th:selected="${m.selected}">8월 (42)</option>
                         </select>
+                        <span class="fp-hint" th:classappend="${area != 'all'} ? ' fp-hint--hidden'">지역을 먼저 고르면 그 지역 공연장이 다 나와요</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 상세 조건을 이미 적용했다면 결과를 왜 보고 있는지 감춰지지 않게 처음부터 연다. -->
+            <details class="fp-advanced"
+                     th:open="${venue != 'all' or dayOfWeek != 'all' or timeSlot != 'all'}">
+                <summary>
+                    <span>상세 조건</span>
+                    <em th:if="${venue != 'all' or dayOfWeek != 'all' or timeSlot != 'all'}">적용됨</em>
+                </summary>
+                <div class="fp-advanced-body">
+                    <div class="fp-row">
+                        <span class="fp-label">공연장</span>
+                        <div class="fp-dropdowns">
+                            <select name="venue" aria-label="공연장">
+                                <option value="all" th:selected="${venue == 'all'}">공연장 전체</option>
+                                <option th:each="v : ${result.venues}" th:if="${v.value != null}"
+                                        th:value="${v.value}" th:text="${v.label + ' (' + #numbers.formatInteger(v.count,0,'COMMA') + ')'}"
+                                        th:selected="${v.selected}">공연장명 (12)</option>
+                                <option th:each="v : ${result.venues}" th:if="${v.value == null}" disabled
+                                        th:text="${v.label + ' ' + #numbers.formatInteger(v.count,0,'COMMA') + '건'}">기타 30건</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fp-row">
+                        <span class="fp-label">요일 · 시간</span>
+                        <div class="fp-dropdowns">
                         <!--
                             요일. 주중/주말을 위에 따로 둔 건 실데이터 분포 때문이다 —
                             주말에만 하는 공연 48.5%, 평일에만 하는 공연 33.8% 로 두 덩어리가
@@ -127,10 +147,10 @@
                             <option value="afternoon" th:selected="${timeSlot == 'afternoon'}">오후(12~18시)</option>
                             <option value="evening"   th:selected="${timeSlot == 'evening'}">저녁(18시~)</option>
                         </select>
-                        <span class="fp-hint" th:classappend="${area != 'all'} ? ' fp-hint--hidden'">지역을 먼저 고르면 그 지역 공연장이 다 나와요</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </details>
         </div>
 
         <button type="submit" class="fp-apply">적용하기</button>
