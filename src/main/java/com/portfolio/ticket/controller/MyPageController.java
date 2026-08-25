@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,6 +56,8 @@ public class MyPageController {
         model.addAttribute("wishes", wishes);
         // 찜 카드도 목록·홈 카드와 같은 것을 말해야 한다("다음 회차"). 이 화면만 엔티티를
         // 그리므로 다음 회차를 따로 받아 온다 — 찜 건수만큼 한 건씩 묻지 않고 한 번에.
+        // 기간 표기가 "올해면 연도 생략" 규칙을 쓰므로 기준일이 필요하다.
+        model.addAttribute("today", LocalDate.now());
         model.addAttribute("nextShows", wishlistService.nextShowsFor(wishes));
         addUnreadCount(principal, model);
         return "member/wishlist";

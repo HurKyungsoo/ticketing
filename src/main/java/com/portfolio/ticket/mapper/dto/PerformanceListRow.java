@@ -88,4 +88,38 @@ public class PerformanceListRow {
     }
 
     private static final DateTimeFormatter TIME_ONLY = DateTimeFormatter.ofPattern("HH:mm");
+
+    private static final DateTimeFormatter MONTH_DAY = DateTimeFormatter.ofPattern("M.d");
+    private static final DateTimeFormatter YEAR_MONTH_DAY = DateTimeFormatter.ofPattern("yyyy.M.d");
+
+    /** 공연 기간. {@link #periodFor} 참고. */
+    public String runPeriod(LocalDate today) {
+        return periodFor(startDate, endDate, today);
+    }
+
+    /**
+     * "6.4 – 8.30" 같은 공연 기간.
+     *
+     * <p>다음 회차만 적으면 <b>이 공연이 언제까지 하는지</b>를 알 수 없다. 회차는 "언제
+     * 가지"에, 기간은 "언제까지 볼 수 있지"에 답하는 서로 다른 정보라 둘 다 필요하다.
+     *
+     * <p><b>연도는 바뀔 때만 적는다.</b> 종전 표기 {@code 2026.06.04 – 2026.08.30} 은
+     * 23자에 연도가 두 번 들어가서, 카드 폭에서 줄바꿈되거나 잘렸다. 규칙은 세 가지다:
+     * <ul>
+     *   <li>둘 다 올해면 아예 안 적는다 — {@code 6.4 – 8.30}</li>
+     *   <li>같은 해지만 올해가 아니면 앞에만 — {@code 2027.3.1 – 4.1}</li>
+     *   <li>해를 넘기면 양쪽에 — {@code 2026.12.20 – 2027.1.5}</li>
+     * </ul>
+     * 둘 다 올해일 때만 지우는 게 핵심이다. "같은 해면 생략"으로 두면 12월에 보는
+     * 내년 공연이 연도 없이 {@code 3.1 – 4.1} 로 적혀 올해 것처럼 읽힌다.
+     */
+    public static String periodFor(LocalDate start, LocalDate end, LocalDate today) {
+        if (start == null || end == null) {
+            return null;
+        }
+        boolean bothThisYear = start.getYear() == today.getYear() && end.getYear() == today.getYear();
+        DateTimeFormatter head = bothThisYear ? MONTH_DAY : YEAR_MONTH_DAY;
+        DateTimeFormatter tail = start.getYear() == end.getYear() ? MONTH_DAY : YEAR_MONTH_DAY;
+        return start.format(head) + " – " + end.format(tail);
+    }
 }

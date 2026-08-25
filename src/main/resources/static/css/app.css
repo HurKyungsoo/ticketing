@@ -2176,6 +2176,13 @@ body.page-list .card .m-venue {
    opacity 를 걷고 크기도 공연장과 같은 13px 로 맞춘다(대비는 tone-light 쪽에서 5.08).
 */
 body.page-list .card .m-date { font-size: 13px; }
+/*
+   공연 기간. 회차 줄(.m-date) 뒤에 한 단계 물러서 놓는다 — 「언제 가지」가 먼저고
+   「언제까지 하지」가 다음이다. 종전 .m-date 가 쓰던 12px 자리를 그대로 물려받되,
+   흐리기를 두 번 걸던 opacity 는 안 가져온다(그게 대비 2.67 의 원인이었다).
+   색은 .meta 가 주는 값을 그대로 쓴다 — 라이트 톤에서 4.04 다.
+*/
+body.page-list .card .m-run { font-size: 12px; }
 
 /*
    공연장·기간 앞에 작은 아이콘. 카드 수가 많아 <svg> 를 카드마다 마크업에 넣으면

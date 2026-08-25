@@ -34,10 +34,13 @@
                 <div class="posterfallback" th:text="${#strings.substring(w.performance.title, 0, 1)}">공</div>
             </div>
             <h3 th:text="${w.performance.title}">공연명</h3>
-            <p class="meta">
+            <!-- 목록 카드와 같은 두 줄 규칙(list.html 주석 참고). 이 화면만 카드가 엔티티라
+                 회차 문구는 서비스가 만들어 넘긴 것(nextShows)을 쓴다. -->
+            <p class="meta" th:with="next=${nextShows[w.performance.id]},
+                                     run=${T(com.portfolio.ticket.mapper.dto.PerformanceListRow).periodFor(w.performance.startDate, w.performance.endDate, today)}">
                 <span class="m-venue" th:text="${w.performance.venue}">공연장</span>
-                <span class="m-date" th:with="next=${nextShows[w.performance.id]}"
-                      th:text="${next} ?: |${#temporals.format(w.performance.startDate, 'yyyy.MM.dd')} – ${#temporals.format(w.performance.endDate, 'yyyy.MM.dd')}|">다음 공연 8/27(수) 19:30</span>
+                <span class="m-date" th:text="${next} ?: ${run}">다음 공연 8/27(수) 19:30</span>
+                <span class="m-run" th:if="${next != null}" th:text="${run}">6.4 – 8.30</span>
             </p>
         </a>
     </div>

@@ -230,6 +230,37 @@ class HomePageTest {
         }
     }
 
+    /**
+     * 기간 표기. 다음 회차만 적으면 "이 공연이 언제까지 하는지"를 알 수 없어서 두 줄로
+     * 나눠 놓았는데, 그 뒷줄이 이 값이다.
+     *
+     * <p>연도는 바뀔 때만 적는다. 종전 {@code 2026.06.04 – 2026.08.30} 은 23자에 연도가
+     * 두 번 들어가 카드 폭에서 잘렸다.
+     */
+    @DisplayName("공연 기간은 연도가 바뀔 때만 연도를 적는다")
+    @Test
+    void runPeriodElidesRedundantYear() {
+        LocalDate today = LocalDate.of(2026, 8, 25);
+
+        // 둘 다 올해 — 연도를 아예 안 적는다
+        assertThat(PerformanceListRow.periodFor(
+                LocalDate.of(2026, 6, 4), LocalDate.of(2026, 8, 30), today))
+                .isEqualTo("6.4 – 8.30");
+
+        // 해를 넘긴다 — 양쪽에 적는다
+        assertThat(PerformanceListRow.periodFor(
+                LocalDate.of(2026, 12, 20), LocalDate.of(2027, 1, 5), today))
+                .isEqualTo("2026.12.20 – 2027.1.5");
+
+        /*
+         * 같은 해지만 올해가 아닌 경우. "같은 해면 생략"으로 두면 여기서 3.1 – 4.1 이 되어
+         * 올해 공연처럼 읽힌다 — 12월에 내년 공연을 보는 흔한 상황이다. 앞에만 적는다.
+         */
+        assertThat(PerformanceListRow.periodFor(
+                LocalDate.of(2027, 3, 1), LocalDate.of(2027, 4, 1), today))
+                .isEqualTo("2027.3.1 – 4.1");
+    }
+
     private PerformanceListRow firstRow() {
         return listService.search(null, null, null, null, "ongoing", null, null, null, null, 0)
                 .performances().get(0);
