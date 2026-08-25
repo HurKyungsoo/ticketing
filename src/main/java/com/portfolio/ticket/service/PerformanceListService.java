@@ -107,7 +107,29 @@ public class PerformanceListService {
      * 홈 섹션 한 덩어리. moreUrl 은 "전체 보기"가 갈 목록 화면 주소로, <b>그 섹션을 만든 조건과
      * 같은 조건</b>이어야 한다 — 어긋나면 홈에서 본 것과 다른 목록이 나온다.
      */
-    public record HomeSection(String title, String subtitle, String moreUrl, List<PerformanceListRow> items) {}
+    public record HomeSection(String title, String subtitle, String moreUrl, List<PerformanceListRow> items) {
+
+        /**
+         * 에디토리얼 밴드가 돌려 보여줄 묶음으로 끊는다.
+         *
+         * <p>모자란 마지막 묶음은 버린다. 3열 그리드라 두 장짜리 묶음이 돌아오면 오른쪽이
+         * 뻥 뚫린 채로 몇 초 서 있게 되는데, 그건 "공연이 두 개뿐"이 아니라 화면이 깨진
+         * 것으로 읽힌다. 어차피 한 달 후보가 수백 건이라 몇 건 덜 보여준다고 잃는 게 없다.
+         *
+         * <p>다만 한 묶음도 못 채울 만큼 적으면(수집 직후, 로컬 시드) 있는 것만이라도 한
+         * 묶음으로 낸다 — 여기서 빈 목록을 내면 화면이 섹션을 통째로 감춰버린다.
+         */
+        public List<List<PerformanceListRow>> groups(int size) {
+            List<List<PerformanceListRow>> groups = new ArrayList<>();
+            for (int i = 0; i + size <= items.size(); i += size) {
+                groups.add(items.subList(i, i + size));
+            }
+            if (groups.isEmpty() && !items.isEmpty()) {
+                groups.add(items);
+            }
+            return groups;
+        }
+    }
 
     /**
      * @param heroPosters 히어로 우측 포스터 콜라주에 쓸 포스터 주소(최대 3장). 장식이라 없으면
@@ -117,7 +139,7 @@ public class PerformanceListService {
      *                    갈리지 않는다({@link PerformanceListRow#daysUntilClose} 참고).
      */
     public record Home(List<HomeSection> sections, List<Option> categories, long total,
-                        List<String> heroPosters, LocalDate today) {}
+                        List<String> heroPosters, LocalDate today, int bandSize) {}
 
     /**
      * 가로 슬라이드 섹션(첫째·셋째)에 담는 개수.
@@ -137,6 +159,20 @@ public class PerformanceListService {
      */
     private static final int HOME_BAND_SIZE = 6;
 
+    /**
+     * 밴드가 돌려 보여줄 묶음 수.
+     *
+     * <p>여섯 장만 뽑아 두면 <b>한 달 내내 같은 여섯 개</b>가 걸려 있다. 기본 정렬이
+     * 개막일 오름차순이라 위에 오는 건 "가장 먼저 개막해서 아직 안 끝난" 장기 공연이고,
+     * 그건 그 공연이 끝나기 전에는 바뀌지 않는다. 실측(2026-08, 배포본): 8월 후보가
+     * 491건인데 밴드에 걸린 여섯 개가 전부 6월 4~12일 개막작이었다.
+     *
+     * <p>그래서 네 묶음(24개)을 받아 화면이 몇 초 간격으로 돌린다. 후보가 수백 건이라
+     * 더 늘릴 수도 있지만, 묶음마다 포스터 여섯 장을 받아야 하고 사람이 한 화면에서
+     * 실제로 넘겨 보는 양에도 한계가 있어 네 묶음에서 끊었다.
+     */
+    private static final int HOME_BAND_PAGES = 4;
+
     public Home home() {
         LocalDate today = LocalDate.now();
         int month = today.getMonthValue();
@@ -146,7 +182,7 @@ public class PerformanceListService {
                 "/performances?status=ongoing&sort=closing", HOME_RAIL_SIZE,
                 f -> f.setSort(Sort.CLOSING.code())));
         sections.add(section(month + "월 공연", "이번 달에 열리는 회차가 있는 공연",
-                "/performances?status=ongoing&month=" + month, HOME_BAND_SIZE,
+                "/performances?status=ongoing&month=" + month, HOME_BAND_SIZE * HOME_BAND_PAGES,
                 f -> f.setMonth(month)));
         sections.add(section("새로 들어온 공연", "가장 최근에 등록된 순서",
                 "/performances?status=ongoing&sort=newest", HOME_RAIL_SIZE,
@@ -157,7 +193,7 @@ public class PerformanceListService {
         PerformanceFilter ongoing = ongoingBase(today);
         return new Home(sections, buildCategoryOptions(ongoing, null),
                 performanceMapper.countPerformances(ongoing),
-                heroPosters(sections), today);
+                heroPosters(sections), today, HOME_BAND_SIZE);
     }
 
     /** 히어로 콜라주에 쓸 포스터 3장. */

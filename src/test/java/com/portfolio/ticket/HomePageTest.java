@@ -105,6 +105,55 @@ class HomePageTest {
                 assertThat(c.label()).isEqualTo("뮤지컬"));
     }
 
+    /**
+     * 밴드 묶기. 화면이 몇 초 간격으로 돌리는 단위라, 여기서 이가 빠진 묶음이 나오면
+     * 3열 그리드 오른쪽이 뚫린 채로 몇 초 서 있게 된다.
+     */
+    @DisplayName("밴드는 묶음 크기로 끊고, 모자란 마지막 묶음은 버린다")
+    @Test
+    void bandGroupsDropPartialTail() {
+        PerformanceListService.HomeSection section = sectionOf(14);
+
+        assertThat(section.groups(6)).hasSize(2);
+        assertThat(section.groups(6)).allSatisfy(g -> assertThat(g).hasSize(6));
+        // 남은 두 건은 버린다 — 두 장짜리 묶음은 "공연이 둘뿐"이 아니라 깨진 화면으로 읽힌다.
+        assertThat(section.groups(6).stream().mapToInt(java.util.List::size).sum()).isEqualTo(12);
+    }
+
+    /**
+     * 수집 직후나 로컬 시드처럼 한 묶음도 못 채울 때. 여기서 빈 목록을 내면 화면이
+     * 섹션을 통째로 감춰서, 공연이 있는데도 홈 가운데가 사라진다.
+     */
+    @DisplayName("한 묶음도 못 채우면 있는 것만이라도 한 묶음으로 낸다")
+    @Test
+    void bandKeepsEverythingWhenTooFew() {
+        assertThat(sectionOf(4).groups(6)).hasSize(1);
+        assertThat(sectionOf(4).groups(6).get(0)).hasSize(4);
+        // 아예 없으면 묶음도 없다(화면이 섹션을 감추는 게 맞는 경우다).
+        assertThat(sectionOf(0).groups(6)).isEmpty();
+    }
+
+    @DisplayName("홈은 밴드 묶음 크기를 같이 내려준다 — 화면이 그 값으로 끊는다")
+    @Test
+    void homeCarriesBandSize() {
+        createOngoing("뮤지컬하나", PerformanceCategory.MUSICAL);
+
+        PerformanceListService.Home home = listService.home();
+
+        // 3열 그리드라 3의 배수여야 마지막 줄이 안 빈다.
+        assertThat(home.bandSize()).isEqualTo(6);
+        assertThat(home.bandSize() % 3).isZero();
+    }
+
+    /** 묶기만 보는 테스트라 행 내용은 필요 없다. */
+    private PerformanceListService.HomeSection sectionOf(int count) {
+        java.util.List<com.portfolio.ticket.mapper.dto.PerformanceListRow> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            rows.add(new com.portfolio.ticket.mapper.dto.PerformanceListRow());
+        }
+        return new PerformanceListService.HomeSection("제목", "부제", "/performances?x", rows);
+    }
+
     @DisplayName("홈 섹션은 종료작을 담지 않는다")
     @Test
     void homeExcludesEndedPerformances() {

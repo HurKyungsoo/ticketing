@@ -3403,8 +3403,54 @@ body.page-home .editorial-card .ec-cat {
   font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--brass); margin: 0 0 8px;
 }
-body.page-home .editorial-card h3 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 6px; color: var(--paper); }
-body.page-home .editorial-card .ec-meta { font-size: 13px; color: rgba(248, 244, 236, .5); margin: 0; }
+/* 제목·메타의 줄 수를 못박는다. 밴드가 묶음을 돌리는데 묶음마다 제목이 한 줄이었다
+   두 줄이었다 하면 밴드 높이가 바뀌면서 아래 화면 전체가 몇 초마다 위아래로 튄다.
+   높이를 min-height 가 아니라 height 로 주는 이유가 그것이다 — 줄 수와 무관하게
+   모든 카드가 정확히 같은 높이여야 묶음끼리도 같아진다.
+
+   겸사겸사 종전부터 있던 문제도 같이 잡힌다: 수집분에는 「애기봉평화생태공원 6~8월
+   토요상설공연 <애기봉 플레이리스트> Vol.3 그 여름 날, 애기봉」 같은 제목이 흔한데,
+   그 한 장이 자기 줄 전체를 늘려 놓고 있었다(그리드라 같은 행이 같이 늘어난다). */
+body.page-home .editorial-card h3 {
+  font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 6px; color: var(--paper);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  line-height: 1.35; height: 2.7em;
+}
+body.page-home .editorial-card .ec-meta {
+  font-size: 13px; color: rgba(248, 244, 236, .5); margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  line-height: 1.4; height: 2.8em;
+}
+
+/* ---- 밴드 묶음 돌리기 ----
+
+   여섯 장을 고정으로 걸어두면 한 달 내내 같은 여섯 개가 서 있다(HOME_BAND_PAGES 주석).
+   네 묶음을 받아 두고 화면이 돌린다. 감춰진 묶음은 [hidden] 이라 자리를 차지하지 않고,
+   나타날 때의 전환은 리빌(.reveal .editorial-card)이 이미 갖고 있는 것을 그대로 쓴다 —
+   같은 화면에서 카드가 나타나는 방식이 두 가지면 그게 더 어색하다. */
+body.page-home .editorial-grid[hidden] { display: none; }
+
+body.page-home .banddots { display: flex; justify-content: center; gap: 8px; margin-top: 4px; }
+/* 막대는 3px 이지만 누르는 영역은 44px 로 잡는다 — 보이는 만큼만 버튼으로 두면
+   손가락으로 못 누른다(README 「터치 타깃 최소 크기」와 같은 기준). 남는 높이는
+   투명해서 화면에는 얇은 막대만 보인다. */
+body.page-home .banddots button {
+  display: inline-flex; align-items: center;
+  width: 40px; height: 44px; padding: 0;
+  background: none; border: 0; cursor: pointer;
+}
+body.page-home .banddots button::before {
+  content: ''; display: block;
+  width: 100%; height: 3px; border-radius: 999px;
+  background: rgba(248, 244, 236, .22);
+  transition: background .2s;
+}
+body.page-home .banddots button:hover::before { background: rgba(248, 244, 236, .45); }
+/* 지금 보고 있는 묶음. 색만 바꾸지 않고 폭도 같이 주는 건, 얇은 막대에서는 밝기 차이가
+   생각보다 안 읽히기 때문이다. */
+body.page-home .banddots button[aria-current]::before { background: var(--brass); }
+body.page-home .banddots button[aria-current] { width: 56px; }
+body.page-home .banddots button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 4px; }
 
 /* 카드형 섹션과 같은 IntersectionObserver 리빌을 쓴다(home.html 스크립트가
    .editorial-grid/.editorial-card 도 같이 관찰한다) — 클래스를 .grid/.card 와
