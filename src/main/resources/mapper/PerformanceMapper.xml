@@ -51,6 +51,28 @@
             <include refid="scheduleConditions"><property name="a" value="ps2"/></include>)
     </sql>
 
+    <!--
+        다음 회차(위 nextShowAt)의 잔여석. 예매 가능 여부 배지(매진/매진임박)가 쓴다.
+
+        MIN() 을 다시 걸 수는 없다(그러면 "가장 이른 회차의 시각"이 아니라 "잔여석이
+        가장 적은 회차의 잔여석"이 나온다 — 다른 질문이 된다). 그래서 nextShowAt 와
+        똑같은 조건으로 ORDER BY show_at ASC LIMIT 1 을 따로 걸어 "그 회차"를 다시
+        짚는다 — 표현은 다르지만 nextShowAt 가 고르는 행과 항상 같은 행이다.
+
+        가장 가까운 회차만 본다. 그 회차가 매진이어도 더 뒤 회차에 자리가 있을 수
+        있는데, 그 경우까지 훑으면 "예매 가능한 회차 중 가장 가까운 것"이라는 다른
+        질문이 되어 nextShowAt(다음 회차 표기)가 가리키는 날짜와 배지가 서로 다른
+        날을 말하게 된다. 배지는 항상 화면에 적힌 "다음 회차"에 대한 것이어야 한다.
+    -->
+    <sql id="nextShowRemainingSeats">
+        (SELECT ps3.remaining_seats
+           FROM performance_schedule ps3
+          WHERE ps3.performance_id = p.id
+            AND ps3.show_at &gt;= #{f.today}
+            <include refid="scheduleConditions"><property name="a" value="ps3"/></include>
+          ORDER BY ps3.show_at ASC LIMIT 1)
+    </sql>
+
     <!-- 회차와 무관한 필터. selectMonthCounts 는 회차를 JOIN 해서 세므로 이 조각만 따로 쓴다. -->
     <sql id="nonScheduleFilters">
         <if test="f.status == 'ONGOING'">AND p.end_date &gt;= #{f.today}</if>
@@ -143,7 +165,8 @@
                    셈이지만, uk_schedule(performance_id, show_at) 을 타는 한 페이지분
                    (12행)이라 따로 캐시할 만한 비용이 아니다.
                -->
-               <include refid="nextShowAt"/> AS next_show_at
+               <include refid="nextShowAt"/> AS next_show_at,
+               <include refid="nextShowRemainingSeats"/> AS next_remaining_seats
           FROM performance p
          WHERE 1 = 1
         <include refid="commonFilters"/>

@@ -2163,6 +2163,26 @@ body.page-list .card-badge {
   border-radius: 999px; padding: 5px 12px;
   border: 1px solid rgba(248, 244, 236, .16);
 }
+/* 예매 가능 여부 배지. 장르 배지 반대쪽 모서리 — 마감 임박 배지(홈 전용)와 같은 자리
+   규칙이다. body.page-list 스코프라 목록·홈(둘 다 page-list 클래스를 겹쳐 쓴다) 양쪽에
+   그대로 적용된다. 예매 가능(배지 없음)이 기본값이고, 그 외 네 상태만 색으로 가른다 —
+   색은 "지금 알아야 할 것"에만 쓴다는 관례를 따라 매진(로즈)·매진임박(브라스)만 눈에
+   띄고, 오픈예정·정보없음은 장르 배지와 같은 중립 톤이다(급한 소식이 아니라서). */
+body.page-list .card-avail {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+body.page-list .card-avail.avail-soldout { background: var(--rose); color: #fff; }
+body.page-list .card-avail.avail-low { background: var(--brass); color: var(--ink); }
+body.page-list .card-avail.avail-pending,
+body.page-list .card-avail.avail-unknown {
+  background: rgba(17, 18, 20, .72); color: var(--paper);
+  backdrop-filter: blur(4px);
+  font-weight: 500;
+  border: 1px solid rgba(248, 244, 236, .16);
+}
 /*
    제목이 포스터 바로 아래에 오므로 같은 행의 제목은 자동으로 같은 높이에서 시작한다.
    (종전에는 meta 가 위에 있어서 공연장명이 긴 카드만 제목이 한 줄 내려앉았고, 그걸
@@ -3483,6 +3503,24 @@ body.page-home .editorial-card .ec-image .ec-backdrop {
 body.page-home .editorial-card .ec-image img {
   position: relative; z-index: 1;
   width: 100%; height: 100%; object-fit: contain; display: block;
+}
+/* 예매 가능 여부. 카드형 목록의 .card-avail 과 같은 판단을 포스터 우상단에 얹는다 —
+   여기는 이미지 프레임(.ec-image)이 카드 배경(var(--ink))과 달라서 배지가 이미지
+   위에 뜨는 걸 z-index 로 보장해야 한다(장르 배지가 이미지 뒤로 숨던 결함과 같은 자리). */
+body.page-home .editorial-card .ec-avail {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+body.page-home .editorial-card .ec-avail.avail-soldout { background: var(--rose); color: #fff; }
+body.page-home .editorial-card .ec-avail.avail-low { background: var(--brass); color: var(--ink); }
+body.page-home .editorial-card .ec-avail.avail-pending,
+body.page-home .editorial-card .ec-avail.avail-unknown {
+  background: rgba(17, 18, 20, .6); color: var(--paper);
+  backdrop-filter: blur(4px);
+  font-weight: 500;
+  border: 1px solid rgba(248, 244, 236, .16);
 }
 body.page-home .editorial-card .ec-cat {
   font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;

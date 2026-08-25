@@ -105,7 +105,7 @@
                     <!-- dday 를 th:with 로 한 번만 계산한다. 배지 표시 여부·문구·값 세 군데가
                          같은 값을 봐야 하는데, 그때마다 다시 부르면 자정을 넘기는 순간 셋이 갈린다. -->
                     <a class="card" th:each="p : ${s.items}" th:href="@{/performances/{id}(id=${p.id})}"
-                       th:with="dday=${p.daysUntilClose(home.today)}">
+                       th:with="dday=${p.daysUntilClose(home.today)},avail=${p.availability(home.today)}">
                         <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
                             <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
                             <!-- 마감 임박 배지. 며칠 안 남았을 때만 뜬다 — 두 달 남은 공연에까지
@@ -115,6 +115,10 @@
                             <span class="card-dday" th:if="${dday >= 0 and dday <= 7}"
                                   th:classappend="${dday == 0} ? 'card-dday--today'"
                                   th:text="${dday == 0} ? '오늘 마감' : 'D-' + ${dday}">D-2</span>
+                            <!-- 예매 가능 여부. 마감 임박 배지와 한 모서리를 나눠 쓰므로 그게 안
+                                 뜰 때만 그린다 — 둘 다 뜨면 한 모서리에 겹쳐 어느 쪽도 안 읽힌다. -->
+                            <span class="card-avail" th:if="${(dday < 0 or dday > 7) and avail != null}"
+                                  th:classappend="${avail.cssClass}" th:text="${avail.label}">매진</span>
                             <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                                  onerror="this.remove(); this.parentElement.classList.add('no-img')">
                             <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
@@ -149,7 +153,8 @@
                  role="group" th:attr="aria-label=${s.title}">
             <div class="editorial-grid" th:each="g, gStat : ${groups}"
                  th:attr="hidden=${gStat.index == 0} ? null : true">
-                <a class="editorial-card" th:each="p : ${g}" th:href="@{/performances/{id}(id=${p.id})}">
+                <a class="editorial-card" th:each="p : ${g}" th:href="@{/performances/{id}(id=${p.id})}"
+                   th:with="avail=${p.availability(home.today)}">
                     <div class="ec-image">
                         <!-- 포스터는 세로가 대부분이라 16:10 프레임을 못 채운다 — 남는 좌우는
                              같은 이미지를 흐리게 확대한 배경으로 채운다(아래 img 는 잘리지
@@ -158,6 +163,10 @@
                              th:style="'background-image:url(' + @{/img/poster(u=${p.posterUrl})} + ')'"></div>
                         <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                              onerror="this.remove()">
+                        <!-- 예매 가능 여부. 카드형 목록의 card-avail 과 같은 판단, 다크 판 위라
+                             별도 클래스로 색만 다시 정한다(ec-next 가 m-date 와 갈리는 것과 같다). -->
+                        <span class="ec-avail" th:if="${avail != null}" th:classappend="${avail.cssClass}"
+                              th:text="${avail.label}">매진</span>
                     </div>
                     <div>
                         <p class="ec-cat" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">뮤지컬</p>

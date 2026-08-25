@@ -30,6 +30,12 @@ public class PerformanceListRow {
     private LocalDateTime nextShowAt;
 
     /**
+     * 다음 회차(위 nextShowAt)의 잔여석. 예매 가능 여부 배지(매진/매진임박)에 쓴다.
+     * nextShowAt 이 null 이면 이 값도 의미가 없다(볼 회차 자체가 없다).
+     */
+    private Integer nextRemainingSeats;
+
+    /**
      * 종료일까지 남은 일수. 홈 카드의 D-day 배지에 쓴다. 오늘 끝나면 0 이다.
      *
      * <p>기준일을 인자로 받는다 — 안에서 {@code LocalDate.now()} 를 부르면 같은 화면 안에서도
@@ -100,6 +106,49 @@ public class PerformanceListRow {
     }
 
     private static final DateTimeFormatter TIME_ONLY = DateTimeFormatter.ofPattern("HH:mm");
+
+    /**
+     * 예매 가능 여부 배지에 잔여석이 이 이하면 "매진임박". 비율이 아니라 절대 개수를 쓴다 —
+     * 대극장의 10% 는 수백 석이라 절대 임박이 아니고, 소극장의 절대 10석은 이미 없다시피
+     * 하다. 실측 대신 마감 임박 배지(daysUntilClose &lt;= 7)와 같은 종류의 판단으로,
+     * 국내 예매처가 흔히 쓰는 "잔여 N석 이하" 표기 관례를 그대로 따랐다.
+     */
+    private static final int ALMOST_SOLD_OUT_THRESHOLD = 10;
+
+    /**
+     * 예매 가능 여부. 화면이 배지로 그린다 — 없으면(null) "예매 가능"이라 배지를 안 그린다
+     * (D-day 배지가 급하지 않을 때 안 그리는 것과 같은 관례. 색은 "지금 알아야 할 것"에만
+     * 쓴다).
+     *
+     * <p><b>다음 회차(next showing)의 잔여석만 본다.</b> 그 회차가 매진이어도 더 뒤 회차에
+     * 자리가 있을 수 있지만, 그 경우까지 훑으면 배지가 "예매 가능한 회차 중 가장 가까운
+     * 것"을 말하게 되어 카드에 적힌 다음 회차 날짜와 배지가 서로 다른 날을 가리키게 된다.
+     * 배지는 항상 화면에 보이는 그 날짜에 대한 것이어야 한다 — 클릭해서 상세로 들어가면
+     * 다른 회차의 잔여석은 회차 선택 화면에서 그대로 볼 수 있다.
+     *
+     * @param today "아직 시작 전(오픈 예정)"과 "이미 하고 있는데 회차 정보가 없음(예매처
+     *              정보 없음)"을 가르는 기준일. daysUntilClose 와 같은 이유로 인자로 받는다.
+     */
+    public Availability availability(LocalDate today) {
+        if (nextShowAt == null) {
+            if (startDate != null && today.isBefore(startDate)) {
+                return new Availability("오픈 예정", "avail-pending");
+            }
+            return new Availability("예매처 정보 없음", "avail-unknown");
+        }
+        if (nextRemainingSeats != null) {
+            if (nextRemainingSeats <= 0) {
+                return new Availability("매진", "avail-soldout");
+            }
+            if (nextRemainingSeats <= ALMOST_SOLD_OUT_THRESHOLD) {
+                return new Availability("매진임박", "avail-low");
+            }
+        }
+        return null;
+    }
+
+    /** 예매 가능 여부 배지에 넣을 것. cssClass 는 상태별 색을 가르는 데 쓴다. */
+    public record Availability(String label, String cssClass) {}
 
     private static final DateTimeFormatter MONTH_DAY = DateTimeFormatter.ofPattern("M.d");
     private static final DateTimeFormatter YEAR_MONTH_DAY = DateTimeFormatter.ofPattern("yyyy.M.d");

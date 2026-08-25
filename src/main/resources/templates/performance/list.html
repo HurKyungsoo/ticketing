@@ -194,9 +194,14 @@
     </div>
 
     <div class="grid" th:if="${!result.performances.isEmpty()}">
-        <a class="card" th:each="p : ${result.performances}" th:href="@{/performances/{id}(id=${p.id})}">
+        <a class="card" th:each="p : ${result.performances}" th:href="@{/performances/{id}(id=${p.id})}"
+           th:with="avail=${p.availability(today)}">
             <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
                 <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                <!-- 예매 가능 여부. 매진·매진임박·오픈예정·정보없음일 때만 그린다(예매 가능이면
+                     배지 없음 — 장르 배지 반대쪽 모서리, 마감 임박 배지와 같은 자리 규칙). -->
+                <span class="card-avail" th:if="${avail != null}" th:classappend="${avail.cssClass}"
+                      th:text="${avail.label}">매진</span>
                 <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
                      onerror="this.remove(); this.parentElement.classList.add('no-img')">
                 <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
