@@ -224,6 +224,79 @@ a { color: inherit; text-decoration: none; }
   line-height: 1;
 }
 
+/* ---- 헤더 검색 (아이콘 → 헤더 안 둘째 줄) ----
+
+   접힌 상태는 아이콘 하나뿐이라 종전 헤더의 무게를 바꾸지 않고, 누르면 헤더 안에서
+   한 줄이 더 열린다.
+
+   왜 헤더 "안"인가: .masthead 는 sticky 반투명 바다. 검색 줄을 바 아래에 겹쳐 띄우면
+   그 뒤로 본문이 비쳐 지나가면서 입력한 글자와 본문 글자가 겹쳐 읽힌다. 헤더의 한
+   줄로 넣으면 배경 blur 를 그대로 물려받는다.
+
+   flex-wrap 은 .searchopen 일 때만 켠다. 헤더는 좁은 화면에서 authnav 가 "내부적으로"
+   줄바꿈되도록 오래 다듬어 온 자리라(.navactions ::before 주석 참고), 상시로 켜 두면
+   닫혀 있을 때도 내비 묶음이 통째로 다음 줄로 떨어지는 경우가 생긴다. 닫혀 있는
+   동안에는 규칙이 아예 안 걸리게 두는 편이 안전하다. */
+.masthead.searchopen { flex-wrap: wrap; }
+
+.masthead .navsearch-toggle {
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  padding: 0;
+  background: none; border: 0; border-radius: 999px;
+  color: var(--mute); cursor: pointer;
+  transition: background .18s, color .18s;
+}
+/* [hidden] 이 display:inline-flex 에 지므로 되받는다. 스크립트가 없는 브라우저에서
+   아이콘이 그대로 보이면 눌러도 아무 일 없는 죽은 버튼이 된다. */
+.masthead .navsearch-toggle[hidden] { display: none; }
+.masthead .navsearch-toggle:hover { background: rgba(248, 244, 236, .08); color: var(--paper); }
+/* 열려 있는 동안은 내비의 "지금 여기"(.navlink.active)와 같은 방식으로 눌린 표시를 한다. */
+.masthead.searchopen .navsearch-toggle { background: rgba(248, 244, 236, .10); color: var(--paper); }
+
+/* 홈 히어로 검색과 같은 밑줄형. 흰 알약을 하나 더 만들면 헤더에 없던 면이 생겨서
+   로고·내비와 층이 어긋난다. 밑줄은 헤더의 아래 테두리와 같은 언어라 덜 튄다. */
+.masthead .navsearch {
+  flex: 0 0 100%;
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 14px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--line-strong);
+  transition: border-color .25s;
+  animation: navsearch-in .22s ease;
+}
+.masthead .navsearch[hidden] { display: none; }
+.masthead .navsearch:focus-within { border-color: var(--brass); }
+.masthead .navsearch svg { flex: none; color: var(--mute); }
+.masthead .navsearch input[type="text"] {
+  flex: 1; min-width: 0;
+  background: none; border: 0; outline: none;
+  font: inherit;
+  /* 16px 아래로 내리지 말 것 — iOS 사파리는 그보다 작은 입력칸에 초점이 가면
+     화면을 확대해 버리고, 확대된 상태로 헤더만 남는다. */
+  font-size: 16px;
+  color: var(--paper);
+}
+.masthead .navsearch input::placeholder { color: rgba(248, 244, 236, .45); }
+.masthead .navsearch button {
+  flex: none;
+  padding: 9px 20px;
+  background: var(--brass); color: var(--ink);
+  border: 0; border-radius: 999px;
+  font: inherit; font-size: 14px; font-weight: 700;
+  white-space: nowrap; cursor: pointer;
+  transition: transform .2s, background .2s;
+}
+.masthead .navsearch button:hover { background: #f2c874; }
+.masthead .navsearch button:active { transform: scale(.94); }
+/* 열릴 때만 도는 한 번짜리. hidden 이 걷히면서 display 가 none → flex 로 바뀌므로
+   매번 처음부터 다시 재생된다. 모션 최소화 설정에서는 전역 규칙이 꺼 준다. */
+@keyframes navsearch-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ---------- 페이지네이션 ---------- */
 .pager {
   display: flex;
@@ -3412,6 +3485,33 @@ body.tone-light .masthead .authnav a:hover { color: var(--brass-ink); }
 body.tone-light .masthead .linklike { color: var(--ink); }
 body.tone-light .masthead .linklike:hover { color: var(--brass-ink); }
 body.tone-light .masthead .navactions::before { background: rgba(17, 18, 20, .18); }
+
+/* ---- 헤더 검색 — 라이트 배경 ----
+   내비 링크와 같은 규칙을 그대로 따른다(평소 .6 → 호버·열림에서 잉크). 아이콘 하나가
+   옆의 「공연 찾기」와 다른 밝기로 앉아 있으면 같은 줄에서 무게가 어긋나 보인다.
+   홈을 셀렉터에 같이 적는 이유는 위 .navlink 규칙과 같다 — 홈은 tone-light 를 안 단다. */
+body.tone-light .masthead .navsearch-toggle,
+body.page-home .masthead .navsearch-toggle { color: rgba(17, 18, 20, .6); }
+body.tone-light .masthead .navsearch-toggle:hover,
+body.page-home .masthead .navsearch-toggle:hover { background: rgba(17, 18, 20, .06); color: var(--ink); }
+body.tone-light .masthead.searchopen .navsearch-toggle,
+body.page-home .masthead.searchopen .navsearch-toggle { background: rgba(17, 18, 20, .07); color: var(--ink); }
+
+body.tone-light .masthead .navsearch,
+body.page-home .masthead .navsearch { border-bottom-color: rgba(17, 18, 20, .18); }
+/* 초점 밑줄은 --brass 원색이 아니라 --brass-dim. 원색은 아이보리 위 대비 1.73 이라
+   초점이 갔다는 신호가 거의 안 보인다(같은 이유로 라이트 화면의 브라스 글자는
+   --brass-ink 를 따로 둔다). */
+body.tone-light .masthead .navsearch:focus-within,
+body.page-home .masthead .navsearch:focus-within { border-bottom-color: var(--brass-dim); }
+body.tone-light .masthead .navsearch svg,
+body.page-home .masthead .navsearch svg { color: rgba(17, 18, 20, .4); }
+body.tone-light .masthead .navsearch input[type="text"],
+body.page-home .masthead .navsearch input[type="text"] { color: var(--ink); }
+/* 자리표시자는 목록 필터·로그인 폼이 쓰는 값(.4)을 그대로 쓴다. 이 화면들에서 검색·입력
+   칸의 흐린 안내문은 전부 같은 밝기여야 하고, 진짜 라벨은 .sr-only 로 따로 있다. */
+body.tone-light .masthead .navsearch input::placeholder,
+body.page-home .masthead .navsearch input::placeholder { color: rgba(17, 18, 20, .4); }
 
 /* .authbtns a 는 body.page-list/.page-detail 쪽 다크용 규칙이 color 를 !important 로
    박고 있어(--paper) 스코프를 하나 더 얹는 것만으로는 못 이긴다. 홈에서 로그인 링크가

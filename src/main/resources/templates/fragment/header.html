@@ -19,6 +19,27 @@
     <span class="tag" th:text="${tag}">태그</span>
     <nav class="authnav" th:if="${showAuthNav}">
         <!--
+            검색 열기. 종전에 검색 입력은 홈 히어로와 목록의 필터 패널 안, 두 곳뿐이었다.
+            공연 상세를 보다가 다른 공연이 궁금하면 목록으로 되돌아가 패널을 펴야 했고,
+            홈에서도 히어로를 지나 스크롤한 뒤에는 검색이 화면에서 사라진다 — 헤더만
+            sticky 로 따라오는데 거기에 검색이 없었다.
+
+            접힌 상태에서는 아이콘 하나라 기존 헤더의 무게를 바꾸지 않는다.
+
+            hidden 으로 시작해서 스크립트가 걷어낸다. JS 가 없으면 이 버튼은 눌러도
+            아무 일이 없는 죽은 아이콘이 되므로, 그럴 바에는 아예 안 보이는 게 낫다 —
+            검색은 「공연 찾기」 링크 너머 필터 패널에 그대로 있어서 길이 막히지 않는다.
+            (.grid.reveal 을 JS 가 붙이는 것과 같은 방향: 기본값이 안전한 쪽이다)
+        -->
+        <button type="button" class="navsearch-toggle" id="navsearchToggle" hidden
+                aria-expanded="false" aria-controls="navsearchPanel">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M11.5 11.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span class="sr-only">공연 검색</span>
+        </button>
+        <!--
             지금 보고 있는 구역을 알약으로 채워 표시한다(CurrentPathAdvice.currentPath).
             aria-current 를 같이 주는 게 핵심 — 색으로만 알리면 스크린리더에는 그냥 링크
             셋이라 어디에 있는지가 전달되지 않는다.
@@ -71,6 +92,74 @@
         </span>
         </span>
     </nav>
+    <!--
+        열린 검색 줄. 헤더 안에 두 번째 줄로 들어간다(.masthead.searchopen 이 flex-wrap 을
+        켜고 이 폼이 flex-basis:100% 를 갖는다). 헤더 바깥에 따로 뜨는 패널로 만들지 않은
+        이유는 헤더가 sticky 반투명 바라서다 — 바 밑에 겹쳐 뜨면 그 아래 콘텐츠가 패널
+        뒤로 비쳐 지나가 글자끼리 겹쳐 읽힌다.
+
+        status 를 같이 실어 보낸다. 목록 화면에서는 지금 보고 있는 범위를 유지하고
+        (「종료된 공연」을 보다가 검색했는데 진행작으로 튀지 않게), 그 밖의 화면에서는
+        모델에 status 가 없으므로 히어로 검색과 같은 ongoing 이 된다.
+    -->
+    <form class="navsearch" id="navsearchPanel" th:if="${showAuthNav}" hidden
+          th:action="@{/performances}" method="get" role="search">
+        <input type="hidden" name="status" th:value="${status} ?: 'ongoing'">
+        <label class="sr-only" for="navsearchKeyword">공연 검색</label>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+            <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M11.5 11.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <!-- 목록 화면에서 열면 지금 걸려 있는 검색어가 들어가 있다 — 무엇으로 찾은
+             결과를 보고 있는지가 보이고, 한 글자만 고쳐 다시 찾을 수 있다. -->
+        <input type="text" id="navsearchKeyword" name="keyword" th:value="${keyword}"
+               placeholder="공연명, 아티스트로 검색" autocomplete="off">
+        <button type="submit">검색</button>
+    </form>
+    <script th:if="${showAuthNav}">
+    (function () {
+        var toggle = document.getElementById('navsearchToggle');
+        var panel = document.getElementById('navsearchPanel');
+        if (!toggle || !panel) return;
+
+        var bar = toggle.closest('.masthead');
+        var field = document.getElementById('navsearchKeyword');
+
+        // 여기까지 왔으면 스크립트가 도는 브라우저다. 그제서야 아이콘을 꺼내 놓는다.
+        toggle.hidden = false;
+
+        function setOpen(open) {
+            // searchopen 은 헤더의 flex-wrap 을 켜는 스위치다. 닫힌 동안에는 클래스가
+            // 없으므로 헤더 레이아웃이 종전과 완전히 같다 — 좁은 화면에서 authnav 가
+            // 내부적으로 줄바꿈되는 기존 동작을 건드리지 않으려고 이렇게 나눠 뒀다.
+            bar.classList.toggle('searchopen', open);
+            panel.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+            if (open) field.focus();
+        }
+
+        toggle.addEventListener('click', function () {
+            setOpen(panel.hidden);
+        });
+
+        // Esc 로 닫고 초점을 아이콘으로 돌려준다. 돌려주지 않으면 사라진 요소에 초점이
+        // 남아 다음 Tab 이 문서 맨 앞으로 튄다.
+        panel.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            setOpen(false);
+            toggle.focus();
+        });
+
+        // 빈 검색어로 보내면 필터 없는 전체 목록이 열린다 — 「공연 찾기」와 같은 곳이라
+        // 검색한 셈이 안 된다. 화면을 옮기는 대신 입력칸에 그대로 둔다.
+        panel.addEventListener('submit', function (e) {
+            if (field.value.trim() === '') {
+                e.preventDefault();
+                field.focus();
+            }
+        });
+    })();
+    </script>
 </header>
 </body>
 </html>
