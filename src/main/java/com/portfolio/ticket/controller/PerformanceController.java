@@ -115,6 +115,10 @@ public class PerformanceController {
                 sentinel(venue), sentinel(area), blankToNull(keyword), sort, page);
 
         model.addAttribute("result", result);
+        // 카드가 "다음 회차"를 오늘 기준으로 적는다(오늘/내일은 말로). 홈이 Home.today 를
+        // 넘기는 것과 같은 이유로 한 값을 화면 전체가 공유해야 한다 — 카드마다 now() 를
+        // 부르면 자정을 넘기는 순간 같은 화면에서 기준이 갈린다.
+        model.addAttribute("today", java.time.LocalDate.now());
         model.addAttribute("regions", REGIONS);
         // 필터 폼/링크가 현재 선택값을 그대로 다시 뿌릴 수 있도록 원본 파라미터 문자열도 넘긴다.
         model.addAttribute("genre", genre);

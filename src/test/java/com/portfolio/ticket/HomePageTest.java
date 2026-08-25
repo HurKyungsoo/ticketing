@@ -25,6 +25,7 @@ import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -146,6 +147,117 @@ class HomePageTest {
                 .totalSeats(100)
                 .remainingSeats(100)
                 .build());
+    }
+
+    /**
+     * 카드가 적는 날짜. 종전에는 공연 기간(석 달짜리 범위)이라 "언제 가지?"에 답이 안 됐다.
+     */
+    @DisplayName("카드 날짜는 오늘 이후 가장 가까운 회차를 말한다")
+    @Test
+    void cardShowsNextSchedule() {
+        Performance p = performanceWith("회차둘",
+                LocalDateTime.now().plusDays(9).withHour(20).withMinute(0),
+                LocalDateTime.now().plusDays(2).withHour(19).withMinute(30));
+
+        PerformanceListRow row = firstRow();
+
+        assertThat(row.getTitle()).isEqualTo("회차둘");
+        // 뒤에 넣은 +2일이 나와야 한다 — "먼저 저장한 것"이 아니라 "가장 가까운 것"이다.
+        assertThat(row.getNextShowAt().toLocalDate())
+                .isEqualTo(LocalDate.now().plusDays(2));
+        assertThat(p.getId()).isEqualTo(row.getId());
+    }
+
+    /**
+     * <b>월 필터가 걸리면 그 달 회차 중에서 골라야 한다.</b> 8월을 보고 있는데 카드에
+     * 9월 회차가 적히면 안 된다. 매퍼가 회차 조건을 서브쿼리에도 같이 거는지 보는
+     * 테스트라, 전체에서 가장 가까운 회차를 <b>필터 밖</b>에 두는 게 핵심이다.
+     */
+    @DisplayName("월 필터가 걸리면 그 달의 회차를 말한다")
+    @Test
+    void cardRespectsMonthFilterWhenPickingNextSchedule() {
+        LocalDate nextMonth = LocalDate.now().plusMonths(1).withDayOfMonth(10);
+        LocalDate monthAfter = LocalDate.now().plusMonths(2).withDayOfMonth(10);
+        performanceWith("두달치",
+                nextMonth.atTime(19, 0),      // 전체에서 가장 가깝지만 필터 밖이다
+                monthAfter.atTime(19, 0));
+
+        List<PerformanceListRow> rows = listService
+                .search(null, monthAfter.getMonthValue(), null, null, "ongoing", null, null, null, null, 0)
+                .performances();
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getNextShowAt().toLocalDate()).isEqualTo(monthAfter);
+    }
+
+    @DisplayName("오늘·내일은 날짜 대신 말로 적는다")
+    @Test
+    void todayAndTomorrowAreSpelledOut() {
+        LocalDate today = LocalDate.of(2026, 8, 25);
+        PerformanceListRow row = new PerformanceListRow();
+
+        row.setNextShowAt(today.atTime(19, 30));
+        assertThat(row.nextShowLabel(today)).isEqualTo("오늘 19:30");
+
+        row.setNextShowAt(today.plusDays(1).atTime(15, 0));
+        assertThat(row.nextShowLabel(today)).isEqualTo("내일 15:00");
+
+        // 남은 회차가 없으면 null — 화면이 그때만 종전대로 기간을 적는다.
+        row.setNextShowAt(null);
+        assertThat(row.nextShowLabel(today)).isNull();
+    }
+
+    /**
+     * 요일은 로케일을 안 박으면 JVM 기본을 따라간다. 배포 서버(Ubuntu)는 대개 en_US 라
+     * 「8/27(목)」이 「8/27(Thu)」로 나가는데, 한국어 윈도우에서 개발하면 안 드러난다.
+     */
+    @DisplayName("다음 회차 요일은 서버 로케일과 무관하게 한국어다")
+    @Test
+    void weekdayIsAlwaysKorean() {
+        Locale original = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.US);
+            PerformanceListRow row = new PerformanceListRow();
+            row.setNextShowAt(LocalDateTime.of(2026, 8, 27, 19, 30));
+
+            String label = row.nextShowLabel(LocalDate.of(2026, 8, 25));
+
+            assertThat(label).startsWith("다음 공연 8/27(").endsWith(") 19:30");
+            String weekday = label.substring(label.indexOf('(') + 1, label.indexOf(')'));
+            assertThat("월화수목금토일").contains(weekday);
+        } finally {
+            Locale.setDefault(original);
+        }
+    }
+
+    private PerformanceListRow firstRow() {
+        return listService.search(null, null, null, null, "ongoing", null, null, null, null, 0)
+                .performances().get(0);
+    }
+
+    /** 회차를 원하는 시각으로 여러 개 달아 만든다. */
+    private Performance performanceWith(String title, LocalDateTime... showAts) {
+        Performance performance = performanceRepository.save(Performance.builder()
+                .externalId("NEXT-" + title + "-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title(title)
+                .category(PerformanceCategory.MUSICAL)
+                .venue("테스트홀")
+                .region("서울특별시")
+                .startDate(LocalDate.now().minusDays(1))
+                .endDate(LocalDate.now().plusMonths(3))
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build());
+        for (LocalDateTime showAt : showAts) {
+            scheduleRepository.save(PerformanceSchedule.builder()
+                    .performance(performance)
+                    .showAt(showAt.withSecond(0).withNano(0))
+                    .totalSeats(100)
+                    .remainingSeats(100)
+                    .build());
+        }
+        return performance;
     }
 
     @DisplayName("홈은 섹션과 장르 칩을 채워서 내려준다")

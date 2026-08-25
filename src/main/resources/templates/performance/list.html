@@ -192,8 +192,12 @@
             <h3 th:text="${p.title}">공연명</h3>
             <p class="meta">
                 <span class="m-venue" th:text="${p.venue}">공연장</span>
-                <span class="m-date"
-                      th:text="|${#temporals.format(p.startDate, 'yyyy.MM.dd')} – ${#temporals.format(p.endDate, 'yyyy.MM.dd')}|">2026.07.08 – 2026.08.30</span>
+                <!-- 「다음 공연 8/27(수) 19:30」. 종전엔 공연 기간(2026.06.04 – 2026.08.30)을
+                     적었는데, 석 달짜리 범위는 "언제 가지?"에 아무 대답이 안 된다.
+                     남은 회차가 없는 공연(기간은 안 끝났는데 회차가 다 지난 경우)만
+                     종전대로 기간으로 되돌아간다. -->
+                <span class="m-date" th:with="next=${p.nextShowLabel(today)}"
+                      th:text="${next} ?: |${#temporals.format(p.startDate, 'yyyy.MM.dd')} – ${#temporals.format(p.endDate, 'yyyy.MM.dd')}|">다음 공연 8/27(수) 19:30</span>
             </p>
         </a>
     </div>

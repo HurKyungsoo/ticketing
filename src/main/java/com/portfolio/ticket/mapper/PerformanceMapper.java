@@ -2,9 +2,11 @@ package com.portfolio.ticket.mapper;
 
 import com.portfolio.ticket.mapper.dto.FacetCountRow;
 import com.portfolio.ticket.mapper.dto.PerformanceFilter;
+import com.portfolio.ticket.mapper.dto.NextShowRow;
 import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -21,6 +23,14 @@ public interface PerformanceMapper {
     List<PerformanceListRow> selectPerformances(@Param("f") PerformanceFilter filter);
 
     long countPerformances(@Param("f") PerformanceFilter filter);
+
+    /**
+     * 주어진 공연들의 "오늘 이후 가장 가까운 회차". 회차가 남지 않은 공연은 결과에 없다.
+     *
+     * <p>{@code performanceIds} 가 비어 있으면 부르지 말 것 — {@code IN ()} 은 문법 오류다.
+     */
+    List<NextShowRow> selectNextShowAt(@Param("performanceIds") List<Long> performanceIds,
+                                        @Param("today") LocalDate today);
 
     List<FacetCountRow> selectCategoryCounts(@Param("f") PerformanceFilter filter);
 

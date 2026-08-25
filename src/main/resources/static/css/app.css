@@ -2165,8 +2165,17 @@ body.page-list .card .meta {
 body.page-list .card .m-venue {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 기간은 공연장보다 한 단계 뒤로 — 색을 새로 만들지 않고 같은 --mute 를 흐리게 쓴다. */
-body.page-list .card .m-date { font-size: 12px; opacity: .75; }
+/*
+   날짜 줄. 종전에는 "기간은 공연장보다 한 단계 뒤로" 라며 12px + opacity .75 를 걸었는데,
+   그 밑에 이미 color 가 rgba(...,.55) 라 흐리기가 두 번 겹쳤다. 라이트 톤에서 실측하면
+   대비가 2.67 로, 카드에서 가장 안 읽히는 글자였다(제목 17.08 · 공연장 4.04). 12px 본문에
+   요구되는 4.5 는커녕 큰 글씨 기준 3.0 에도 못 미친다.
+
+   게다가 지금은 이 줄이 「오늘 19:30」·「다음 공연 8/27(수) 19:30」을 말한다 —
+   카드에서 가장 행동에 가까운 정보라 공연장보다 뒤에 둘 이유가 없어졌다.
+   opacity 를 걷고 크기도 공연장과 같은 13px 로 맞춘다(대비는 tone-light 쪽에서 5.08).
+*/
+body.page-list .card .m-date { font-size: 13px; }
 
 /*
    공연장·기간 앞에 작은 아이콘. 카드 수가 많아 <svg> 를 카드마다 마크업에 넣으면
@@ -3757,6 +3766,9 @@ body.tone-light .card .poster.no-img { background: var(--ink); }
 body.tone-light .card h3 { color: var(--ink); }
 body.tone-light .card:hover h3 { color: var(--brass-ink); }
 body.tone-light .card .meta { color: rgba(17, 18, 20, .55); }
+/* 날짜만 한 단계 진하게(.62 → 대비 5.08). 「오늘 19:30」이 카드에서 제일 먼저 눈에
+   걸려야 하는 줄인데 종전에는 제일 안 보였다 — 위 .m-date 주석의 실측값 참고. */
+body.tone-light .card .m-date { color: rgba(17, 18, 20, .62); font-weight: 600; }
 /* 공연장·기간 앞 핀/달력 아이콘은 뺀다. data URI 안에 --mute(#B6B0A7)가 문자열로
    박혀 있어 라이트 배경에서는 거의 안 보이는데, 색을 맞추려면 아이콘마다 data URI 를
    한 벌 더 두어야 한다. 목업도 아이콘 없이 두 줄로 두고 있어 그쪽을 따른다. */

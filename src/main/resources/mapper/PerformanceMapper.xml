@@ -135,7 +135,15 @@
                p.poster_url   AS poster_url,
                p.category     AS category,
                p.start_date   AS start_date,
-               p.end_date     AS end_date
+               p.end_date     AS end_date,
+               <!--
+                   카드에 적을 "다음 회차". 임박순 정렬이 쓰는 것과 같은 조각이라 필터의
+                   회차 조건(월·요일·시간대)이 그대로 걸린다 — 8월을 보고 있는데 카드에
+                   9월 회차가 적히면 안 된다. 정렬이 upcoming 이면 같은 값을 두 번 계산하는
+                   셈이지만, uk_schedule(performance_id, show_at) 을 타는 한 페이지분
+                   (12행)이라 따로 캐시할 만한 비용이 아니다.
+               -->
+               <include refid="nextShowAt"/> AS next_show_at
           FROM performance p
          WHERE 1 = 1
         <include refid="commonFilters"/>
@@ -187,6 +195,27 @@
         <if test="f.venue != null and f.venue != ''">AND p.venue = #{f.venue}</if>
          GROUP BY MONTH(ps.show_at)
          ORDER BY label ASC
+    </select>
+
+    <!--
+        공연 여러 건의 "다음 회차"를 한 번에.
+
+        찜 목록 카드는 목록·홈과 달리 PerformanceListRow 가 아니라 JPA 엔티티(Wishlist →
+        Performance)를 그린다. 그렇다고 그 화면만 기간을 적어두면 같은 모양의 카드가
+        화면에 따라 다른 걸 말하게 된다. 찜한 공연이야말로 "다음 회차가 언제냐"가 궁금한
+        자리라서 더 그렇다.
+
+        찜 개수만큼 한 건씩 묻지 않고 IN 으로 한 번에 받는다(N+1 방지). 비어 있으면
+        호출부가 아예 안 부른다 — IN () 은 문법 오류다.
+    -->
+    <select id="selectNextShowAt" resultType="com.portfolio.ticket.mapper.dto.NextShowRow">
+        SELECT ps.performance_id AS performance_id,
+               MIN(ps.show_at)   AS next_show_at
+          FROM performance_schedule ps
+         WHERE ps.show_at &gt;= #{today}
+           AND ps.performance_id IN
+           <foreach item="id" collection="performanceIds" open="(" separator="," close=")">#{id}</foreach>
+         GROUP BY ps.performance_id
     </select>
 
     <!-- venue 필터는 무시, category/month 는 반영. 상위 N + "기타" 로 묶는 건 호출부 몫 -->

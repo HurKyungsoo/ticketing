@@ -1,6 +1,9 @@
 package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.Wishlist;
+import com.portfolio.ticket.mapper.PerformanceMapper;
+import com.portfolio.ticket.mapper.dto.NextShowRow;
+import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 import com.portfolio.ticket.repository.WishlistRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +11,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -17,6 +23,30 @@ public class WishlistService {
 
     private final WishlistRepository wishlistRepository;
     private final WishlistWriter writer;
+    private final PerformanceMapper performanceMapper;
+
+    /**
+     * 찜한 공연들의 "다음 회차"를 공연 id 로 찾을 수 있게 모아 준다.
+     *
+     * <p>찜 목록 카드는 목록·홈 카드와 달리 {@code PerformanceListRow} 가 아니라 JPA
+     * 엔티티를 그려서, 매퍼가 같이 뽑아 주는 next_show_at 을 못 받는다. 그렇다고 이
+     * 화면만 공연 기간을 적으면 같은 모양의 카드가 화면에 따라 다른 걸 말하게 된다.
+     *
+     * <p>찜 건수만큼 한 건씩 묻지 않고 한 번에 받는다. 회차가 남지 않은 공연은 결과에
+     * 없으므로 화면에서 {@code null} 이 되고, 그때는 종전대로 기간을 적는다.
+     */
+    public Map<Long, String> nextShowsFor(List<Wishlist> wishes) {
+        if (wishes.isEmpty()) {
+            return Map.of();   // IN () 은 문법 오류라 아예 안 묻는다
+        }
+        LocalDate today = LocalDate.now();
+        List<Long> ids = wishes.stream().map(w -> w.getPerformance().getId()).toList();
+        // 문구까지 여기서 만들어 넘긴다. 시각만 넘기면 "오늘/내일" 판정을 템플릿에서 다시
+        // 짜야 하고, 그러면 목록·홈과 찜의 표기가 갈릴 자리가 생긴다.
+        return performanceMapper.selectNextShowAt(ids, today).stream()
+                .collect(Collectors.toMap(NextShowRow::getPerformanceId,
+                        r -> PerformanceListRow.labelFor(r.getNextShowAt(), today)));
+    }
 
     /**
      * 찜 토글. 반환값은 <b>호출 후의 상태</b>다(true = 지금 찜한 상태).

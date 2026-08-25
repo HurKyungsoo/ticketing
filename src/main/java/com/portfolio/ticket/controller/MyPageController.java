@@ -53,6 +53,9 @@ public class MyPageController {
     public String wishlist(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
         List<Wishlist> wishes = wishlistService.findMyWishlist(principal.getMemberId());
         model.addAttribute("wishes", wishes);
+        // 찜 카드도 목록·홈 카드와 같은 것을 말해야 한다("다음 회차"). 이 화면만 엔티티를
+        // 그리므로 다음 회차를 따로 받아 온다 — 찜 건수만큼 한 건씩 묻지 않고 한 번에.
+        model.addAttribute("nextShows", wishlistService.nextShowsFor(wishes));
         addUnreadCount(principal, model);
         return "member/wishlist";
     }
