@@ -24,7 +24,12 @@
             같은 공연이라는 걸 그대로 알아보게 한다.
         -->
         <div>
-            <div class="poster" th:classappend="${performance.posterUrl == null} ? ' no-img'">
+            <!-- 목록·홈에서 누른 카드의 포스터와 이어진다(View Transitions). 이 화면의
+                 포스터는 하나뿐이라 이름이 겹칠 일이 없어 여기서는 그냥 박아 둔다 —
+                 카드 쪽은 같은 공연이 여러 섹션에 나올 수 있어 스크립트가 누른 순간에만
+                 붙인다(fragment/navprogress). -->
+            <div class="poster" th:classappend="${performance.posterUrl == null} ? ' no-img'"
+                 th:style="'view-transition-name:poster-' + ${performance.id}">
                 <!-- 목록·홈 카드와 같은 태그(장르 배지)를 같은 자리(포스터 좌상단)에 그대로 재사용한다.
                      원본 genre 문자열은 소스마다 표기가 달라 정규화된 category 로 통일한다. -->
                 <span class="card-badge" th:text="${performance.category != null} ? ${performance.category.label()} : '기타'">장르</span>

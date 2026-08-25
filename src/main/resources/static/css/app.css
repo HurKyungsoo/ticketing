@@ -271,6 +271,35 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 
+/* ---- 화면 전환 (View Transitions) ----
+
+   같은 출처끼리의 문서 이동을 브라우저가 이어 그리게 한다. 위 진행 막대가 "기다리는
+   동안"을 메운다면, 이건 새 화면이 들어오는 순간의 뚝 끊김을 없앤다 — 카드를 눌렀는데
+   화면이 통째로 깜빡이고 다른 페이지가 나타나는 것과, 누른 포스터가 그대로 커지면서
+   상세가 되는 것은 같은 이동이라도 다르게 읽힌다.
+
+   지원하지 않는 브라우저(파이어폭스 등)는 이 규칙을 무시하고 종전대로 즉시 이동한다.
+   기능이 아니라 마감이라 폴백을 따로 만들 게 없다.
+
+   포스터를 잇는 이름(view-transition-name)은 스크립트가 누른 순간에 붙인다 — 이유는
+   fragment/navprogress.html 의 해당 블록 주석 참고(한 문서에 같은 이름이 둘이면
+   전환이 통째로 무효가 된다). */
+@view-transition { navigation: auto; }
+
+/* 기본값(.25s)보다 조금 짧게. 이동은 이미 기다린 뒤에 벌어지는 일이라, 페이드가 길면
+   그만큼 화면이 늦게 도착하는 것으로 느껴진다. */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .22s; }
+
+/* 모션 최소화 설정. 전역 `* { animation: none }` 규칙은 ::view-transition-* 의사요소에
+   닿지 않으므로(문서 트리 밖에 있다) 여기서 따로 끈다 — 안 끄면 모션을 껐다고 한
+   사용자에게 화면 전체가 움직이는 전환만 남는다. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
 /* ---- 헤더 검색 (아이콘 → 헤더 안 둘째 줄) ----
 
    접힌 상태는 아이콘 하나뿐이라 종전 헤더의 무게를 바꾸지 않고, 누르면 헤더 안에서

@@ -105,6 +105,61 @@
         });
     })();
     </script>
+
+    <!--
+        포스터 잇기 (View Transitions).
+
+        카드를 눌러 상세로 갈 때, 누른 포스터가 그대로 상세의 큰 포스터로 커지게 한다.
+        두 문서에서 같은 요소에 같은 view-transition-name 을 주면 브라우저가 알아서
+        잇는다. 상세 쪽 이름은 템플릿이 박아 두고(포스터가 하나뿐이라 겹칠 일이 없다),
+        목록·홈 쪽 이름을 여기서 누른 순간에 붙인다.
+
+        **왜 카드마다 미리 안 박고 클릭 때 붙이는가.** 한 문서 안에 같은
+        view-transition-name 이 둘 이상이면 전환이 통째로 무효가 된다. 홈은 같은 공연이
+        여러 섹션에 동시에 나올 수 있고(「곧 막을 내려요」와 「새로 들어온 공연」),
+        「최근 본 공연」 띠까지 있어서 겹침이 사실상 보장돼 있다. 누른 하나에만 붙이면
+        겹칠 수가 없고, 전환에 참여하지 않는 카드 열아홉 장을 따로 스냅숏 뜨지도 않는다.
+
+        지원하지 않는 브라우저에서는 style 속성 하나가 무시될 뿐 이동은 그대로다.
+    -->
+    <script>
+    (function () {
+        // 목록·홈·찜 목록의 카드, 홈 에디토리얼 카드, 「최근 본 공연」 띠가 각각 다른
+        // 마크업을 쓴다. 공통점은 "공연 상세로 가는 링크 안의 포스터 칸"뿐이다.
+        var POSTER = '.poster, .ec-image, .rs-poster';
+        var DETAIL = /^\/performances\/(\d+)$/;
+
+        document.addEventListener('click', function (e) {
+            if (e.defaultPrevented || e.button !== 0) return;
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+            var a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+
+            var url;
+            try { url = new URL(a.getAttribute('href'), location.href); } catch (err) { return; }
+            if (url.origin !== location.origin) return;
+
+            var m = DETAIL.exec(url.pathname);
+            if (!m) return;
+
+            var poster = a.querySelector(POSTER);
+            if (!poster) return;
+
+            /* 지난번에 붙여 둔 이름을 먼저 걷는다. 뒤로가기로 돌아온 화면(bfcache)에는
+               그때 누른 카드의 이름이 그대로 남아 있어서, 다른 카드를 누르면 한 문서에
+               같은 종류의 이름이 둘이 된다. 되돌아오는 전환을 위해 남겨 두는 것이지
+               쌓으라고 두는 게 아니다. */
+            document.querySelectorAll('[data-vt-poster]').forEach(function (el) {
+                el.style.viewTransitionName = '';
+                delete el.dataset.vtPoster;
+            });
+
+            poster.style.viewTransitionName = 'poster-' + m[1];
+            poster.dataset.vtPoster = '1';
+        });
+    })();
+    </script>
 </th:block>
 </body>
 </html>
