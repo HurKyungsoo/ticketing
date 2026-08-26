@@ -137,14 +137,28 @@ public class SeatGenerator {
         // 6만석 공연장에서 1,500석만 열더라도 구조는 아레나여야 하기 때문이다.
         for (FloorSpec floor : planFloors(capacity, total)) {
             for (int i = 0; i < floor.seats(); i++) {
-                SeatGrade grade = gradeOf(index, total);
-
-                // 등급은 종전과 똑같이 "전체 좌석 중 몇 번째인지"(index)로만 정한다 — 구역을
-                // 나눈다고 순회 순서를 바꾸면 같은 줄인데 먼저 도는 구역만 계속 더 좋은 등급을
-                // 받는 부작용이 생긴다. 열 위치(col)는 순전히 어느 구역·구역 내 몇 번째 좌석인지
-                // 표시에만 쓴다.
                 int col = i % SEATS_PER_ROW;
                 int rowNo = (i / SEATS_PER_ROW) + 1;
+
+                /*
+                    등급은 "전체 좌석 중 몇 번째인지"(index)로 정하되, <b>줄의 첫 좌석 기준</b>
+                    으로 본다. 그래서 한 줄은 전부 같은 등급이다.
+
+                    종전에는 좌석마다 index 로 따져서 등급 경계가 줄 한가운데를 지났다 — 실제
+                    배포본에서 B구역 2열이 앞 3석 VIP(75,000원) / 뒤 5석 R(60,000원)로 갈려
+                    있었다. 한 줄 안에서 좌우로 등급이 갈리는 건 실제 극장에 없는 모양이다
+                    (중앙/사이드로 갈리는 홀은 있어도, 왼쪽부터 순서대로 잘리지는 않는다).
+
+                    줄 안 어느 좌석 기준으로 맞출지는 <b>첫 좌석</b>이다. 경계에 걸친 줄은
+                    통째로 더 좋은 등급으로 올라간다 — 내리는 쪽으로 맞추면 그 줄 앞부분
+                    좌석들이 원래 받을 등급보다 떨어지는데, 값을 깎는 방향의 오차는 산 사람에게
+                    설명할 수가 없다. 올리는 오차는 손해 보는 사람이 없다.
+
+                    구역별로 먼저 도는 순서를 바꾸지 않는다는 원칙은 그대로다 — 여기서 바뀐 건
+                    "몇 번째 좌석이냐"가 "몇 번째 줄이냐"가 된 것뿐이고, 순회 순서는 종전과
+                    같다. 열 위치(col)는 여전히 표시(구역·구역 내 번호)에만 쓴다.
+                */
+                SeatGrade grade = gradeOf(index - col, total);
                 Zone zone = zoneOf(col);
                 String section = floor.name().isEmpty()
                         ? String.valueOf(zone.letter())

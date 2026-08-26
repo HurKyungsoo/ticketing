@@ -3449,6 +3449,22 @@ body.page-home .railnav:disabled { opacity: 0; pointer-events: none; }
 @media (max-width: 860px) {
   body.page-home .railnav { display: none; }
 }
+/*
+   위 규칙은 "좁으면 손가락으로 밀 테니 화살표는 자리만 차지한다"는 뜻이었는데, 가르는
+   기준이 폭이라 <b>861px 미만의 마우스 화면</b>(작은 노트북, 창을 반만 쓴 데스크톱,
+   태블릿 가로)까지 같이 걸렸다. 그 화면에는 손가락도 없고, 이 레일은 스크롤바도 영구히
+   꺼 둔 상태다(.homesec .grid::-webkit-scrollbar) — 카드 10장 중 화면에 드는 3장 말고는
+   shift+휠을 아는 사람만 볼 수 있었다. 실측: 뷰포트 792px, 레일 내용 2,026px, 보이는 폭
+   747px, ontouchstart 없음, 화살표·스크롤바 둘 다 display:none.
+
+   그래서 폭 대신 입력 장치로 되살린다. 마우스(hover 가능 + 정밀 포인터)면 좁아도 화살표를
+   남기고, 터치는 종전대로 숨긴 채 밀어서 본다. 560px 아래로는 마우스라도 숨긴다 — 그
+   폭에서는 섹션 머리(제목 + 「전체 보기」)가 이미 꽉 차서 40px 버튼 두 개가 들어갈 자리가
+   없다.
+*/
+@media (max-width: 860px) and (min-width: 561px) and (hover: hover) and (pointer: fine) {
+  body.page-home .railnav { display: flex; }
+}
 body.page-home .homesec .card:hover { transform: translateY(-6px); }
 body.page-home .homesec .card .poster {
   border: 0; border-radius: var(--radius-poster);
@@ -3692,6 +3708,16 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
   body.page-home .homesec { padding: 28px 20px 16px; }
   body.page-home .homesec .card { width: 180px; }
   body.page-home .homesec--editorial .hs-inner { padding: 40px 20px; }
+  /*
+     3열에서 바로 1열로 떨어뜨리면 카드 폭이 그대로 본문 폭이 되어(실측 697px) 카드 하나가
+     627px 이 되고, 6장짜리 밴드가 4,038px — 홈 문서 전체(6,242px)의 65% 를 먹는다. 그
+     아래 「새로 들어온 공연」은 y=5,571 에 묻힌다. 2열 단계를 하나 둔다.
+  */
+  body.page-home .editorial-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 폰 폭에서는 2열도 카드가 너무 좁아 제목이 서너 줄로 접힌다. 여기서만 1열로 둔다. */
+@media (max-width: 560px) {
   body.page-home .editorial-grid { grid-template-columns: 1fr; }
 }
 
