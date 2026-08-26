@@ -8,6 +8,26 @@ spring:
       - optional:classpath:venue-layouts.yml
       - optional:classpath:showtime-distribution.yml
 
+  # 화면 표기를 한국어로 못박는다.
+  #
+  # 안 박으면 Thymeleaf 의 #temporals.format 이 요청 로케일을 쓴다. 그래서 영어권
+  # 브라우저(Accept-Language: en-US)로 들어오면 요일이 「8/26(수)」가 아니라 「8/26(Wed)」로
+  # 나갔다 — 배포본에서 실제로 확인했다. 공연 상세의 회차 날짜, 좌석도 헤더 부제, 결제·
+  # 결제완료·실패·환불, 마이페이지 예매 내역까지 8곳이다.
+  #
+  # 자바 쪽은 이미 Locale.KOREAN 을 박아 뒀는데(PerformanceListRow.NEXT_SHOW,
+  # Notification, ReservationMailSender) 템플릿만 빠져 있었다. 그래서 같은 화면 안에서도
+  # 카드는 「(수)」, 상세는 「(Wed)」로 갈렸다.
+  #
+  # locale 만 주면 Accept-Language 가 "없을 때의 기본값"일 뿐이라 헤더가 오면 진다.
+  # locale-resolver: fixed 여야 요청과 무관하게 고정된다.
+  #
+  # 한국 공연을 한국어로만 파는 사이트라 고정이 맞다. 다국어를 하게 되면 이 두 줄을 빼고
+  # 표기가 필요한 곳마다 로케일을 명시하는 쪽으로 가야 한다.
+  web:
+    locale: ko_KR
+    locale-resolver: fixed
+
   jpa:
     hibernate:
       # 스키마는 Flyway 가 만들고 Hibernate 는 검사만 한다.
