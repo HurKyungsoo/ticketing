@@ -130,6 +130,17 @@ public class PerformanceListRow {
      *              정보 없음)"을 가르는 기준일. daysUntilClose 와 같은 이유로 인자로 받는다.
      */
     public Availability availability(LocalDate today) {
+        return availabilityFor(nextShowAt, nextRemainingSeats, startDate, today);
+    }
+
+    /**
+     * 위와 같은 판단을 이 DTO 없이도 할 수 있게 뺀 것. {@link #nextShowFor}·{@link #periodFor}
+     * 와 같은 이유다 — 비교 화면은 카드가 엔티티(Performance + PerformanceSchedule)라 이
+     * DTO 를 안 거치는데, 거기만 판정이 다르면 같은 공연이 목록에서는 「매진임박」인데
+     * 비교표에서는 아무 표시가 없는 식으로 갈린다.
+     */
+    public static Availability availabilityFor(LocalDateTime nextShowAt, Integer nextRemainingSeats,
+                                                LocalDate startDate, LocalDate today) {
         if (nextShowAt == null) {
             if (startDate != null && today.isBefore(startDate)) {
                 return new Availability("오픈 예정", "avail-pending");

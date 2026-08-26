@@ -5592,3 +5592,259 @@ body.page-payment.tone-light .paydone-share:focus-visible {
    위에서 토글을 44px 로 키우면 더 겹치므로 같이 잡는다.
 */
 body.tone-light .authform .pwfield input { padding-right: 56px; }
+
+/* ==================================================================
+   공연 비교 (비교함 트레이 + 비교표)
+
+   공연은 후보를 여러 개 놓고 고르는 일이 많은데, 후보를 나란히 볼 자리가 없었다.
+   찜(오래 두고 볼 것)과 달리 지금 이 자리에서 둘셋을 견주고 끝나는 동작이라,
+   담아둔 목록은 서버가 아니라 브라우저에 있다(fragment/comparetray 주석).
+   ================================================================== */
+
+/* ---- 상세의 「비교」 토글 ----
+   찜과 같은 규칙으로 눌림을 나타낸다 — 색 하나로만 알리면 색각 이상에서 구분이 안 되므로
+   아이콘(빈 막대 → 채운 막대)과 글자(「비교」 → 「비교 중」)가 함께 바뀐다. */
+body.page-detail .pf-compare[aria-pressed="true"] {
+  color: var(--brass);
+  border-color: var(--brass);
+  background: rgba(255, 201, 64, .08);
+}
+body.page-detail.tone-light .pf-compare[aria-pressed="true"] {
+  color: var(--brass-ink);
+  border-color: var(--brass-ink);
+  background: rgba(233, 180, 76, .12);
+}
+body.page-detail .pf-compare[aria-pressed="true"] rect:last-of-type { fill: currentColor; stroke: none; }
+
+/* ---- 비교함 트레이 ----
+   면은 상세의 모바일 예매 바(body.page-detail .mobilebar)와 같은 --ink 로 둔다. 트레이가
+   서는 화면은 홈(자체 라이트)·목록·찜(tone-light)으로 배경 톤이 갈리는데, 배경을 따라가면
+   화면마다 다른 것처럼 보인다. "어두운 띠 = 지금 담아둔 것" 하나로 통일한다.
+
+   z-index 는 모바일 예매 바와 같은 20. 토스트(60)·공유 시트(70)보다 아래라 그 둘은
+   트레이를 덮는다 — 트레이가 안내를 가리면 왜 못 넘어가는지 못 읽는다. */
+.ctray {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  background: var(--ink);
+  color: var(--paper);
+  border-top: 1px solid rgba(248, 244, 236, .12);
+  /* 아이폰 홈 인디케이터에 버튼이 물리지 않게 한다(좌석도 .bookbar 와 같은 처리). */
+  padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
+}
+.ctray-inner {
+  max-width: 1080px; margin: 0 auto;
+  display: flex; align-items: center; gap: 16px;
+}
+.ctray-head {
+  margin: 0; flex: none;
+  font-size: 13px; font-weight: 700; color: var(--mute);
+}
+.ctray-head em {
+  font-style: normal; color: var(--brass);
+}
+/* 담은 게 셋뿐이라 넘칠 일은 없지만, 제목이 긴 공연이 겹치면 이 칸만 줄어들게 둔다 —
+   min-width: 0 이 없으면 flex 항목이 콘텐츠보다 작아지지 않아 버튼이 밖으로 밀린다. */
+.ctray-items { display: flex; gap: 10px; flex: 1; min-width: 0; }
+.ctray-item { position: relative; flex: none; }
+.ctray-thumb {
+  display: block;
+  width: 40px; height: 53px;
+  border-radius: var(--radius-poster);
+  overflow: hidden;
+  background: var(--ink-raised);
+}
+.ctray-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 포스터가 없거나 주소가 죽었을 때의 첫 글자 폴백. 카드들이 쓰는 처리와 같다. */
+.ctray-fallback {
+  display: none;
+  width: 100%; height: 100%;
+  align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: var(--mute);
+}
+.ctray-thumb.no-img .ctray-fallback { display: flex; }
+/* 빼기 버튼. 썸네일이 40px 이라 그 안에 두면 누를 수 있는 크기가 안 나오므로 모서리에
+   겹쳐 띄우고, 실제 누르는 영역은 22px 로 잡는다. */
+.ctray-drop {
+  position: absolute; top: -6px; right: -6px;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  background: var(--ink-soft); color: var(--paper);
+  font: inherit; font-size: 13px; line-height: 1;
+  cursor: pointer;
+}
+.ctray-drop:hover { border-color: var(--brass); color: var(--brass); }
+.ctray-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.ctray-clear {
+  padding: 8px 10px;
+  background: none; border: none;
+  color: var(--mute); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.ctray-clear:hover { color: var(--paper); }
+.ctray-go {
+  display: inline-flex; align-items: center;
+  min-height: 40px; padding: 0 20px;
+  border-radius: 999px;
+  background: var(--brass); color: var(--ink) !important;
+  font-size: 14px; font-weight: 700;
+  transition: background .12s, opacity .12s;
+}
+.ctray-go:hover { background: #f2c874; }
+/* 하나만 담았을 때. disabled 로 두면 포커스를 못 받아 키보드로는 이유를 알 방법이 없어서
+   (누르면 토스트가 왜 막혔는지 말해 준다) 보기에만 물린다. */
+.ctray-go.is-disabled { opacity: .45; }
+
+/* 트레이가 뜬 만큼 본문 아래를 비운다. 실측값(--ctray-h)을 쓰는 이유는 담은 개수·제목
+   길이에 따라 높이가 변하기 때문이다 — 상수로 두면 마지막 카드 줄이 띠 뒤로 들어간다.
+
+   .wrap 이 아니라 body 에 준다. 처음엔 body.has-ctray .wrap 으로 뒀는데 목록·찜에서
+   전혀 안 먹었다 — body.page-list.tone-light .wrap 이 padding: 0 을 명시도(0,3,1)로
+   깔고 있어서 (0,2,1) 인 이 규칙이 진다(그 화면들은 .wrap 이 아니라 안쪽 .listinner 가
+   본문 여백을 갖는다). 화면마다 본문 컨테이너가 다른 게 원인이라 스코프를 올리는 것으로
+   풀면 화면 수만큼 규칙이 늘어난다. body 는 어느 화면에서도 padding 을 쓰지 않으므로
+   여기 한 줄이면 전부 맞는다(가로가 아니라 아래만 주므로 풀블리드 헤더·히어로도 그대로).
+   실측: 목록 78px 트레이에서 body padding-bottom 102px. */
+body.has-ctray { padding-bottom: calc(24px + var(--ctray-h, 0px)); }
+/* 토스트도 같이 올린다. 안 올리면 "두 개 이상 담아야 해요" 가 트레이 뒤에서 뜬다. */
+body.has-ctray .toast { bottom: calc(32px + var(--ctray-h, 0px)); }
+
+@media (max-width: 720px) {
+  .ctray { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .ctray-inner { gap: 12px; }
+  /* 좁은 화면에서는 개수 표시를 뺀다 — 썸네일이 곧 개수라 같은 말을 두 번 하는 자리에
+     폭을 쓰느니 버튼에 준다. */
+  .ctray-head { display: none; }
+  .ctray-go { padding: 0 16px; font-size: 13px; }
+}
+
+/* ---- 비교표 ----
+   행이 항목, 열이 공연인 진짜 table 이다. 그리드로 흉내 내면 스크린리더에서 "이 값이
+   어느 공연의 무엇인지" 가 사라진다. */
+body.page-compare .cmp-title {
+  font-size: 28px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--ink); margin: 0 0 24px;
+}
+/* 좁은 화면에서는 표를 줄이는 대신 이 칸 안에서만 가로로 스크롤한다 — 본문이 통째로
+   밀리는 것보다 낫다(좌석도 격자와 같은 처리). */
+body.page-compare .cmp-scroll { overflow-x: auto; }
+body.page-compare .cmp {
+  width: 100%;
+  border-collapse: collapse;
+  /* 열 폭을 내용이 아니라 표가 정하게 한다. 안 그러면 주소가 긴 공연 한 칸이 다른 두
+     칸을 눌러버려 "나란히 놓고 본다" 가 성립하지 않는다. */
+  table-layout: fixed;
+  min-width: 560px;
+}
+body.page-compare .cmp th,
+body.page-compare .cmp td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(17, 18, 20, .1);
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px; color: var(--ink);
+}
+/* 항목 이름 열. 값보다 물러나야 눈이 값끼리 가로로 짝지어진다. */
+body.page-compare .cmp tbody th[scope="row"] {
+  width: 96px;
+  color: rgba(17, 18, 20, .5);
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+}
+/*
+   항목 이름 열은 가로 스크롤에서 붙여 둔다. 360px 에서 표는 560px 이라 반드시 옆으로
+   밀어 보게 되는데(3열 비교표는 폰 폭에 물리적으로 안 들어간다), 그때 이름이 왼쪽으로
+   빠져나가면 「9/1(화) 19:00」이 다음 회차인지 공연 기간인지 알 수 없다. 값만 남은 표는
+   비교표가 아니다.
+
+   배경을 깔지 않으면 스크롤된 값이 이름 밑으로 비쳐 지나간다 — body 와 같은 --paper 다.
+*/
+body.page-compare .cmp tbody th[scope="row"],
+body.page-compare .cmp .cmp-corner {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--paper);
+}
+body.page-compare .cmp-corner { border-bottom-color: transparent; }
+body.page-compare .cmp thead th { border-bottom-width: 2px; }
+
+body.page-compare .cmp-head { display: block; }
+body.page-compare .cmp-poster {
+  display: block;
+  width: 100%; max-width: 132px; aspect-ratio: 3 / 4;
+  border-radius: var(--radius-poster);
+  overflow: hidden;
+  background: rgba(17, 18, 20, .06);
+  margin-bottom: 10px;
+}
+body.page-compare .cmp-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.page-compare .cmp-fallback {
+  display: none;
+  width: 100%; height: 100%;
+  align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700; color: rgba(17, 18, 20, .3);
+}
+body.page-compare .cmp-poster.no-img .cmp-fallback { display: flex; }
+body.page-compare .cmp-cat {
+  display: block;
+  font-size: 12px; font-weight: 600; color: rgba(17, 18, 20, .5);
+  margin-bottom: 2px;
+}
+/* 제목은 두 줄로 고정한다. 길이가 제각각인 채로 두면 헤더 높이가 열마다 달라져
+   아래 첫 행이 서로 다른 높이에서 시작한다(홈 밴드의 h3 과 같은 처리). */
+body.page-compare .cmp-name {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 15px; font-weight: 700; line-height: 1.35; height: 2.7em;
+  color: var(--ink);
+}
+body.page-compare .cmp-head:hover .cmp-name { color: var(--brass-ink); }
+
+/* 다음 회차. 카드의 회차 알약과 같은 언어 — 오늘·내일만 채운다. */
+body.page-compare .cmp-next { font-weight: 600; }
+body.page-compare .cmp-next--soon {
+  display: inline-block;
+  padding: 3px 9px; margin: -3px 0;
+  border-radius: 999px;
+  background: var(--brass); color: var(--ink);
+  font-size: 13px; font-weight: 700;
+}
+body.page-compare .cmp-none { color: rgba(17, 18, 20, .4); }
+body.page-compare .cmp-sub {
+  display: block; margin-top: 3px;
+  font-size: 12px; color: rgba(17, 18, 20, .5);
+}
+body.page-compare .cmp-ok { color: rgba(17, 18, 20, .55); font-size: 13px; }
+/* 예매 상태. 목록·홈 카드의 배지와 같은 색 언어를 쓴다(매진 로즈 / 매진임박 브라스 /
+   그 외 중립) — 같은 공연이 화면마다 다른 색으로 보이면 안 된다. */
+body.page-compare .cmp-avail {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+}
+body.page-compare .cmp-avail.avail-soldout { background: var(--rose); color: #fff; }
+body.page-compare .cmp-avail.avail-low { background: var(--brass); color: var(--ink); }
+body.page-compare .cmp-avail.avail-pending,
+body.page-compare .cmp-avail.avail-unknown {
+  background: rgba(17, 18, 20, .08); color: rgba(17, 18, 20, .6); font-weight: 500;
+}
+
+body.page-compare .cmp-ctarow td { border-bottom: none; padding-top: 18px; }
+body.page-compare .cmp-cta {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 44px; padding: 0 12px;
+  border-radius: var(--radius-sm);
+  background: var(--ink); color: var(--paper) !important;
+  font-size: 14px; font-weight: 700;
+}
+body.page-compare .cmp-cta:hover { background: #26272b; }
+/* 남은 회차가 없는 공연. 예매가 아니라 상세로 보내므로 주요 액션의 무게를 주지 않는다. */
+body.page-compare .cmp-cta--muted {
+  background: none;
+  color: var(--ink) !important;
+  border: 1px solid rgba(17, 18, 20, .18);
+}
+body.page-compare .cmp-cta--muted:hover { background: rgba(17, 18, 20, .04); }
+body.page-compare .cmp-foot { margin: 24px 0 0; font-size: 14px; }
+body.page-compare .cmp-foot a { color: var(--brass-ink); border-bottom: 1px solid currentColor; }

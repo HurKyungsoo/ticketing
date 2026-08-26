@@ -10,6 +10,7 @@ import com.portfolio.ticket.mapper.dto.SeatMapRow;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.service.NotFoundException;
+import com.portfolio.ticket.service.PerformanceCompareService;
 import com.portfolio.ticket.service.PerformanceListService;
 import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
@@ -31,6 +32,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,6 +52,7 @@ public class PerformanceController {
     private final PerformanceScheduleRepository scheduleRepository;
     private final SeatMapper seatMapper;
     private final PerformanceListService performanceListService;
+    private final PerformanceCompareService performanceCompareService;
     private final NaverMapProperties naverMapProperties;
     private final KakaoShareProperties kakaoShareProperties;
     private final SeatMapView seatMapView;
@@ -178,6 +181,45 @@ public class PerformanceController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * 공연 비교. 후보 2~3개를 나란히 놓고 날짜·장소·가격·다음 회차를 한 화면에서 본다.
+     *
+     * <p>담아둔 목록은 서버에 없다 — 브라우저 localStorage 에 있고(fragment/comparetray),
+     * 이 화면은 그 목록이 넘겨준 id 로 표만 그린다. 덕분에 이 주소는 그대로 남에게 보낼 수
+     * 있다("이 셋 중에 뭐 볼래?").
+     *
+     * <p><b>{@code List<Long>} 로 안 받는 이유:</b> 보낼 수 있는 주소라는 건 손으로 고쳐질
+     * 수도 있다는 뜻인데, 그렇게 받으면 숫자가 아닌 조각 하나에 400 이 나간다. 공공데이터
+     * 파싱과 같은 판단으로, 못 읽는 조각만 버리고 나머지로 화면을 만든다.
+     *
+     * <p>매핑이 {@code /performances/{id}} 보다 앞에 있어도 뒤에 있어도 스프링은 리터럴
+     * 경로를 먼저 고르지만, 읽는 사람을 위해 상세 바로 앞에 둔다.
+     */
+    @GetMapping("/performances/compare")
+    public String compare(@RequestParam(name = "ids", required = false) String ids, Model model) {
+        model.addAttribute("items", performanceCompareService.compare(parseIds(ids), LocalDateTime.now()));
+        model.addAttribute("maxItems", PerformanceCompareService.MAX_ITEMS);
+        model.addAttribute("seo", seoView.forSite(baseUrl(), "/performances/compare", "공연 비교 - 객석",
+                "고민 중인 공연을 나란히 놓고 날짜 · 장소 · 가격을 비교해 보세요."));
+        return "performance/compare";
+    }
+
+    /** 쉼표로 이어 붙인 id 목록. 숫자가 아닌 조각은 버린다(위 주석 참고). */
+    private static List<Long> parseIds(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String token : raw.split(",")) {
+            try {
+                ids.add(Long.parseLong(token.trim()));
+            } catch (NumberFormatException ignored) {
+                // 손으로 고쳐진 주소. 이 조각만 버리고 계속한다.
+            }
+        }
+        return ids;
     }
 
     @GetMapping("/performances/{id}")

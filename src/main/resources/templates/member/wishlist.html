@@ -57,5 +57,9 @@
     </div>
     </div>
 </div>
+<!-- 트레이가 안내(두 개 이상 담아야 함)에 window.__toast 를 쓴다. 반드시 앞에 와야 한다. -->
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+<!-- 비교함 트레이. 담은 게 있을 때만 뜬다(fragment/comparetray). -->
+<th:block th:replace="~{fragment/comparetray :: tray}"></th:block>
 </body>
 </html>

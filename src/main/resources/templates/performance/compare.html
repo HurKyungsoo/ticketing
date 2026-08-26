@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>공연 비교 - 객석</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+    <th:block th:replace="~{fragment/head :: meta(${seo})}"></th:block>
+</head>
+<body class="page-list page-compare tone-light">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='공공데이터 기반 공연 예매', showAuthNav=true)}"></header>
+
+    <div class="listinner">
+        <h1 class="cmp-title">공연 비교</h1>
+
+        <!--
+            담은 게 없거나 하나뿐일 때. 하나뿐인 경우를 따로 두는 이유는, 사용자가 이미
+            한 번은 담았다는 걸 알기 때문이다 — "담아 주세요" 로만 말하면 방금 담은 게
+            어디 갔나 싶게 된다.
+        -->
+        <div class="empty-state" th:if="${items.size() < 2}">
+            <p th:if="${items.isEmpty()}">비교함이 비어 있습니다.</p>
+            <p th:unless="${items.isEmpty()}">비교하려면 공연이 두 개 이상 필요합니다.</p>
+            <p>공연 상세에서 「비교함에 담기」를 누르면 최대 <span th:text="${maxItems}">3</span>개까지 담을 수 있어요.</p>
+            <a class="emptyreset" th:href="@{/performances}">공연 보러 가기</a>
+        </div>
+
+        <!--
+            비교는 본질적으로 표다 — 행이 항목(공연장 · 기간 · 다음 회차 …), 열이 공연이다.
+            그리드로 흉내 내면 스크린리더에서 "이 값이 어느 공연의 무엇인지" 가 사라지므로
+            진짜 <table> 로 둔다. 좁은 화면은 표를 줄이는 대신 이 칸 안에서만 가로로
+            스크롤한다(본문이 통째로 밀리는 것보다 낫다 — 좌석도의 격자와 같은 처리).
+        -->
+        <div class="cmp-scroll" th:if="${items.size() >= 2}">
+            <table class="cmp">
+                <caption class="sr-only">담아둔 공연의 공연장 · 기간 · 다음 회차 · 최저가 비교</caption>
+                <thead>
+                <tr>
+                    <td class="cmp-corner"></td>
+                    <th scope="col" th:each="it : ${items}">
+                        <a class="cmp-head" th:href="@{/performances/{id}(id=${it.id})}">
+                            <span class="cmp-poster" th:classappend="${it.posterUrl == null} ? 'no-img'">
+                                <img th:if="${it.posterUrl != null}" th:src="@{/img/poster(u=${it.posterUrl})}"
+                                     th:alt="${it.title}" loading="lazy" onerror="this.remove()">
+                                <span class="cmp-fallback" aria-hidden="true"
+                                      th:text="${#strings.substring(it.title, 0, 1)}">공</span>
+                            </span>
+                            <span class="cmp-cat" th:text="${it.categoryLabel} ?: '기타'">뮤지컬</span>
+                            <span class="cmp-name" th:text="${it.title}">공연명</span>
+                        </a>
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">다음 회차</th>
+                    <!--
+                        여기만 값이 없을 때 「-」 가 아니라 말로 적는다. 남은 회차가 없다는
+                        것은 이 표에서 가장 결정적인 정보라(그 공연은 지금 못 산다) 빈칸으로
+                        두면 "아직 안 정해졌나" 로 읽힌다.
+                    -->
+                    <td th:each="it : ${items}">
+                        <span class="cmp-next" th:if="${it.nextShow != null}"
+                              th:classappend="${it.nextShow.soon} ? 'cmp-next--soon'"
+                              th:text="${it.nextShow.text}">8/27(목) 19:30</span>
+                        <span class="cmp-none" th:if="${it.nextShow == null}">남은 회차 없음</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">예매 상태</th>
+                    <!-- 배지가 없는 게 곧 「예매 가능」이다(목록·홈 카드와 같은 규칙). 표에서는
+                         빈칸이 어색하므로 그 경우에만 글자로 적는다. -->
+                    <td th:each="it : ${items}">
+                        <span class="cmp-avail" th:if="${it.availability != null}"
+                              th:classappend="${it.availability.cssClass}"
+                              th:text="${it.availability.label}">매진</span>
+                        <span class="cmp-ok" th:if="${it.availability == null}">예매 가능</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">최저가</th>
+                    <td th:each="it : ${items}">
+                        <strong th:if="${it.lowestPrice != null}"
+                                th:text="${#numbers.formatInteger(it.lowestPrice, 0, 'COMMA')} + '원~'">50,000원~</strong>
+                        <span class="cmp-none" th:if="${it.lowestPrice == null}">-</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">공연장</th>
+                    <td th:each="it : ${items}">
+                        <span th:text="${it.venue} ?: '-'">세종문화회관 대극장</span>
+                        <span class="cmp-sub" th:if="${it.address != null}" th:text="${it.address}">서울특별시 …</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">공연 기간</th>
+                    <td th:each="it : ${items}" th:text="${it.runPeriod} ?: '-'">6.4 – 8.30</td>
+                </tr>
+                <tr>
+                    <th scope="row">남은 회차</th>
+                    <td th:each="it : ${items}" th:text="${it.upcomingCount} + '회'">12회</td>
+                </tr>
+                <!--
+                    관람 시간 · 관람 연령은 수집 소스에 따라 통째로 비어 있다(표준데이터에는
+                    없고 KOPIS 에만 있다). 한 칸이라도 값이 있으면 줄을 두고, 전부 비면 줄째
+                    감춘다 — 「- | - | -」 만 적힌 줄은 정보가 아니라 표를 길게 만들 뿐이다.
+                    ("빈 카드는 빈 공간보다 나쁘다" — PerformanceSummaryView 주석과 같은 판단)
+                -->
+                <tr th:if="${!items.?[runningTime != null].isEmpty()}">
+                    <th scope="row">관람 시간</th>
+                    <td th:each="it : ${items}" th:text="${it.runningTime} ?: '-'">130분</td>
+                </tr>
+                <tr th:if="${!items.?[ageLimit != null].isEmpty()}">
+                    <th scope="row">관람 연령</th>
+                    <td th:each="it : ${items}" th:text="${it.ageLimit} ?: '-'">8세 이상</td>
+                </tr>
+                <tr class="cmp-ctarow">
+                    <td class="cmp-corner"></td>
+                    <td th:each="it : ${items}">
+                        <!-- 남은 회차가 없으면 예매 화면에 보내 봐야 "예매 가능한 회차가 없습니다"
+                             만 만난다. 그 경우엔 상세로만 보낸다. -->
+                        <a class="cmp-cta" th:if="${it.bookable}"
+                           th:href="@{/performances/{id}(id=${it.id})}">예매하기</a>
+                        <a class="cmp-cta cmp-cta--muted" th:unless="${it.bookable}"
+                           th:href="@{/performances/{id}(id=${it.id})}">상세 보기</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="cmp-foot" th:if="${items.size() >= 2}">
+            <a th:href="@{/performances}">다른 공연 더 보기</a>
+        </p>
+    </div>
+</div>
+
+<!-- 공유 시트·찜 버튼이 쓰는 것과 같은 안내. 아래 트레이가 실패 안내에 쓴다. -->
+<th:block th:replace="~{fragment/toast :: toast}"></th:block>
+<!-- 비교표에서도 후보를 빼거나 비울 수 있어야 한다 — 셋을 놓고 보다가 하나를 지우는 게
+     이 화면에서 가장 자연스러운 다음 동작이다. 트레이가 그대로 그 일을 한다. -->
+<th:block th:replace="~{fragment/comparetray :: tray}"></th:block>
+<script th:inline="javascript">
+(function () {
+    if (!window.__compare) return;
+    var comparePath = /*[[@{/performances/compare}]]*/ '/performances/compare';
+    /*
+        표는 서버가 그린 것이라 트레이에서 후보를 빼도 그대로 남는다 — 지웠는데 화면에
+        계속 있으면 지워진 게 맞는지 알 수 없다. 바뀐 목록으로 이 화면을 다시 연다.
+        onChange 는 실제 쓰기(빼기·비우기)에만 불리므로 첫 렌더로는 돌지 않는다.
+    */
+    window.__compare.onChange(function (list) {
+        var ids = list.map(function (it) { return it.id; }).join(',');
+        location.href = ids ? comparePath + '?ids=' + ids : comparePath;
+    });
+})();
+</script>
+</body>
+</html>
