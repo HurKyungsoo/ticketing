@@ -3736,7 +3736,20 @@ body.page-home .allmore a:hover { letter-spacing: .02em; background: none; }
      36px 은 포스터와 숫자 사이가 끊긴 것처럼 벌어진다. */
   body.page-home .hero-collage { justify-content: flex-start; margin-bottom: 24px; }
   body.page-home .hero h2 { font-size: 32px; white-space: normal; }
-  body.page-home .genrenav { padding: 20px; }
+  /* 장르 칩 10개가 줄바꿈되면 2열 x 5줄로 쌓여 히어로 바로 아래가 알약 벽이 된다
+     (실측: 10개를 한 줄에 두려면 1,112px 필요 — 860px 아래에서는 애초에 줄바꿈 없이
+     못 들어간다). 다른 가로 레일(.rs-rail, .homesec .grid)과 같은 처리로 한 줄
+     가로 스크롤로 바꾼다 — 처음 들어온 화면에서 카테고리 선택에 쓰는 세로 공간을
+     줄이고, 훑어보는 리듬도 아래 레일들과 맞춘다. */
+  body.page-home .genrenav {
+    padding: 20px;
+    flex-wrap: nowrap;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  body.page-home .genrenav::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  body.page-home .genrenav a { scroll-snap-align: start; }
   /* 좌우 여백은 다른 띠와 같이 20px 로. 포스터는 그대로 92px 를 쓴다 — 카드(240→180px)와
      달리 이미 작아서 더 줄이면 어느 공연이었는지 알아볼 수가 없다. */
   body.page-home .recentsec { padding: 0 20px; }
