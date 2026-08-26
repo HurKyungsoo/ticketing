@@ -226,7 +226,7 @@ public class PerformanceController {
     public String detail(@PathVariable Long id,
                           @AuthenticationPrincipal CustomUserDetails principal,
                           Model model) {
-        Performance performance = performanceRepository.findById(id)
+        Performance performance = performanceRepository.findByIdWithBookingLinks(id)
                 .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
 
         LocalDateTime now = LocalDateTime.now();

@@ -122,7 +122,7 @@ public class PerformanceSyncService {
                         external.getAgeLimit(), external.getRunningTime(), external.getCastMembers(),
                         external.getTotalSeatCount(), external.getBasePrice(),
                         external.getSourceType(), categoryResolver.resolve(external.getGenre()),
-                        external.getRegion());
+                        external.getRegion(), external.getBookingLinks());
                 topUpSchedules(performance, external);
             }
         }
@@ -260,6 +260,7 @@ public class PerformanceSyncService {
                 .castMembers(e.getCastMembers())
                 .totalSeatCount(e.getTotalSeatCount())
                 .basePrice(e.getBasePrice())
+                .bookingLinks(e.getBookingLinks())
                 .build();
     }
 

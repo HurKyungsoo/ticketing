@@ -16,6 +16,10 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
 
     Optional<Performance> findByExternalId(String externalId);
 
+    /** 상세 화면용. open-in-view=false 라 뷰 렌더링 전에 bookingLinks 를 미리 가져와야 한다. */
+    @Query("select p from Performance p left join fetch p.bookingLinks where p.id = :id")
+    Optional<Performance> findByIdWithBookingLinks(@Param("id") Long id);
+
     Page<Performance> findByEndDateGreaterThanEqualOrderByStartDateAsc(LocalDate today, Pageable pageable);
 
     /**

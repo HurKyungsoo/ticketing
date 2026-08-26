@@ -1,5 +1,6 @@
 package com.portfolio.ticket.external;
 
+import com.portfolio.ticket.domain.BookingLink;
 import com.portfolio.ticket.domain.SeatGrade;
 import com.portfolio.ticket.domain.SourceType;
 import lombok.Builder;
@@ -55,6 +56,10 @@ public class ExternalPerformance {
      * SeatGrade 별 비율(VIP 1.5/R 1.2/S 1.0/A 0.8)을 곱한 기존 방식을 쓴다.
      */
     private Map<SeatGrade, Integer> pricesByGrade;
+
+    /** KOPIS 상세(relates) 전용 — 다른 소스는 항상 빈 목록. domain.Performance.bookingLinks 참고. */
+    @Builder.Default
+    private List<BookingLink> bookingLinks = List.of();
 
     public boolean isValid() {
         return externalId != null && !externalId.isBlank()

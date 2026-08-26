@@ -114,6 +114,16 @@ public class Performance {
     private List<PerformanceSchedule> schedules = new ArrayList<>();
 
     /**
+     * KOPIS 상세(relates)에서만 채워진다. 다른 소스는 항상 빈 목록 — 표준데이터/문화정보에는
+     * 대응 개념이 없다. 순서는 원본이 준 순서를 그대로 유지한다(첫 항목을 우선 예매처로 본다).
+     */
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "booking_link", joinColumns = @JoinColumn(name = "performance_id"))
+    @OrderColumn(name = "sort_order")
+    private List<BookingLink> bookingLinks = new ArrayList<>();
+
+    /**
      * 배치 재수집 시 변경분만 반영. category 는 매번 다시 계산해서 넣는다 — 예전에
      * sourceType/category 컬럼이 없던 시절 저장된 행(null)도 재동기화되면서 자연히 채워진다.
      */
@@ -124,7 +134,8 @@ public class Performance {
                                    String posterUrl, String description,
                                    String ageLimit, String runningTime, String castMembers,
                                    Integer totalSeatCount, Integer basePrice,
-                                   SourceType sourceType, PerformanceCategory category, String region) {
+                                   SourceType sourceType, PerformanceCategory category, String region,
+                                   List<BookingLink> bookingLinks) {
         this.title = title;
         this.genre = genre;
         this.venue = venue;
@@ -147,6 +158,10 @@ public class Performance {
         this.sourceType = sourceType;
         this.category = category;
         this.region = region;
+        // 리스트 참조를 통째로 바꾸지 않고 내용만 교체한다 — 그래야 Hibernate 가 관리하는
+        // 같은 컬렉션 인스턴스에 그대로 반영되어 orphan 행이 지워지고 새 행이 들어간다.
+        this.bookingLinks.clear();
+        if (bookingLinks != null) this.bookingLinks.addAll(bookingLinks);
     }
 
     public void addSchedule(PerformanceSchedule schedule) {

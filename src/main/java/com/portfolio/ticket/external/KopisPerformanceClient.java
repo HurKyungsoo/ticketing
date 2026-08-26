@@ -2,6 +2,7 @@ package com.portfolio.ticket.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import com.portfolio.ticket.domain.BookingLink;
 import com.portfolio.ticket.domain.SeatGrade;
 import com.portfolio.ticket.domain.SourceType;
 import lombok.RequiredArgsConstructor;
@@ -244,6 +245,7 @@ public class KopisPerformanceClient {
                     .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
                     .showTimesByDay(parseDtGuidance(parser.text(item, "dtguidance")))
                     .pricesByGrade(parsePcseGuidance(pcsGuidance))
+                    .bookingLinks(parseRelates(item))
                     .build();
         } catch (Exception e) {
             log.debug("KOPIS 상세 파싱 실패, 목록 정보만 사용. mt20id={}, msg={}", basic.getExternalId(), e.getMessage());
@@ -433,6 +435,27 @@ public class KopisPerformanceClient {
             }
         }
         return result.isEmpty() ? null : result;
+    }
+
+    /**
+     * 상세 응답의 relates(실제 예매처 목록). 하나면 relate 가 단일 노드, 여럿이면 배열로
+     * 온다 — mt13s.mt13 과 같은 이유로 toList() 로 통일한다. 이름·URL 중 하나라도 비면
+     * 그 건만 버린다(그 예매처 한 곳만 안내가 어긋날 뿐, 나머지 예매처까지 놓칠 이유는 없다).
+     */
+    private List<BookingLink> parseRelates(JsonNode item) {
+        JsonNode relates = item.path("relates").path("relate");
+        if (relates.isMissingNode()) return List.of();
+
+        List<JsonNode> relateNodes = relates.isArray() ? toList(relates) : List.of(relates);
+        List<BookingLink> result = new ArrayList<>();
+        for (JsonNode relate : relateNodes) {
+            String name = parser.text(relate, "relatenm");
+            String url = parser.text(relate, "relateurl");
+            if (name != null && url != null) {
+                result.add(new BookingLink(name, url));
+            }
+        }
+        return result;
     }
 
     /** 컬럼 길이(500)를 넘는 prfcast(캐스팅 교체가 잦은 공연은 매우 길 수 있음)를 안전하게 자른다. */
