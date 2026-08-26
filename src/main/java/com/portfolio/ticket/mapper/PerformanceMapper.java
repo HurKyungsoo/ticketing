@@ -38,4 +38,12 @@ public interface PerformanceMapper {
 
     /** 건수 내림차순 전체 목록. "상위 N개 + 기타" 로 묶는 건 호출부(서비스/컨트롤러) 몫이다. */
     List<FacetCountRow> selectVenueCounts(@Param("f") PerformanceFilter filter);
+
+    /**
+     * 좌표(lat, lng)에서 radiusKm 이내, 가까운 순. 좌표가 없는 공연(표준데이터/문화정보
+     * 일부)은 애초에 거리를 잴 수 없어 제외된다. 반경·건수 상한은 호출부(서비스)가 정한다.
+     */
+    List<PerformanceListRow> selectNearby(@Param("lat") double lat, @Param("lng") double lng,
+                                           @Param("radiusKm") double radiusKm,
+                                           @Param("today") LocalDate today, @Param("limit") int limit);
 }

@@ -36,6 +36,21 @@ public class PerformanceListRow {
     private Integer nextRemainingSeats;
 
     /**
+     * 내 위치에서 이 공연장까지 거리(km). "주변 공연 찾기" 전용 — 그 조회만 값을 채우고
+     * 나머지 목록·홈 조회는 항상 null 이다.
+     */
+    private Double distanceKm;
+
+    /** "850m" / "1.2km". 1km 미만은 미터로 반올림한다 — 가까운 거리일수록 자릿수 오차가 체감에 크다. */
+    public String distanceLabel() {
+        if (distanceKm == null) return null;
+        if (distanceKm < 1) {
+            return Math.round(distanceKm * 1000) + "m";
+        }
+        return String.format(Locale.KOREAN, "%.1fkm", distanceKm);
+    }
+
+    /**
      * 종료일까지 남은 일수. 홈 카드의 D-day 배지에 쓴다. 오늘 끝나면 0 이다.
      *
      * <p>기준일을 인자로 받는다 — 안에서 {@code LocalDate.now()} 를 부르면 같은 화면 안에서도

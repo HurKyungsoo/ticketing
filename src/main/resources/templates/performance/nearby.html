@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>내 주변 공연 - 객석</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+    <th:block th:replace="~{fragment/head :: meta(${seo})}"></th:block>
+</head>
+<body class="page-list tone-light">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='내 주변 공연', showAuthNav=true)}"></header>
+
+    <div class="listinner">
+
+        <!--
+            좌표가 없는 첫 진입. 위치는 서버가 알 수 없는 값이라 브라우저 geolocation 이
+            받아서 쿼리 파라미터로 다시 이 주소를 요청한다(PerformanceController.nearby
+            주석 참고) — 서버는 "좌표를 받으면 무엇을 보여줄지"만 안다.
+        -->
+        <div class="nearby-prompt" th:unless="${hasLocation}">
+            <h2>내 주변 공연 찾기</h2>
+            <p>위치를 허용하면 지금 있는 곳에서 5km 이내 공연을 가까운 순으로 보여드립니다.</p>
+            <button type="button" class="nearby-find-btn" id="findNearbyBtn">내 위치로 찾기</button>
+            <p class="nearby-error" id="nearbyError" hidden></p>
+        </div>
+
+        <th:block th:if="${hasLocation}">
+            <div class="resultbar">
+                <p class="resultcount">반경 5km 이내 <strong th:text="${#numbers.formatInteger(performances.size(),0,'COMMA')}">0</strong>건</p>
+                <a class="resultreset" th:href="@{/performances/nearby}">위치 다시 찾기</a>
+            </div>
+
+            <div class="grid" th:if="${!performances.isEmpty()}">
+                <a class="card" th:each="p : ${performances}" th:href="@{/performances/{id}(id=${p.id})}"
+                   th:with="avail=${p.availability(today)}">
+                    <div class="poster" th:classappend="'gel-' + ${p.id % 6} + (${p.posterUrl == null} ? ' no-img' : '')">
+                        <span class="card-badge" th:text="${T(com.portfolio.ticket.domain.PerformanceCategory).valueOf(p.category).label()}">장르</span>
+                        <span class="card-avail" th:if="${avail != null}" th:classappend="${avail.cssClass}"
+                              th:text="${avail.label}">매진</span>
+                        <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
+                             onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                        <div class="posterfallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
+                    </div>
+                    <h3 th:text="${p.title}">공연명</h3>
+                    <p class="meta" th:with="next=${p.nextShow(today)}">
+                        <!-- 거리는 이 화면에서만 의미가 있는 값이라 목록·홈 카드에는 없다. 공연장과
+                             한 줄에 묶는다 — 별도 줄로 빼면 이 화면 카드만 한 줄 더 길어진다. -->
+                        <span class="m-venuerow">
+                            <span class="m-venue" th:text="${p.venue}">공연장</span>
+                            <span class="m-distance" th:if="${p.distanceKm != null}" th:text="${p.distanceLabel()}">1.2km</span>
+                        </span>
+                        <span class="m-date" th:if="${next != null}"
+                              th:classappend="${next.soon} ? 'm-date--soon'">
+                            <span class="sr-only">다음 공연 </span><span th:text="${next.text}">8/27(목) 19:30</span>
+                        </span>
+                        <span class="m-run">
+                            <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${p.runPeriod(today)}">6.4 – 8.30</span>
+                        </span>
+                    </p>
+                </a>
+            </div>
+
+            <div class="empty-state" th:if="${performances.isEmpty()}">
+                <p>5km 이내에 좌표가 등록된 공연이 없습니다.</p>
+                <p>전국 공연은 목록에서 지역으로 찾아보세요.</p>
+                <a class="emptyreset" th:href="@{/performances}">전체 공연 보기</a>
+            </div>
+        </th:block>
+    </div>
+</div>
+
+<script th:if="${!hasLocation}">
+(function () {
+    var btn = document.getElementById('findNearbyBtn');
+    var err = document.getElementById('nearbyError');
+    if (!btn) return;
+
+    function showError(message) {
+        err.textContent = message;
+        err.hidden = false;
+        btn.disabled = false;
+        btn.textContent = '내 위치로 찾기';
+    }
+
+    btn.addEventListener('click', function () {
+        if (!navigator.geolocation) {
+            showError('이 브라우저는 위치 정보를 지원하지 않습니다.');
+            return;
+        }
+        err.hidden = true;
+        btn.disabled = true;
+        btn.textContent = '위치 확인 중…';
+
+        navigator.geolocation.getCurrentPosition(function (position) {
+            var params = new URLSearchParams({
+                lat: String(position.coords.latitude),
+                lng: String(position.coords.longitude)
+            });
+            location.href = '/performances/nearby?' + params.toString();
+        }, function (geoError) {
+            // PERMISSION_DENIED(1) 만 따로 안내한다 — 나머지(TIMEOUT, POSITION_UNAVAILABLE)는
+            // 사용자가 뭘 어떻게 해야 할지가 달라서 뭉뚱그리면 다시 눌러도 되는 상황인지 알 수 없다.
+            showError(geoError.code === geoError.PERMISSION_DENIED
+                ? '위치 정보 접근이 거부되었습니다. 브라우저 설정에서 허용한 뒤 다시 시도해주세요.'
+                : '위치를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        }, { timeout: 10000 });
+    });
+})();
+</script>
+</body>
+</html>

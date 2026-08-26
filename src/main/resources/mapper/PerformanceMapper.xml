@@ -254,4 +254,48 @@
          ORDER BY count DESC
     </select>
 
+    <!--
+        Haversine 공식. 세 곳(SELECT/WHERE/ORDER BY)에서 그대로 반복해 쓴다 — MariaDB 는
+        SELECT 별칭을 WHERE 에서 못 쓰고(HAVING 은 되지만 GROUP BY 없이 별칭을 HAVING 에
+        쓰는 것도 방언 의존이라 피했다), H2/MariaDB 둘 다 안전하게 통하는 쪽을 택했다.
+
+        LEAST/GREATEST 로 ACOS 인자를 [-1, 1] 로 죄는 이유: 사용자가 공연장 좌표에 거의
+        정확히 서 있으면(거리 0 근방) 부동소수점 반올림으로 인자가 1.0000000000000002 처럼
+        1 을 살짝 넘을 수 있는데, 그러면 ACOS 가 NaN 을 내고 쿼리가 에러를 던진다.
+    -->
+    <sql id="distanceKm">
+        (6371 * ACOS(LEAST(1, GREATEST(-1,
+            COS(RADIANS(#{lat})) * COS(RADIANS(p.latitude)) * COS(RADIANS(p.longitude) - RADIANS(#{lng}))
+            + SIN(RADIANS(#{lat})) * SIN(RADIANS(p.latitude))
+        ))))
+    </sql>
+
+    <!--
+        주변 공연 찾기. 좌표가 있고(표준데이터/문화정보 일부는 없음) 아직 안 끝난 공연만,
+        가까운 순으로 상한 개수까지. 회차·요일·시간대 조건은 목록 화면과 달리 아예 없다 —
+        "지금 여기서 뭐 하지" 라는 발견형 질문이라 필터를 얹으면 오히려 그 목적과 어긋난다.
+    -->
+    <select id="selectNearby" resultType="com.portfolio.ticket.mapper.dto.PerformanceListRow">
+        SELECT p.id          AS id,
+               p.title        AS title,
+               p.venue        AS venue,
+               p.poster_url   AS poster_url,
+               p.category     AS category,
+               p.start_date   AS start_date,
+               p.end_date     AS end_date,
+               (SELECT MIN(ps2.show_at) FROM performance_schedule ps2
+                 WHERE ps2.performance_id = p.id AND ps2.show_at &gt;= #{today}) AS next_show_at,
+               (SELECT ps3.remaining_seats FROM performance_schedule ps3
+                 WHERE ps3.performance_id = p.id AND ps3.show_at &gt;= #{today}
+                 ORDER BY ps3.show_at ASC LIMIT 1) AS next_remaining_seats,
+               <include refid="distanceKm"/> AS distance_km
+          FROM performance p
+         WHERE p.latitude IS NOT NULL
+           AND p.longitude IS NOT NULL
+           AND p.end_date &gt;= #{today}
+           AND <include refid="distanceKm"/> &lt;= #{radiusKm}
+         ORDER BY <include refid="distanceKm"/> ASC, p.id ASC
+         LIMIT #{limit}
+    </select>
+
 </mapper>

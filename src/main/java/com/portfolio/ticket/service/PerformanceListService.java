@@ -249,6 +249,19 @@ public class PerformanceListService {
         return new HomeSection(title, subtitle, moreUrl, performanceMapper.selectPerformances(filter));
     }
 
+    /* ------------------------------------------------------------------
+     *  주변 공연 찾기 — 브라우저 geolocation 으로 받은 좌표 기준 반경 검색.
+     * ------------------------------------------------------------------ */
+
+    /** KOPIS 가이드의 "주변정보찾기"(반경 1~5km)를 참고해 상한을 5km 로 잡았다. */
+    private static final double NEARBY_RADIUS_KM = 5.0;
+    /** 도보로 갈 만한 범위라 목록처럼 페이징할 이유가 없다 — 카드 그리드 한 화면 분량으로 자른다. */
+    private static final int NEARBY_LIMIT = 30;
+
+    public List<PerformanceListRow> nearby(double lat, double lng) {
+        return performanceMapper.selectNearby(lat, lng, NEARBY_RADIUS_KM, LocalDate.now(), NEARBY_LIMIT);
+    }
+
     public Result search(String category, Integer month, String dayOfWeek, String timeSlot, String status,
                           String venue, String region, String keyword, String sort, int page) {
         int safePage = Math.max(0, page);

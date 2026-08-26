@@ -2288,6 +2288,14 @@ body.page-list .card .m-date { background: rgba(233, 180, 76, .16); color: var(-
 body.page-list .card .m-date--soon { background: var(--brass); color: var(--ink); }
 body.page-list .card .m-run { font-size: 12px; }
 
+/* 주변 공연 찾기 전용. 거리를 공연장과 한 줄에 묶는다 — 별도 줄로 빼면 이 화면
+   카드만 한 줄 더 길어져 다른 화면의 카드 높이와 어긋난다. */
+body.page-list .card .m-venuerow { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+body.page-list .card .m-venuerow .m-venue { flex: 1 1 auto; min-width: 0; }
+body.page-list .card .m-distance {
+  flex: none; font-size: 12px; font-weight: 700; color: var(--brass); white-space: nowrap;
+}
+
 /*
    공연장·기간 앞에 작은 아이콘. 카드 수가 많아 <svg> 를 카드마다 마크업에 넣으면
    DOM 이 그만큼 불어나므로, 배경 이미지(data URI) 로 한 번만 선언해 모든 카드가
@@ -2337,6 +2345,20 @@ body.page-list .savebtn {
 }
 body.page-list .savebtn:hover { border-color: var(--brass); color: var(--brass); }
 body.page-list .savebtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 주변 공연 찾기 — 좌표를 아직 못 받은 첫 진입 안내. 필터패널·카드그리드가 없는
+   상태라 가운데 정렬된 안내 하나만 뜬다. */
+body.page-list .nearby-prompt {
+  max-width: 440px; margin: 56px auto; padding: 0 20px; text-align: center;
+}
+body.page-list .nearby-prompt h2 { margin: 0 0 10px; font-size: 22px; color: var(--paper); }
+body.page-list .nearby-prompt p { margin: 0 0 24px; color: var(--mute); font-size: 14px; line-height: 1.6; }
+body.page-list .nearby-find-btn {
+  background: var(--brass); color: #0B0B0C; border: 0; border-radius: 999px;
+  padding: 14px 32px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+}
+body.page-list .nearby-find-btn:disabled { opacity: .6; cursor: not-allowed; }
+body.page-list .nearby-error { margin: 16px 0 0; color: var(--rose); font-size: 13px; }
 
 /* 정렬 드롭다운. 결과바 오른쪽 끝에 붙인다 — 목록을 훑다가 "다르게 정렬해볼까" 할 때
    눈이 가는 자리이고, 왼쪽의 건수/초기화와 역할이 달라서 붙여두면 셋이 한 덩어리로 읽힌다.
@@ -4006,6 +4028,9 @@ body.page-home .homesec .card .m-date--soon {
    한 벌 더 두어야 한다. 목업도 아이콘 없이 두 줄로 두고 있어 그쪽을 따른다. */
 body.tone-light .card .m-venue::before,
 body.tone-light .card .m-date::before { display: none; }
+/* 주변 공연 찾기 전용. --brass 는 라이트 배경 위에서 대비 1.73(위 --brass-ink 주석
+   참고)이라 안 보인다 — 글자로 쓸 때는 항상 --brass-ink 로 바꿔야 한다. */
+body.tone-light .card .m-distance { color: var(--brass-ink); }
 /* 배지는 포스터(다크) 위에 얹히므로 어두운 판 그대로 두되, 글자를 브라스로 올려
    포스터 이미지와 안 섞이게 한다. */
 body.tone-light .card-badge {
@@ -4124,6 +4149,8 @@ body.page-list.tone-light .savebtn {
   border-color: rgba(17, 18, 20, .25);
 }
 body.page-list.tone-light .savebtn:hover { border-color: var(--brass-ink); color: var(--brass-ink); }
+body.page-list.tone-light .nearby-prompt h2 { color: var(--ink); }
+body.page-list.tone-light .nearby-prompt p { color: rgba(17, 18, 20, .55); }
 
 /* 빈 화면의 출구 버튼. 다크 규칙은 body.page-list 안에만 있어서 목록·찜 목록에서만
    모양이 잡혔는데, 마이페이지 예매 내역의 빈 화면도 같은 버튼을 쓴다. 라이트 쪽은

@@ -31,6 +31,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -220,6 +221,31 @@ public class PerformanceController {
             }
         }
         return ids;
+    }
+
+    /**
+     * 주변 공연 찾기. 좌표는 서버가 알 수 없는 값이라 브라우저 geolocation 이 파라미터로
+     * 실어 보낸다 — 담아둔 목록을 localStorage 에서 받는 비교 화면과 같은 방향의 설계다
+     * (서버가 알 수 없는 건 클라이언트가 넘기고, DB 를 만지는 조회는 서버가 한다).
+     *
+     * <p>좌표가 없으면(첫 진입) 위치를 허용해 달라는 안내만 그린다. 손으로 고친 값이 범위를
+     * 벗어나면(위도 ±90, 경도 ±180) 좌표가 없는 것과 똑같이 처리한다 — 400 을 던지느니
+     * 안내 화면으로 조용히 되돌리는 편이 앞선 판단들(비교의 숫자 아닌 조각 버리기)과 같다.
+     */
+    @GetMapping("/performances/nearby")
+    public String nearby(@RequestParam(required = false) Double lat,
+                          @RequestParam(required = false) Double lng,
+                          Model model) {
+        boolean hasLocation = lat != null && lng != null
+                && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        if (hasLocation) {
+            model.addAttribute("performances", performanceListService.nearby(lat, lng));
+            model.addAttribute("today", LocalDate.now());
+        }
+        model.addAttribute("hasLocation", hasLocation);
+        model.addAttribute("seo", seoView.forSite(baseUrl(), "/performances/nearby", "내 주변 공연 - 객석",
+                "지금 있는 곳에서 가까운 공연을 찾아보세요."));
+        return "performance/nearby";
     }
 
     @GetMapping("/performances/{id}")

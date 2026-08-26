@@ -168,6 +168,10 @@
         <a class="resultreset" th:if="${filtersApplied and !result.performances.isEmpty()}"
            th:href="@{/performances}">필터 초기화</a>
 
+        <!-- 조건을 몰라도 되는 발견형 진입점이라 로그인 여부와 무관하게 항상 보인다
+             (이 조건 저장과 달리 지금 걸린 필터와도 무관한 별개 화면으로 간다). -->
+        <a class="savebtn" th:href="@{/performances/nearby}">내 주변 공연</a>
+
         <!--
             이 조건 저장. 로그인 상태에서만 그린다 — 비로그인 사용자에게 눌러도 로그인부터
             요구하는 버튼을 보여주는 대신, 아예 안 보이게 하는 쪽을 택했다(공연 상세의
