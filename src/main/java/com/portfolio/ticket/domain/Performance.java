@@ -153,4 +153,21 @@ public class Performance {
         this.schedules.add(schedule);
         schedule.assignPerformance(this);
     }
+
+    private static final String KOPIS_EXTERNAL_ID_PREFIX = "KOPIS-";
+
+    /**
+     * KOPIS 공식 상세 페이지로 연결할 mt20id. KOPIS 에서 수집된 공연만 값이 있고,
+     * 표준데이터/문화정보/시드 공연은 KOPIS 에 대응 레코드가 없으므로 null.
+     *
+     * <p>이 사이트의 회차·좌석·가격은 {@code SeatGenerator} 가 만든 것이라 실제 예매처
+     * 정보와 다르다 — 화면은 이 값이 있을 때 그 사실을 함께 알리고 공식 페이지로 안내한다.
+     */
+    public String kopisId() {
+        if (sourceType != SourceType.KOPIS || externalId == null
+                || !externalId.startsWith(KOPIS_EXTERNAL_ID_PREFIX)) {
+            return null;
+        }
+        return externalId.substring(KOPIS_EXTERNAL_ID_PREFIX.length());
+    }
 }

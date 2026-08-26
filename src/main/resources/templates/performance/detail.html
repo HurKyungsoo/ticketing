@@ -149,6 +149,17 @@
                            th:href="|https://map.naver.com/p/search/${#uris.escapePathSegment(performance.venue)}|">지도에서 찾기</a>
                     </dd>
                 </div>
+                <!-- KOPIS 에서 수집된 공연만 mt20id 가 있다. 이 사이트의 회차·좌석·가격은
+                     SeatGenerator 가 만든 것이라 실제 예매처 정보와 다를 수 있어, 링크와
+                     함께 그 사실을 짧게 알린다. -->
+                <div th:if="${performance.kopisId()} != null">
+                    <dt>공식 정보</dt>
+                    <dd>
+                        <a class="map-link" target="_blank" rel="noopener"
+                           th:href="|https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?menuId=MNU_00099&amp;mt20Id=${performance.kopisId()}|">KOPIS 상세 페이지</a>
+                        <span class="kopis-hint">이 사이트의 회차·좌석·가격은 추정치입니다. 정확한 정보는 KOPIS 또는 공식 예매처를 확인하세요.</span>
+                    </dd>
+                </div>
                 <!-- 지도는 좌표와 API 키가 둘 다 있을 때만 그린다. 키 없이 스크립트를 부르면
                      화면에 인증 실패 오버레이가 뜨므로, 없으면 위 링크만 남긴다. -->
                 <div th:if="${naverMapScriptUrl != null and performance.latitude != null and performance.longitude != null}">

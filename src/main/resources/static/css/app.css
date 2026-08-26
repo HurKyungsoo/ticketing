@@ -2567,6 +2567,15 @@ body.page-detail .spec dd { margin: 0; color: var(--paper); }
   white-space: nowrap;
 }
 
+.kopis-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--mute);
+}
+
 /* white-space: pre-line 으로 원문의 줄바꿈(\n)을 그대로 살린다.
    th:text 로 이스케이프해 넣으므로 <br> 없이도 안전하게 줄바꿈이 보인다. */
 body.page-detail .description {
