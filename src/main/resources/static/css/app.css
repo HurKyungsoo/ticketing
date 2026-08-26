@@ -2415,7 +2415,11 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
   body.page-list .masthead, body.page-detail .masthead { flex-wrap: wrap; row-gap: 8px; }
   body.page-list .masthead h1, body.page-detail .masthead h1 { white-space: nowrap; }
   body.page-list .masthead .tag, body.page-detail .masthead .tag { white-space: nowrap; }
-  body.page-list .masthead .authnav, body.page-detail .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
+  /* justify-content 는 flex-start 다 — 아래 줄로 내려온 authnav 가 로고와 같은
+     왼쪽 정렬을 따라야 한 덩어리로 읽힌다. flex-end 로 두면(예전 값) 이 줄 안에서
+     authnav 자체가 한 번 더 감기는 좁은 폭(360~375px)에서 두 줄로 쪼개진 내용이
+     각각 오른쪽에 따로 붙어, 왼쪽에 빈 칸만 남고 전체가 오른쪽으로 쏠려 보인다. */
+  body.page-list .masthead .authnav, body.page-detail .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
 
   body.page-list .mobile-filter-btn { display: inline-flex; }
   /* 좁은 화면에서는 건수가 필터 버튼에 이미 붙어 있으므로 중복을 피한다. */
@@ -5018,7 +5022,8 @@ body.page-mypage.tone-light .resmodal-share:focus-visible {
      이미 고쳐져 있었는데 마이페이지만 빠져 있었다. 실기동(500px)으로 확인. */
   body.page-mypage.tone-light .masthead { padding: 16px 20px; flex-wrap: wrap; row-gap: 8px; }
   body.page-mypage.tone-light .masthead h1 { white-space: nowrap; }
-  body.page-mypage.tone-light .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-end; }
+  /* flex-start 인 이유는 목록·상세와 같다(위 body.page-list .masthead .authnav 주석 참고). */
+  body.page-mypage.tone-light .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
   body.page-mypage.tone-light .mypageinner { padding: 24px 20px 60px; }
   body.page-mypage.tone-light .mypagetabs { gap: 20px; }
 }
@@ -5542,8 +5547,15 @@ body.page-payment.tone-light .paydone-share:focus-visible {
 
    가로 여백만 더 줄인다 — gap 은 홈이 화면 스코프로 따로 갖고 있어(명시도가 높다)
    여기서 바꾸면 홈만 안 먹는다. 여백은 화면별로 덮는 규칙이 없어 여기 한 곳이면 된다.
+
+   그런데 이 압축 이후에 헤더 검색 아이콘(.navsearch-toggle, 34px)이 추가되면서 이 예산이
+   다시 깨졌다 — 아이콘 폭이 계산에 없었다. 360~375px 에서 다시 세 줄(내비가 한 번 더
+   감겨 로그인·회원가입 줄만 오른쪽에 따로 떨어짐)이 된 것을 실측으로 확인했다. 아이콘을
+   이 폭에서 통째로 뺀다 — 검색은 「공연 찾기」 너머 필터 패널에 그대로 있어 길이 막히지
+   않는다(fragment/header 의 헤더 검색 기능 도입 시 판단과 같다).
 */
 @media (max-width: 400px) {
+  .masthead .navsearch-toggle { display: none; }
   .masthead .authnav .navlink { padding: 8px 8px; }
   .masthead .authbtns { gap: 4px; }
   .masthead .authbtns .btn-signup { padding: 9px 10px; }
