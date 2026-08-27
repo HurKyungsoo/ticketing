@@ -96,14 +96,41 @@ class NearbyPerformanceTest {
         // 반경 안이지만 이미 끝난 공연 — 예매할 수 없으므로 제외.
         performanceAt("종료된공연", ORIGIN_LAT, ORIGIN_LNG, LocalDate.now().minusDays(1));
 
-        List<PerformanceListRow> result = listService.nearby(ORIGIN_LAT, ORIGIN_LNG);
+        PerformanceListService.NearbyResult result = listService.nearby(ORIGIN_LAT, ORIGIN_LNG);
 
-        assertThat(result).extracting(PerformanceListRow::getTitle)
+        assertThat(result.radiusKm()).isEqualTo(5.0);
+        assertThat(result.performances()).extracting(PerformanceListRow::getTitle)
                 .containsExactly("가까운공연", "중간공연");
-        assertThat(result.get(0).getDistanceKm()).isLessThan(result.get(1).getDistanceKm());
+        assertThat(result.performances().get(0).getDistanceKm())
+                .isLessThan(result.performances().get(1).getDistanceKm());
         // 근접 원점은 부동소수점 반올림으로 거리가 미세 음수/NaN 이 되지 않아야 한다
         // (LEAST/GREATEST 로 ACOS 인자를 [-1,1] 로 죈 이유 — PerformanceMapper.xml 참고).
-        assertThat(result.get(0).getDistanceKm()).isNotNaN().isGreaterThanOrEqualTo(0);
+        assertThat(result.performances().get(0).getDistanceKm()).isNotNaN().isGreaterThanOrEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("5km 안에 없으면 20km 로 넓혀서 찾고, 실제로 쓴 반경을 같이 돌려준다")
+    void nearbyFallsBackToWiderRadiusWhenEmpty() {
+        // 위도 0.1도 ≈ 11km — 5km 밖, 20km 안.
+        performanceAt("조금먼공연", ORIGIN_LAT + 0.1, ORIGIN_LNG, LocalDate.now().plusDays(30));
+
+        PerformanceListService.NearbyResult result = listService.nearby(ORIGIN_LAT, ORIGIN_LNG);
+
+        assertThat(result.radiusKm()).isEqualTo(20.0);
+        assertThat(result.performances()).extracting(PerformanceListRow::getTitle)
+                .containsExactly("조금먼공연");
+    }
+
+    @Test
+    @DisplayName("가장 넓은 반경(20km)에도 없으면 그 반경 기준의 빈 결과를 돌려준다")
+    void nearbyReturnsWidestRadiusWhenStillEmpty() {
+        // 위도 0.5도 ≈ 55km — 20km 밖.
+        performanceAt("아주먼공연", ORIGIN_LAT + 0.5, ORIGIN_LNG, LocalDate.now().plusDays(30));
+
+        PerformanceListService.NearbyResult result = listService.nearby(ORIGIN_LAT, ORIGIN_LNG);
+
+        assertThat(result.radiusKm()).isEqualTo(20.0);
+        assertThat(result.performances()).isEmpty();
     }
 
     @Test
@@ -127,7 +154,7 @@ class NearbyPerformanceTest {
         mockMvc.perform(get("/performances/nearby"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("내 위치로 찾기")))
-                .andExpect(content().string(not(containsString("반경 5km 이내"))));
+                .andExpect(content().string(not(containsString("반경"))));
     }
 
     @Test
@@ -139,7 +166,9 @@ class NearbyPerformanceTest {
                         .param("lng", String.valueOf(ORIGIN_LNG)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("근처공연")))
-                .andExpect(content().string(containsString("반경 5km 이내")));
+                // 반경 숫자가 별도 <span> 이라 "반경 5km 이내" 는 더 이상 이어진 문자열이 아니다
+                // (PerformanceListService.NearbyResult 가 실제 반경을 돌려주면서 바뀌었다).
+                .andExpect(content().string(containsString(">5</span>km 이내")));
     }
 
     @Test

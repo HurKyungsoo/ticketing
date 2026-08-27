@@ -253,13 +253,36 @@ public class PerformanceListService {
      *  주변 공연 찾기 — 브라우저 geolocation 으로 받은 좌표 기준 반경 검색.
      * ------------------------------------------------------------------ */
 
-    /** KOPIS 가이드의 "주변정보찾기"(반경 1~5km)를 참고해 상한을 5km 로 잡았다. */
-    private static final double NEARBY_RADIUS_KM = 5.0;
+    /**
+     * KOPIS 가이드의 "주변정보찾기"(반경 1~5km)를 참고해 5km 를 1차로 잡았는데, 실제
+     * 배포 데이터로 재보니 서울 시청 기준은 5km 안에 402건이지만 인천 시청은 14건,
+     * 수원 시청은 18건이다 — 서울 도심 바깥에서는 "거의 안 나온다"는 게 실제로 맞는
+     * 말이었다. 좌표가 있는 공연 자체는 충분한데(진행작 1,968건 중 1,631건, 83%)
+     * 좌표가 대극장 밀집 지역에 쏠려 있어서, 도심에서 조금만 벗어나도 5km 반경이
+     * 통계적으로 빈다. 그렇다고 기본값을 무작정 키우면 서울처럼 실제로 촘촘한
+     * 지역에서는 "주변"이라는 말이 무의미해진다(반경 20km 는 걸어갈 거리가 아니다) —
+     * 그래서 좁은 반경부터 시도하다 비면 넓혀가는 방식을 쓴다. 두 번째 값(20km)은
+     * 인천·수원 기준으로도 각각 71·41건이 나오는 값이라 대부분 뭔가는 찾아준다.
+     */
+    private static final double[] NEARBY_RADIUS_TIERS_KM = {5.0, 20.0};
     /** 도보로 갈 만한 범위라 목록처럼 페이징할 이유가 없다 — 카드 그리드 한 화면 분량으로 자른다. */
     private static final int NEARBY_LIMIT = 30;
 
-    public List<PerformanceListRow> nearby(double lat, double lng) {
-        return performanceMapper.selectNearby(lat, lng, NEARBY_RADIUS_KM, LocalDate.now(), NEARBY_LIMIT);
+    /** @param radiusKm 실제로 결과가 나온 반경. 화면이 "반경 Nkm 이내"에 그대로 쓴다 — 넓혀서
+     *                  찾았으면 그 사실을 숨기지 않고 알려야 한다. */
+    public record NearbyResult(List<PerformanceListRow> performances, double radiusKm) {}
+
+    public NearbyResult nearby(double lat, double lng) {
+        for (double radiusKm : NEARBY_RADIUS_TIERS_KM) {
+            List<PerformanceListRow> rows = performanceMapper.selectNearby(lat, lng, radiusKm, LocalDate.now(), NEARBY_LIMIT);
+            if (!rows.isEmpty()) {
+                return new NearbyResult(rows, radiusKm);
+            }
+        }
+        // 가장 넓은 반경에서도 없으면 그 반경 기준의 빈 결과를 그대로 돌린다 —
+        // 화면은 "그 반경 안에 없다"고 정확히 말해야 하고, 시도하지도 않은 값을 대신 적으면 안 된다.
+        double widest = NEARBY_RADIUS_TIERS_KM[NEARBY_RADIUS_TIERS_KM.length - 1];
+        return new NearbyResult(List.of(), widest);
     }
 
     public Result search(String category, Integer month, String dayOfWeek, String timeSlot, String status,

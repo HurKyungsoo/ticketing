@@ -239,7 +239,11 @@ public class PerformanceController {
         boolean hasLocation = lat != null && lng != null
                 && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
         if (hasLocation) {
-            model.addAttribute("performances", performanceListService.nearby(lat, lng));
+            PerformanceListService.NearbyResult result = performanceListService.nearby(lat, lng);
+            model.addAttribute("performances", result.performances());
+            // 화면이 "반경 Nkm 이내"에 쓰는 실제 반경 — 5km 에 없어서 넓혀 찾았으면
+            // 그 사실을 그대로 보여준다(PerformanceListService.nearby 주석 참고).
+            model.addAttribute("radiusKm", result.radiusKm());
             model.addAttribute("today", LocalDate.now());
         }
         model.addAttribute("hasLocation", hasLocation);
