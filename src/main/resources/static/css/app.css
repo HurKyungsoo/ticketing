@@ -2411,15 +2411,22 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
 
 @media (max-width: 860px) {
   /* "객석" 로고+태그는 한 줄 유지, authnav("로그인 · 회원가입")는 폭이 좁으면
-     제 몫의 공간을 못 받아 두 글자짜리 로고까지 세로로 쪼개지므로 아래 줄로 내린다. */
-  body.page-list .masthead, body.page-detail .masthead { flex-wrap: wrap; row-gap: 8px; }
-  body.page-list .masthead h1, body.page-detail .masthead h1 { white-space: nowrap; }
-  body.page-list .masthead .tag, body.page-detail .masthead .tag { white-space: nowrap; }
+     제 몫의 공간을 못 받아 두 글자짜리 로고까지 세로로 쪼개지므로 아래 줄로 내린다.
+     page-error(403/404/5xx)는 뒤늦게 이 규칙에 빠져 있었다 — showAuthNav=true 를 쓰는
+     화면 중 유일하게 안 걸려서, 모바일에서 "객석" 로고가 "객"/"석" 두 줄로 쪼개지고
+     있었다(이 fix 가 막으려던 바로 그 증상이 새 화면에서 재현된 것). */
+  body.page-list .masthead, body.page-detail .masthead, body.page-error .masthead
+    { flex-wrap: wrap; row-gap: 8px; }
+  body.page-list .masthead h1, body.page-detail .masthead h1, body.page-error .masthead h1
+    { white-space: nowrap; }
+  body.page-list .masthead .tag, body.page-detail .masthead .tag, body.page-error .masthead .tag
+    { white-space: nowrap; }
   /* justify-content 는 flex-start 다 — 아래 줄로 내려온 authnav 가 로고와 같은
      왼쪽 정렬을 따라야 한 덩어리로 읽힌다. flex-end 로 두면(예전 값) 이 줄 안에서
      authnav 자체가 한 번 더 감기는 좁은 폭(360~375px)에서 두 줄로 쪼개진 내용이
      각각 오른쪽에 따로 붙어, 왼쪽에 빈 칸만 남고 전체가 오른쪽으로 쏠려 보인다. */
-  body.page-list .masthead .authnav, body.page-detail .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
+  body.page-list .masthead .authnav, body.page-detail .masthead .authnav, body.page-error .masthead .authnav
+    { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
 
   body.page-list .mobile-filter-btn { display: inline-flex; }
   /* 좁은 화면에서는 건수가 필터 버튼에 이미 붙어 있으므로 중복을 피한다. */
