@@ -2424,6 +2424,10 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
   body.page-list .mobile-filter-btn { display: inline-flex; }
   /* 좁은 화면에서는 건수가 필터 버튼에 이미 붙어 있으므로 중복을 피한다. */
   body.page-list .resultcount { display: none; }
+  /* 주변 공연 찾기는 필터 버튼이 없어서 건수를 대신 보여줄 곳이 여기뿐이다 — 숨기면
+     "반경 Nkm 이내"(자동으로 넓혀 찾았을 수 있는 실제 반경)를 모바일에서 알 방법이
+     없어진다. 클래스 두 개짜리 선택자라 위 규칙보다 우선한다. */
+  body.page-list.page-nearby .resultcount { display: block; }
   /* 종전엔 초기화 링크가 없으면 결과바를 통째로 숨겼다(건수만 들어 있어 빈 줄이 됐으므로).
      이제 정렬 드롭다운이 항상 이 안에 있어서 숨기면 모바일에서 정렬할 방법이 사라진다.
      좁은 화면일수록 스크롤이 길어 정렬이 더 필요하므로 그대로 둔다. */
