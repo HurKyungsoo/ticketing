@@ -1677,6 +1677,9 @@ body.page-error { background: var(--paper); color: var(--ink); }
 .resinfo:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
 .restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; transition: color .12s; }
 .resmeta { font-size: 13px; color: var(--paper); margin: 0 0 4px; }
+/* 숫자와 '원' 사이가 끊기면 두 줄이 된다 — 공연 정보 표의 .fee(422행), 결제 화면의
+   .mb-price strong 과 같은 문제. */
+.resmeta .resamount { white-space: nowrap; }
 .resno { font-size: 12px; color: var(--mute); margin: 0; }
 /* 공연 상세·길찾기. resno 와 같은 톤(작고 흐림)이 기본이고, 실제로 다른 화면으로
    보낸다는 걸 알리는 밑줄만 얹는다 — 위 두 줄(제목·메타)과 같은 강조를 주면 이

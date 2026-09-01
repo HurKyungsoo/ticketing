@@ -64,7 +64,10 @@
                     <p class="resmeta">
                         <span th:text="${#temporals.format(r.schedule.showAt, 'yyyy.M.d(E) HH:mm')}">일시</span> ·
                         <span th:text="${r.seatSummary}">좌석</span> ·
-                        <span th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
+                        <!-- 숫자와 '원' 사이가 끊기면 "180,000" 다음 줄에 "원" 만 남는다 —
+                             공연 정보 표의 .fee, 결제 화면의 .mb-price strong 과 같은 문제라
+                             같은 처리(nowrap)를 준다. -->
+                        <span class="resamount" th:text="${#numbers.formatInteger(r.amount,0,'COMMA')} + '원'">금액</span>
                     </p>
                     <p class="resno">
                         예매번호 <span th:text="${r.reservationNo}">번호</span> ·
