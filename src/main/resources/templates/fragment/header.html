@@ -58,6 +58,11 @@
         <a th:href="@{/mypage/reservations}" class="navlink"
            th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'active'"
            th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'page' : null">마이페이지</a>
+        <!-- 관리자만 보인다. 예전엔 이 링크가 어디에도 없어서 관리자로 로그인해도
+             주소창에 /admin/dashboard 를 직접 쳐야 대시보드로 갈 수 있었다. -->
+        <a th:href="@{/admin/dashboard}" class="navlink" sec:authorize="hasRole('ADMIN')"
+           th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/admin')} ? 'active'"
+           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/admin')} ? 'page' : null">관리자 대시보드</a>
         <!--
             navdivider 를 여기 독립 span 으로 두면 좁은 화면에서 authnav 가 줄바꿈될 때
             구분선만 홀로 첫 줄 끝에 남고, 뒤따르는 로그인/닉네임 묶음은 다음 줄로 떨어져
