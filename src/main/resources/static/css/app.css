@@ -2459,6 +2459,11 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
     z-index: 30;
   }
   body.page-list .fp-backdrop.open { opacity: 1; pointer-events: auto; }
+  /* 드로어가 열린 동안 배경(카드 목록)이 같이 스크롤되지 않게 잠근다 — 안 잠그면
+     손가락으로 필터를 스크롤하려다 뒤에 깔린 카드 목록이 같이 밀려서, 드로어를
+     닫았을 때 스크롤 위치가 엉뚱한 곳에 가 있었다. 여닫는 스크립트(list.html)가
+     이 클래스만 토글한다. */
+  body.page-list.filterdraweropen { overflow: hidden; }
 }
 
 /* ==================================================================
