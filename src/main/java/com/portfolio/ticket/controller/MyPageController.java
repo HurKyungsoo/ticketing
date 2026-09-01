@@ -49,7 +49,6 @@ public class MyPageController {
                 (a, b) -> a,
                 LinkedHashMap::new)));
         shareMetaView.addKakaoJsKey(model);
-        addUnreadCount(principal, model);
         return "member/reservations";
     }
 
@@ -62,7 +61,6 @@ public class MyPageController {
         // 기간 표기가 "올해면 연도 생략" 규칙을 쓰므로 기준일이 필요하다.
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("nextShows", wishlistService.nextShowsFor(wishes));
-        addUnreadCount(principal, model);
         return "member/wishlist";
     }
 
@@ -70,7 +68,6 @@ public class MyPageController {
     public String savedSearches(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
         List<SavedSearch> searches = savedSearchService.findMine(principal.getMemberId());
         model.addAttribute("searches", searches);
-        addUnreadCount(principal, model);
         return "member/saved-searches";
     }
 
@@ -78,7 +75,6 @@ public class MyPageController {
     public String notifications(@AuthenticationPrincipal CustomUserDetails principal, Model model) {
         List<Notification> notifications = notificationService.findMine(principal.getMemberId());
         model.addAttribute("notifications", notifications);
-        addUnreadCount(principal, model);
         return "member/notifications";
     }
 
@@ -116,10 +112,5 @@ public class MyPageController {
         }
         String base = "redirect:/performances/" + result.performanceId();
         return result.type() == NotificationType.REVIEW_REQUESTED ? base + "#reviews" : base;
-    }
-
-    /** 상단 탭의 안 읽은 알림 배지. 세 화면이 같은 탭을 공유하므로 어디서 열어도 같은 수가 보여야 한다. */
-    private void addUnreadCount(CustomUserDetails principal, Model model) {
-        model.addAttribute("unreadCount", notificationService.countUnread(principal.getMemberId()));
     }
 }

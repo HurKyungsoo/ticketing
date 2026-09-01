@@ -9,7 +9,13 @@
 </head>
 <body>
 <div class="wrap">
-    <header th:replace="~{fragment/header :: masthead(tag='관리자 대시보드', showAuthNav=false)}"></header>
+    <!-- showAuthNav=false 였던 걸 켠다 — 꺼져 있으면 로고 말고는 내비가 전혀 없어서
+         이 화면에 들어온 관리자가 로그아웃할 방법이 없었다(주소창을 직접 지우는 것 말고는).
+         마이페이지도 같은 함정을 겪고 켜서 고쳤다(fragment/mypagetabs.html 주석 참고).
+         status/keyword 모델 속성이 없어도 되는 화면(검색을 안 여는 화면)에서 이미
+         showAuthNav=true 를 쓰는 전례가 있다(member/wishlist.html 등) — 헤더의
+         검색 폼은 그 값들이 없으면 그냥 빈 채로 그려질 뿐 에러가 나지 않는다. -->
+    <header th:replace="~{fragment/header :: masthead(tag='관리자 대시보드', showAuthNav=true)}"></header>
 
     <form class="dashfilter" method="get" th:action="@{/admin/dashboard}">
         <label>시작일 <input type="date" name="from" th:value="${from}"></label>

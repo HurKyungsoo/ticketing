@@ -213,6 +213,24 @@ a { color: inherit; text-decoration: none; }
 /* 지금 보고 있는 구역. 색만으로 알리지 않도록 마크업에서 aria-current="page" 를 같이 준다. */
 .masthead .authnav .navlink.active { font-weight: 700; }
 
+/* 마이페이지 링크의 안 읽은 알림 수. 마이페이지 탭 배지(.mypagetabs .tabbadge)와
+   같은 생김새(로즈 배경 + 흰 글자 — "확인할 게 남았다"를 브라스와 구분)를 쓰지만,
+   여기 있는 이유가 다르다 — 예전엔 이 배지가 마이페이지 탭 안에만 있어서 마이페이지를
+   직접 열어보기 전엔 새 알림이 왔는지 알 방법이 없었다. 헤더는 화면마다 톤(다크/라이트)이
+   갈리지만 로즈+흰 글자는 둘 다에서 그대로 읽혀서 톤별 오버라이드가 필요 없다. */
+.masthead .authnav .navbadge {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #B23A3A;
+  color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 16px;
+  text-align: center;
+  vertical-align: 2px;
+}
+
 /* 닉네임 앞 이니셜 원. */
 .masthead .authnav .who { display: inline-flex; align-items: center; gap: 7px; }
 .masthead .authnav .who-avatar {
@@ -1677,6 +1695,9 @@ body.page-error { background: var(--paper); color: var(--ink); }
 .resinfo:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
 .restitle { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 6px; transition: color .12s; }
 .resmeta { font-size: 13px; color: var(--paper); margin: 0 0 4px; }
+/* 숫자와 '원' 사이가 끊기면 두 줄이 된다 — 공연 정보 표의 .fee(422행), 결제 화면의
+   .mb-price strong 과 같은 문제. */
+.resmeta .resamount { white-space: nowrap; }
 .resno { font-size: 12px; color: var(--mute); margin: 0; }
 /* 공연 상세·길찾기. resno 와 같은 톤(작고 흐림)이 기본이고, 실제로 다른 화면으로
    보낸다는 걸 알리는 밑줄만 얹는다 — 위 두 줄(제목·메타)과 같은 강조를 주면 이
@@ -2459,6 +2480,11 @@ body.page-list .empty-state code { background: var(--ink-soft); padding: 2px 6px
     z-index: 30;
   }
   body.page-list .fp-backdrop.open { opacity: 1; pointer-events: auto; }
+  /* 드로어가 열린 동안 배경(카드 목록)이 같이 스크롤되지 않게 잠근다 — 안 잠그면
+     손가락으로 필터를 스크롤하려다 뒤에 깔린 카드 목록이 같이 밀려서, 드로어를
+     닫았을 때 스크롤 위치가 엉뚱한 곳에 가 있었다. 여닫는 스크립트(list.html)가
+     이 클래스만 토글한다. */
+  body.page-list.filterdraweropen { overflow: hidden; }
 }
 
 /* ==================================================================
@@ -2705,7 +2731,12 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
-  body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
+  /* margin-inline: auto 가 없으면 이 칸(포스터, 요약 카드는 바로 아래서 숨긴다)이
+     320px 로 눌린 채 컨테이너 왼쪽에 붙는다. 640px 안팎(375px 폰보다 훨씬 넓고
+     861px 두 칸 레이아웃보다는 좁은 구간)에서는 옆으로 수백 px 가 빈 채 남고
+     그 아래로 본문이 이어져 화면이 깨진 것처럼 보인다 — 가운데로 옮겨서 포스터가
+     독립된 히어로 이미지로 읽히게 한다. */
+  body.page-detail .detail > div:first-child { position: static; max-width: 320px; margin-inline: auto; }
   /* 데스크톱 40px 는 좁은 화면에서 긴 공연명이 한 글자씩 좁게 줄바꿈된다. */
   body.page-detail h2 { font-size: 28px; }
   /* 요약 카드는 sticky 칸의 남는 자리를 채우려고 있는 것인데, 여기서는 칸이 sticky 가 아니라
@@ -3598,6 +3629,18 @@ body.page-home .editorial-card .ec-image img {
   position: relative; z-index: 1;
   width: 100%; height: 100%; object-fit: contain; display: block;
 }
+/* 포스터가 없거나(no-img) 깨진 주소라 img 가 onerror 로 빠진 경우의 대체 표시.
+   목록 카드 .posterfallback(2153행)과 같은 발상 — 평소엔 숨겨 두고 no-img 일 때만
+   가운데에 큼직한 제목 첫 글자를 띄운다. 16:10 프레임이 3:4 포스터 칸보다 넓어서
+   글자도 그만큼(34→44px) 키운다. */
+body.page-home .editorial-card .ec-fallback {
+  display: none;
+  font-family: var(--body); font-size: 44px; font-weight: 700; color: var(--mute);
+}
+body.page-home .editorial-card .ec-image.no-img {
+  display: grid; place-items: center;
+}
+body.page-home .editorial-card .ec-image.no-img .ec-fallback { display: block; }
 /* 예매 가능 여부. 카드형 목록의 .card-avail 과 같은 판단을 포스터 우상단에 얹는다 —
    여기는 이미지 프레임(.ec-image)이 카드 배경(var(--ink))과 달라서 배지가 이미지
    위에 뜨는 걸 z-index 로 보장해야 한다(장르 배지가 이미지 뒤로 숨던 결함과 같은 자리). */

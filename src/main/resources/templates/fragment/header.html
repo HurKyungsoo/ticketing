@@ -57,7 +57,19 @@
              누르면 로그인으로 보냈다가 성공 후 다시 여기로 돌아온다(postLoginRedirectHandler). -->
         <a th:href="@{/mypage/reservations}" class="navlink"
            th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'active'"
-           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'page' : null">마이페이지</a>
+           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/mypage')} ? 'page' : null">마이페이지<!--
+            안 읽은 알림 수. 예전엔 마이페이지 탭(mypagetabs.html) 안에만 있어서, 알림이
+            와도 마이페이지를 직접 열어보기 전엔 알 방법이 없었다. unreadCount 는
+            UnreadNotificationCountAdvice 가 모든 페이지 컨트롤러 응답에 붙여주므로 여기서
+            그대로 읽는다 — 에러 페이지(PageExceptionHandler 는 @Controller 가 아니라
+            이 어드바이스가 안 붙는다)처럼 아예 없는 화면도 있어 null 부터 방어한다. --><span
+              class="navbadge" th:if="${unreadCount != null and unreadCount > 0}"
+              th:text="${unreadCount}">3</span></a>
+        <!-- 관리자만 보인다. 예전엔 이 링크가 어디에도 없어서 관리자로 로그인해도
+             주소창에 /admin/dashboard 를 직접 쳐야 대시보드로 갈 수 있었다. -->
+        <a th:href="@{/admin/dashboard}" class="navlink" sec:authorize="hasRole('ADMIN')"
+           th:classappend="${currentPath != null and #strings.startsWith(currentPath, '/admin')} ? 'active'"
+           th:attr="aria-current=${currentPath != null and #strings.startsWith(currentPath, '/admin')} ? 'page' : null">관리자 대시보드</a>
         <!--
             navdivider 를 여기 독립 span 으로 두면 좁은 화면에서 authnav 가 줄바꿈될 때
             구분선만 홀로 첫 줄 끝에 남고, 뒤따르는 로그인/닉네임 묶음은 다음 줄로 떨어져
