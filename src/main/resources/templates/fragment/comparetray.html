@@ -140,6 +140,18 @@
         paint();
         window.__compare.onChange(paint);
 
+        /*
+            뒤로가기 캐시(bfcache) 대응. 이 버튼에서 "비교 중"으로 바꾼 뒤 다른 화면으로
+            갔다가(예: 트레이에서 뺌) 브라우저 뒤로가기로 돌아오면, 크롬 등은 페이지를
+            다시 불러오지 않고 떠날 때의 DOM 스냅샷을 그대로 복원한다 — 스크립트가 안
+            돌아서 이 버튼이 실제로는 바뀐 상태(localStorage)를 안 따라간다.
+            pageshow 의 event.persisted 가 그 복원 여부를 알려주므로, 그때만 한 번 더
+            읽어서 다시 그린다.
+        */
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) paint();
+        });
+
         btn.addEventListener('click', function () {
             var toast = window.__toast || function () {};
             if (window.__compare.has(id)) {
@@ -286,6 +298,13 @@
 
         window.__compare.onChange(render);
         render(window.__compare.list());
+
+        // 위 compareBtn 의 pageshow 대응과 같은 이유. 상세에서 담고 뒤로가기로 이
+        // 화면에 돌아오면 bfcache 가 "담기 전" 스냅샷을 그대로 복원해, 방금 담은 게
+        // 트레이에 바로 안 보이는 것처럼 보였다.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) render(window.__compare.list());
+        });
     })();
     </script>
 </th:block>
