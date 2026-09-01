@@ -2708,7 +2708,12 @@ body.page-detail .empty-inline { font-size: 14px; color: var(--mute); margin: 0;
 
 @media (max-width: 860px) {
   body.page-detail .detail { grid-template-columns: 1fr; gap: 28px; }
-  body.page-detail .detail > div:first-child { position: static; max-width: 320px; }
+  /* margin-inline: auto 가 없으면 이 칸(포스터, 요약 카드는 바로 아래서 숨긴다)이
+     320px 로 눌린 채 컨테이너 왼쪽에 붙는다. 640px 안팎(375px 폰보다 훨씬 넓고
+     861px 두 칸 레이아웃보다는 좁은 구간)에서는 옆으로 수백 px 가 빈 채 남고
+     그 아래로 본문이 이어져 화면이 깨진 것처럼 보인다 — 가운데로 옮겨서 포스터가
+     독립된 히어로 이미지로 읽히게 한다. */
+  body.page-detail .detail > div:first-child { position: static; max-width: 320px; margin-inline: auto; }
   /* 데스크톱 40px 는 좁은 화면에서 긴 공연명이 한 글자씩 좁게 줄바꿈된다. */
   body.page-detail h2 { font-size: 28px; }
   /* 요약 카드는 sticky 칸의 남는 자리를 채우려고 있는 것인데, 여기서는 칸이 sticky 가 아니라
