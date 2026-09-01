@@ -127,7 +127,15 @@
                 테스트 모드 — 결제창 없이 바로 확정됩니다. 실제 결제는 일어나지 않습니다.
             </p>
 
-            <a class="paybtn paybtn--ghost" th:unless="${payable}" th:href="@{/mypage/reservations}">예매 내역으로</a>
+            <!-- 예전엔 이 링크가 결제 불가 상태(th:unless="${payable}")에서만 떴다 —
+                 결제할 수 있는 동안에는 "카드로 결제하기" 버튼 하나뿐이라, 마음이
+                 바뀐 사람은 브라우저 뒤로가기를 누르거나 10분 선점이 풀리길 기다리는
+                 수밖에 없었다. 공연 상세의 환불 규정이 이미 "결제 전 좌석 선점
+                 상태에서는 수수료 없이 취소할 수 있습니다. 취소는 마이페이지 예매
+                 내역에서 할 수 있습니다"라고 안내하고 있으니, 그 길을 여기서도 열어
+                 둔다 — 늘 보이게 하고 상태에 맞게 문구만 바꾼다. -->
+            <a class="paybtn paybtn--ghost" th:href="@{/mypage/reservations}"
+               th:text="${payable} ? '결제 취소하고 나가기' : '예매 내역으로'">예매 내역으로</a>
 
             <!-- 결제 전까지는 내부 식별자일 뿐이라 총액·버튼보다 눈에 띄면 안 된다. -->
             <p class="payno">예매번호 <span th:text="${reservation.reservationNo}">26073177684019</span></p>
