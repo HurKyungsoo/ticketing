@@ -3598,6 +3598,18 @@ body.page-home .editorial-card .ec-image img {
   position: relative; z-index: 1;
   width: 100%; height: 100%; object-fit: contain; display: block;
 }
+/* 포스터가 없거나(no-img) 깨진 주소라 img 가 onerror 로 빠진 경우의 대체 표시.
+   목록 카드 .posterfallback(2153행)과 같은 발상 — 평소엔 숨겨 두고 no-img 일 때만
+   가운데에 큼직한 제목 첫 글자를 띄운다. 16:10 프레임이 3:4 포스터 칸보다 넓어서
+   글자도 그만큼(34→44px) 키운다. */
+body.page-home .editorial-card .ec-fallback {
+  display: none;
+  font-family: var(--body); font-size: 44px; font-weight: 700; color: var(--mute);
+}
+body.page-home .editorial-card .ec-image.no-img {
+  display: grid; place-items: center;
+}
+body.page-home .editorial-card .ec-image.no-img .ec-fallback { display: block; }
 /* 예매 가능 여부. 카드형 목록의 .card-avail 과 같은 판단을 포스터 우상단에 얹는다 —
    여기는 이미지 프레임(.ec-image)이 카드 배경(var(--ink))과 달라서 배지가 이미지
    위에 뜨는 걸 z-index 로 보장해야 한다(장르 배지가 이미지 뒤로 숨던 결함과 같은 자리). */
