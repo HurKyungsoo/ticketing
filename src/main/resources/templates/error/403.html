@@ -8,13 +8,33 @@
     <th:block th:replace="~{fragment/head :: favicons}"></th:block>
 </head>
 <body class="page-error tone-light">
-<div class="wrap errorwrap">
+<div class="wrap errorwrap" th:with="isAdminPage=${path != null and #strings.startsWith(path, '/admin')}">
     <header th:replace="~{fragment/header :: masthead(tag='접근 불가', showAuthNav=true)}"></header>
 
+    <!--
+        403 은 두 갈래에서 온다.
+
+        (1) 본인 예매·결제·관람평이 아닌 걸 건드렸을 때 — ForbiddenException 을
+            PageExceptionHandler 가 이 화면으로 보내면서 reason 을 같이 싣는다
+            (ReservationService/PaymentController/ReviewService 참고). 이 경우가
+            훨씬 흔해서 기본 문구를 여기 맞춰 뒀다.
+
+        (2) 일반 회원이 /admin/** 을 직접 열었을 때 — SecurityConfig 의
+            hasRole("ADMIN") 이 걸려 컨트롤러까지 오지 못하고 Spring Security 의
+            AccessDeniedHandler 가 /error 로 보낸다. 이 경로엔 reason 이 없고,
+            Boot 기본 에러 속성인 path("/admin/...")만 남는다.
+
+        (1)의 "본인 예매 내역만..." 문구를 (2)에 그대로 쓰면 예매 얘기를 하는데
+        실제로는 관리자 권한 얘기라 안내가 아예 다른 소리가 된다 — path 로 갈라서
+        관리자 화면일 때만 다른 문구를 쓴다. isAdminPage 는 위 wrap div 에서 한 번만
+        계산해 물려받는다.
+    -->
     <div th:replace="~{fragment/errorpage :: errorbody(
             code='403',
-            heading='이 페이지를 볼 권한이 없습니다.',
-            detail='본인 예매 내역만 조회하고 결제할 수 있습니다. 다른 계정으로 예매하셨다면 해당 계정으로 로그인해 주세요.')}"></div>
+            heading=${isAdminPage} ? '관리자만 볼 수 있는 화면입니다.' : '이 페이지를 볼 권한이 없습니다.',
+            detail=${isAdminPage}
+                    ? '관리자 계정으로 로그인해야 볼 수 있습니다. 일반 회원 계정으로는 접근할 수 없습니다.'
+                    : '본인 예매 내역만 조회하고 결제할 수 있습니다. 다른 계정으로 예매하셨다면 해당 계정으로 로그인해 주세요.')}"></div>
 
     <p class="errorlinks">
         <a th:href="@{/mypage/reservations}">내 예매 내역</a>
