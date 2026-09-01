@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -345,15 +346,37 @@ class PerformanceFilterTest {
     @DisplayName("월별 건수도 회차 기준 — 요일을 걸면 그 요일 회차가 있는 달만 세어진다")
     @Test
     void monthFacetCountsFollowScheduleAxis() {
-        createPerformance("8월주말있음", AUG_SAT, SEP_SAT);
-        createPerformance("9월주말만", AUG_MON, SEP_SAT);
+        // 월 칩은 AUG_SAT 처럼 고정 달력이 아니라 "이번 달부터 6개월"만 그려진다
+        // (PerformanceListService.buildMonthOptions, MONTH_CHIP_COUNT). 이 테스트는
+        // 그 칩 목록에서 건수를 읽으므로, 고정된 8·9월을 쓰면 오늘이 그 6개월 창을
+        // 벗어나는 순간(예: 3월 이후) 8월 칩 자체가 안 나와 항상 실패한다 — 실제로
+        // 2026-09 에 이 자리에서 겪었다. 그래서 여기만 이번 달/다음 달을 계산해서 쓴다.
+        LocalDate monthAFirst = LocalDate.now().withDayOfMonth(1);
+        LocalDate monthBFirst = monthAFirst.plusMonths(1);
+        LocalDateTime monthASat = firstDayOfWeekOnOrAfter(monthAFirst, DayOfWeek.SATURDAY).atTime(19, 0);
+        LocalDateTime monthAMon = firstDayOfWeekOnOrAfter(monthAFirst, DayOfWeek.MONDAY).atTime(19, 0);
+        LocalDateTime monthBSat = firstDayOfWeekOnOrAfter(monthBFirst, DayOfWeek.SATURDAY).atTime(19, 0);
+
+        createPerformance("이번달주말있음", monthASat, monthBSat);
+        createPerformance("다음달주말만", monthAMon, monthBSat);
 
         var months = listService.search(null, null, "weekend", null, "ALL", null, null, null, null, 0).months();
 
-        long aug = months.stream().filter(o -> "8".equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();
-        long sep = months.stream().filter(o -> "9".equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();
+        String monthAValue = String.valueOf(monthAFirst.getMonthValue());
+        String monthBValue = String.valueOf(monthBFirst.getMonthValue());
+        long a = months.stream().filter(o -> monthAValue.equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();
+        long b = months.stream().filter(o -> monthBValue.equals(o.value())).mapToLong(PerformanceListService.Option::count).sum();
 
-        assertThat(aug).as("8월 주말 회차가 있는 공연은 1건").isEqualTo(1);
-        assertThat(sep).as("9월 주말 회차가 있는 공연은 2건").isEqualTo(2);
+        assertThat(a).as("이번 달 주말 회차가 있는 공연은 1건").isEqualTo(1);
+        assertThat(b).as("다음 달 주말 회차가 있는 공연은 2건").isEqualTo(2);
+    }
+
+    /** monthFirst 가 속한 달 안에서 dow 요일인 첫 날짜. 달의 첫 7일 안에 항상 있다. */
+    private LocalDate firstDayOfWeekOnOrAfter(LocalDate monthFirst, DayOfWeek dow) {
+        LocalDate d = monthFirst;
+        while (d.getDayOfWeek() != dow) {
+            d = d.plusDays(1);
+        }
+        return d;
     }
 }
