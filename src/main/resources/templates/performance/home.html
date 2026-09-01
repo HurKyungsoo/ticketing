@@ -155,14 +155,18 @@
                  th:attr="hidden=${gStat.index == 0} ? null : true">
                 <a class="editorial-card" th:each="p : ${g}" th:href="@{/performances/{id}(id=${p.id})}"
                    th:with="avail=${p.availability(home.today)}">
-                    <div class="ec-image">
+                    <div class="ec-image" th:classappend="${p.posterUrl == null} ? 'no-img'">
                         <!-- 포스터는 세로가 대부분이라 16:10 프레임을 못 채운다 — 남는 좌우는
                              같은 이미지를 흐리게 확대한 배경으로 채운다(아래 img 는 잘리지
                              않게 object-fit:contain). -->
                         <div th:if="${p.posterUrl != null}" class="ec-backdrop"
                              th:style="'background-image:url(' + @{/img/poster(u=${p.posterUrl})} + ')'"></div>
                         <img th:if="${p.posterUrl != null}" th:src="@{/img/poster(u=${p.posterUrl})}" th:alt="${p.title}" loading="lazy"
-                             onerror="this.remove()">
+                             onerror="this.remove(); this.parentElement.classList.add('no-img')">
+                        <!-- 포스터가 아예 없거나(위 no-img) 주소가 죽어서 img 가 onerror 로 떨어져
+                             나간 경우의 대체 표시. 목록 카드(.posterfallback)와 같은 발상 — 빈
+                             #1a1b1e 상자만 덩그러니 남기지 않고 제목 첫 글자를 큼직하게 보여준다. -->
+                        <div class="ec-fallback" th:text="${#strings.substring(p.title, 0, 1)}">공</div>
                         <!-- 예매 가능 여부. 카드형 목록의 card-avail 과 같은 판단, 다크 판 위라
                              별도 클래스로 색만 다시 정한다(ec-next 가 m-date 와 갈리는 것과 같다). -->
                         <span class="ec-avail" th:if="${avail != null}" th:classappend="${avail.cssClass}"
