@@ -81,8 +81,14 @@ if [ "$OK" != "1" ]; then
   printf '\n'
   say "실패 — 이전 버전으로 되돌린다"
   "${SSH[@]}" "test -f $REMOTE_DIR/app.jar.prev && mv $REMOTE_DIR/app.jar.prev $REMOTE_DIR/app.jar && sudo systemctl restart $SERVICE && echo '  롤백 완료' || echo '  되돌릴 이전 jar 이 없다'"
-  printf '\n최근 로그:\n'
-  "${SSH[@]}" "sudo journalctl -u $SERVICE --no-pager -n 30 | grep -aE 'ERROR|Caused by|APPLICATION FAILED' | tail -10" || true
+  # GitHub Actions 로그는 공개 저장소에서 누구나 본다. 앱 오류 로그에는 DB 주소 같은 내부 정보가
+  # 섞일 수 있어 거기서는 출력하지 않는다.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    printf '\n오류 로그는 서버에서 확인하세요: sudo journalctl -u %s -n 100\n' "$SERVICE"
+  else
+    printf '\n최근 로그:\n'
+    "${SSH[@]}" "sudo journalctl -u $SERVICE --no-pager -n 30 | grep -aE 'ERROR|Caused by|APPLICATION FAILED' | tail -10" || true
+  fi
   die "배포 실패 (롤백함)"
 fi
 
