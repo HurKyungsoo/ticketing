@@ -8,6 +8,7 @@ import com.portfolio.ticket.domain.SourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -52,11 +53,14 @@ public class KopisPerformanceClient {
     private static final DateTimeFormatter DATE_PARAM_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
 
     /**
-     * 상세 API 를 지연 없이 연속 호출하면 KOPIS WAF 가 봇 트래픽으로 보고 전건을
-     * "400 Request Blocked" 로 막는다 (정상/오류 KOPIS XML 이 아니라 WAF 자체 HTML 응답).
-     * 건별 호출 사이에 최소한의 지연을 둬서 이를 피한다.
+     * 호출이 몰리면 KOPIS WAF 가 "400 Request Blocked" 로 막는다 (KOPIS XML 이 아니라 WAF 자체 HTML 응답).
+     * 운영 서버 실측: 상세+시설을 초당 약 6건 호출하면 3초 안에 막혔다. 간격만으로 완전히 피할 수는 없어서,
+     * 600ms 간격에서도 호출이 누적되면 60건 중 13건이 막혔다. 다만 13건 모두 같은 호출을 5~10초 뒤 다시
+     * 보내면 통과했다. 그래서 간격은 몰림을 줄이는 용도로 두고, 막히면 기다렸다 재시도하는 쪽을 핵심으로 삼는다.
+     * 막힌 채 바로 다음 호출로 넘어가던 이전 방식은 그 회차의 상세 호출이 거의 전부 실패했다.
      */
-    private static final long DETAIL_CALL_DELAY_MS = 150;
+    private static final String WAF_BLOCK_MARKER = "Request Blocked";
+    private static final int MAX_BLOCK_RETRIES = 3;
 
     private static final Pattern TIME_PATTERN = Pattern.compile("(\\d{1,2}):(\\d{2})");
     private static final Map<Character, DayOfWeek> DAY_CHAR = Map.of(
@@ -86,31 +90,62 @@ public class KopisPerformanceClient {
     /** 시설/홀 ID -> 시설 정보. 앱 기동 내내 유지 — 같은 공연장이 배치마다 계속 재등장하므로 유효하다. */
     private final Map<String, FacilityInfo> facilityCache = new ConcurrentHashMap<>();
 
+    private long lastCallNanos;
+
     /**
      * @param afterDate 이 날짜 이후 등록/수정된 항목만 받는다(증분 수집). null 이면 전체.
      *                  목록 1건마다 상세를 또 호출하는 구조라, 증분이면 상세 호출 수가 그만큼 줄어든다.
+     * @throws KopisFetchException 목록을 받지 못했거나 WAF 차단이 풀리지 않았을 때.
+     *         빈 목록은 "받을 게 없음"만 뜻한다 — 실패까지 빈 목록으로 돌려주면 수집이 성공으로 기록되어
+     *         증분 기준일이 앞으로 가고, 그 구간의 공연을 영영 놓친다.
      */
     public List<ExternalPerformance> fetchPage(int pageNo, LocalDate afterDate) {
         List<ExternalPerformance> basics;
         try {
-            byte[] body = publicDataRestClient.get().uri(listUri(pageNo, afterDate)).retrieve().body(byte[].class);
-            basics = parseList(body);
+            basics = parseList(call(listUri(pageNo, afterDate)));
+        } catch (KopisFetchException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("KOPIS 목록 API 호출 실패. pageNo={}, msg={}", pageNo, e.getMessage());
-            return List.of();
+            throw new KopisFetchException("KOPIS 목록 API 호출 실패. pageNo=" + pageNo + ", msg=" + e.getMessage(), e);
         }
 
         List<ExternalPerformance> result = new ArrayList<>(basics.size());
         for (ExternalPerformance basic : basics) {
             result.add(enrichWithDetail(basic));
-            sleepBetweenDetailCalls();
         }
         return result;
     }
 
-    private void sleepBetweenDetailCalls() {
+    /** 모든 KOPIS 호출이 지나는 길. 호출 간격을 지키고, WAF 에 막히면 풀릴 때까지 기다렸다 다시 시도한다. */
+    private byte[] call(URI uri) {
+        for (int retry = 0; ; retry++) {
+            waitForCallSlot();
+            try {
+                return publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
+            } catch (HttpClientErrorException e) {
+                if (!e.getResponseBodyAsString().contains(WAF_BLOCK_MARKER)) {
+                    throw e;
+                }
+                if (retry >= MAX_BLOCK_RETRIES) {
+                    throw new KopisFetchException("KOPIS WAF 차단이 풀리지 않아 수집을 중단합니다.", e);
+                }
+                log.warn("KOPIS WAF 에 막혔습니다. {}ms 후 다시 시도합니다.", properties.getKopisBlockWaitMs());
+                sleep(properties.getKopisBlockWaitMs());
+            }
+        }
+    }
+
+    private synchronized void waitForCallSlot() {
+        long elapsedMs = (System.nanoTime() - lastCallNanos) / 1_000_000;
+        if (lastCallNanos != 0 && elapsedMs < properties.getKopisMinCallIntervalMs()) {
+            sleep(properties.getKopisMinCallIntervalMs() - elapsedMs);
+        }
+        lastCallNanos = System.nanoTime();
+    }
+
+    private void sleep(long millis) {
         try {
-            Thread.sleep(DETAIL_CALL_DELAY_MS);
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -144,7 +179,9 @@ public class KopisPerformanceClient {
         }
 
         List<JsonNode> itemNodes = items.isArray() ? toList(items) : List.of(items);
-        if (isErrorResponse(itemNodes)) return List.of();
+        if (isErrorResponse(itemNodes)) {
+            throw new KopisFetchException("KOPIS 목록 API 가 오류를 응답했습니다.");
+        }
 
         List<ExternalPerformance> result = new ArrayList<>();
         for (JsonNode item : itemNodes) {
@@ -193,8 +230,9 @@ public class KopisPerformanceClient {
                 .toUri();
 
         try {
-            byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
-            return applyDetail(basic, body);
+            return applyDetail(basic, call(uri));
+        } catch (KopisFetchException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("KOPIS 상세 API 호출 실패. mt20id={}, msg={}", mt20id, e.getMessage());
             return basic;
@@ -267,7 +305,7 @@ public class KopisPerformanceClient {
     /**
      * 상세 응답의 mt10id(시설)/mt13id(홀)로 공연시설상세정보를 조회한다.
      * KOPIS 목록/상세에는 좌표가 없고 이 응답에만 la/lo/adres 가 있어서, 좌석수와 함께 여기서 같이 가져온다.
-     * 캐시에 없을 때만 새로 호출하고, 그때만 호출 간 지연을 적용한다 (캐시 히트는 지연 없이 즉시 반환).
+     * 캐시에 없을 때만 새로 호출한다 (캐시 히트는지연 없이 즉시 반환).
      * 실패하면 null — 호출부가 기존 로직(venue-layouts.yml 또는 기본값 200석, area 주소)으로 대체한다.
      */
     private FacilityInfo resolveFacility(JsonNode item) {
@@ -282,7 +320,6 @@ public class KopisPerformanceClient {
         FacilityInfo facility = fetchFacility(mt10id, mt13id);
         if (facility != null) {
             facilityCache.put(cacheKey, facility);
-            sleepBetweenDetailCalls();
         }
         return facility;
     }
@@ -294,8 +331,9 @@ public class KopisPerformanceClient {
                 .toUri();
 
         try {
-            byte[] body = publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
-            return parseFacility(body, mt13id);
+            return parseFacility(call(uri), mt13id);
+        } catch (KopisFetchException e) {
+            throw e;
         } catch (Exception e) {
             log.debug("KOPIS 공연시설 조회 실패. mt10id={}, msg={}", mt10id, e.getMessage());
             return null;

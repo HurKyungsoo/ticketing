@@ -161,6 +161,9 @@ publicdata:
   kopis-url: http://www.kopis.or.kr/openApi/restful/pblprfr
   # 공연시설상세정보(좌석수 등). 상세는 이 URL 뒤에 /{mt10id} 를 붙여서 호출한다.
   kopis-facility-url: http://www.kopis.or.kr/openApi/restful/prfplc
+  # 호출이 몰리면 KOPIS 방화벽에 막힌다. 간격 근거는 KopisPerformanceClient 주석 참고.
+  kopis-min-call-interval-ms: 600
+  kopis-block-wait-ms: 15000
 
 # 토스페이먼츠 테스트 키 - 절대 커밋하지 말 것
 toss:

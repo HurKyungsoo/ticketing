@@ -26,6 +26,9 @@ public class PerformanceCategoryResolver {
         KEYWORD_TO_CATEGORY.put("대중음악", PerformanceCategory.CONCERT);
         KEYWORD_TO_CATEGORY.put("클래식", PerformanceCategory.CLASSIC);
         KEYWORD_TO_CATEGORY.put("국악", PerformanceCategory.TRADITIONAL);
+        // 문화정보의 "음악/콘서트". "서양음악(클래식)"·"한국음악(국악)"이 먼저 잡히도록 두 키워드 뒤에 둔다.
+        KEYWORD_TO_CATEGORY.put("음악", PerformanceCategory.CONCERT);
+        KEYWORD_TO_CATEGORY.put("콘서트", PerformanceCategory.CONCERT);
         KEYWORD_TO_CATEGORY.put("무용", PerformanceCategory.DANCE);
         KEYWORD_TO_CATEGORY.put("서커스", PerformanceCategory.CIRCUS_MAGIC);
         KEYWORD_TO_CATEGORY.put("마술", PerformanceCategory.CIRCUS_MAGIC);
