@@ -358,6 +358,7 @@ SET seat:lock:{seatId} {token} NX PX 3000
 | `performance-url` 을 `http://` 로 두면 api.data.go.kr 이 `https://` 로 301 리다이렉트하는데, `HttpURLConnection` 은 프로토콜이 바뀌는 리다이렉트를 안 따라가서 항상 리다이렉트 HTML만 받고 실패 | `application.yml` 의 `performance-url` 을 `https://` 로, 실제 등록된 End Point(`tn_pubr_public_pblprfr_event_info_api`)로 수정 |
 | 한눈에보는문화정보 API 는 호스트가 이전됐고 정상 응답도 XML 전용인데, 옛 코드는 JSON 을 가정하고 `<` 로 시작하는 응답을 전부 오류로 간주해 조용히 폐기 → CIA- 레코드가 늘 0건 | `culture-url` 을 실제 End Point(`/B553457/cultureinfo/period2`)로 교체, `XmlMapper` 로 파싱 전환. 실제 필드명(`seq`/`title`/`place`/`realmName`/`area`/`sigungu` 등)은 data.go.kr 상세 페이지에 로그인해 Swagger Models 패널을 펼쳐 직접 확인 |
 | 문화정보 응답에 박물관 "상설전시" 류가 섞여 있음 (`startDate` 가 몇 년 전, `endDate` 는 먼 미래) — `createSchedules()` 가 `startDate` 기준 연속 8일치 회차만 만들다 보니 이미 다 지난, 예매 불가능한 회차만 생성됨 | 동기화 단계에서 기간 90일 초과 항목은 상설전시류로 보고 제외. 이미 종료된 공연도 동일하게 제외 |
+| **같은 공연이 목록에 두 번 떴다** — KOPIS `다이브 [대학로]` / 문화정보 `[대학로] 다이브`. 소스마다 `external_id` 체계가 달라 기존 UK 로는 서로를 못 알아본다. 지역 대괄호 위치, 공연장 표기(`링크더스페이스(LINK THE SPACE)` / `… 1관`)도 기관마다 다르다 | `ShowIdentity` 로 **제목(대괄호 위치만 무시, 내용은 비교)·공연장(괄호 병기·관 번호 제거 후 포함 관계)·기간 겹침**을 모두 만족할 때만 같은 공연으로 본다. 소스 순위 KOPIS > 표준데이터 > 문화정보로 한쪽만 남기고, 버리는 쪽의 주소·좌표와 **찜은 옮긴다**. 수집 루프는 더 나은 쪽이 이미 있으면 새로 안 만들고, KOPIS 가 마지막에 도는 탓에 먼저 들어온 낮은 쪽은 배치 끝의 멱등 정리(`mergeCrossSourceDuplicates`, `POST /api/admin/performances/dedupe`)가 걷어낸다. **오탐이 더 위험해서 정확도 쪽에 맞췄다** — `제1회 ST-NOVA [일반 패키지]` / `[서울연극협회원 패키지]` 처럼 괄호 내용이 다른 상품, 같은 제목의 투어(공연장 다름), 같은 소스 안의 중복은 합치지 않는다. 예매가 걸린 쪽은 남긴다 |
 | 위 수정 후에도 **개발계 카탈로그의 74.9%(271건 중 203건)가 예매 가능한 회차 0개** 였다. 원인은 따로 있었다 — 회차는 `startDate` 기준 최대 8일치로 딱 한 번(공연 최초 수집 시)만 만들어지고, 이후 동기화(`updateFromExternal` 분기)는 메타데이터만 갱신할 뿐 회차를 더 만들지 않는다. 시작일이 오늘보다 며칠만 이르거나 수집이 늦어지면 그 8일이 통째로 지나가 버리고, 공연은 몇 달을 더 하는데도 예매창은 영구히 닫힌 채로 남았다 | 두 가지로 나눠 고쳤다. ① 회차 생성 시작점을 `startDate` 가 아니라 `max(오늘, startDate)` 로 바꾸고 8일 상한을 없애 **종료일까지 한 번에** 다 만든다(기간이 이미 90일 이내로 걸러져 있어 무한정 늘어나지 않는다). ② 기존 공연에도 매 동기화마다 `topUpSchedules()` 를 태워, 마지막 회차 다음 날부터 종료일까지 **빠진 만큼만** 추가한다 — 과거·판매 중인 회차는 그대로 두고 유니크 제약(`uk_schedule`)과도 충돌하지 않는다. 이 ②가 핵심이다: 다음 정기 동기화 한 번이면 이미 깨져 있던 203건도 코드 배포만으로 자동 복구되고, 별도 백필 배치가 필요 없다. `PerformanceScheduleSyncTest` 4건(신규 생성이 8일로 안 잘림 · 이미 시작한 공연도 오늘부터 시작 · 기존 공연 보충 · 재동기화 멱등)으로 고정 |
 | 소스 하나(예: 문화정보)가 호출/파싱에 실패해도 다른 소스 동기화가 막히면 안 됨 | `PerformanceSyncScheduler` 가 소스별로 완전히 격리된 함수에서 try-catch, 실패해도 나머지 소스는 계속 진행. `/api/admin/sync` 응답도 소스별로 분리 |
 | KOPIS 목록(pblprfr) 응답에는 회차시간(dtguidance)/등급별가격(pcseguidance)이 없고 상세(pblprfr/{mt20id})에만 있음 | 목록 페이지 1건당 상세를 1회 더 호출. 상세 호출/파싱이 개별 건에서 실패해도 그 건만 목록 정보로 대체하고 나머지는 계속 진행 |
@@ -556,6 +557,7 @@ docker compose up --build
 | GET | `/admin/dashboard?from=&to=` | 관리자 대시보드 (ROLE_ADMIN) - 일자별 매출 / TOP5 / 등급별 비중 |
 | POST | `/api/admin/sync` | 공공데이터 수동 수집. 소스별(`standard`/`culture`) 수신/신규/스킵 건수와 성공 여부를 분리해서 반환 |
 | POST | `/api/admin/performances/purge` | 공연이 아닌 항목(모집 공고) 제거. 멱등이고 예매가 있는 항목은 남긴다 |
+| POST | `/api/admin/performances/dedupe` | 다른 소스로 따로 들어온 같은 공연 합치기. 멱등이고 예매가 있는 항목은 남긴다 |
 | POST | `/api/webhooks/toss` | 토스 결제 상태 웹훅 (가상계좌 입금완료 등 비동기 반영) |
 
 환불 수수료: 10일 전 0% / 7일 전 10% / 3일 전 20% / 1일 전 30% / 당일 취소 불가

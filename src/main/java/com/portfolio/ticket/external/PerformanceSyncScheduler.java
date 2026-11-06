@@ -121,12 +121,16 @@ public class PerformanceSyncScheduler {
         // DB 에 있는 건은 여기서 걷어낸다 (멱등이라 매번 돌려도 안전하다).
         int purged = syncService.purgeNonPerformances();
 
+        // 다른 소스로 따로 들어온 같은 공연을 하나로 합친다. KOPIS 가 마지막에 돌기 때문에
+        // 수집 루프만으로는 먼저 들어온 문화정보·표준데이터 쪽 중복을 못 막는다 (멱등).
+        int merged = syncService.mergeCrossSourceDuplicates();
+
         // 외부 응답과 무관한 안전망. 증분 수집은 원본이 안 바뀐 공연을 다시 내려주지 않으므로
         // 위 세 소스 동기화만으로는 오래 안 건드려진 공연의 회차가 계속 빌 수 있다.
         int staleToppedUp = syncService.topUpStaleSchedules();
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건, 회차 보충 {}건",
-                standard.created(), culture.created(), kopis.created(), purged, staleToppedUp);
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건",
+                standard.created(), culture.created(), kopis.created(), purged, merged, staleToppedUp);
         return new SyncSummary(standard, culture, kopis, afterDate, purged, staleToppedUp);
     }
 

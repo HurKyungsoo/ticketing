@@ -141,6 +141,16 @@ public class ReservationApiController {
     }
 
     /**
+     * 다른 소스로 따로 들어온 같은 공연을 지금 바로 합친다. purge 와 같은 이유로 따로 열어둔다 —
+     * 규칙을 바꾼 뒤 이미 쌓인 데이터에 반영하자고 수집 배치 전체를 돌릴 필요는 없다.
+     * 예매가 걸린 쪽은 남긴다.
+     */
+    @PostMapping("/admin/performances/dedupe")
+    public ResponseEntity<?> mergeCrossSourceDuplicates() {
+        return ResponseEntity.ok(Map.of("merged", syncService.mergeCrossSourceDuplicates()));
+    }
+
+    /**
      * 기존 회차의 좌석을 현재 생성 규칙으로 다시 만든다. 규칙을 바꿔도 이미 쌓인 데이터에는
      * 반영되지 않으므로 필요할 때 수동으로 호출한다. 예매가 있는 회차는 건너뛴다.
      */
