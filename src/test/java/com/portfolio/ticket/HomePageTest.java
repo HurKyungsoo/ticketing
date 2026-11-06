@@ -122,6 +122,27 @@ class HomePageTest {
         assertThat(titles("upcoming")).containsExactly("다가오는회차", "지난회차뿐");
     }
 
+    /** 전시·체험이 많은 "기타"가 앞을 채우면 목록 첫 화면에 공연이 보이지 않는다. */
+    @DisplayName("추천순에서 기타 장르는 먼저 개막했어도 공연 뒤로 간다")
+    @Test
+    void recommendedPushesEtcBehindPerformances() {
+        performanceRepository.save(Performance.builder()
+                .externalId("SORT-ETC-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title("먼저개막한전시")
+                .category(PerformanceCategory.ETC)
+                .venue("테스트관")
+                .region("서울특별시")
+                .startDate(LocalDate.now().minusDays(90))
+                .endDate(LocalDate.now().plusDays(30))
+                .totalSeatCount(100)
+                .basePrice(10_000)
+                .build());
+        withSchedule("나중에개막한공연", LocalDate.now().minusDays(1), LocalDateTime.now().plusDays(2));
+
+        assertThat(titles("recommended")).containsExactly("나중에개막한공연", "먼저개막한전시");
+    }
+
     private List<String> titles(String sort) {
         return listService.search(null, null, null, null, "ongoing", null, null, null, sort, 0)
                 .performances().stream().map(PerformanceListRow::getTitle).toList();
