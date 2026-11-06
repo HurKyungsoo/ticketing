@@ -117,6 +117,11 @@ mybatis:
 # 늦추고, 그 안에 끝나면 즉시 종료한다.
 server:
   shutdown: graceful
+  servlet:
+    session:
+      # 쿠키로만 세션을 유지한다. 기본값은 첫 응답의 링크에 ;jsessionid=... 를 붙여서,
+      # 크롤러가 그 주소를 수집하고 링크를 공유하면 세션 ID 도 함께 넘어간다.
+      tracking-modes: cookie
 
 # 컨테이너/로드밸런서 헬스체크용. health 만 노출하고 나머지 actuator 엔드포인트(env, beans 등)는
 # 열지 않는다 — 내부 설정·의존성 버전이 그대로 드러나는 정보 노출이다.
