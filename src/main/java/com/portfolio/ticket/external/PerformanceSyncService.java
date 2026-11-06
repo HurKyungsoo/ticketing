@@ -106,6 +106,14 @@ public class PerformanceSyncService {
                     .orElse(null);
 
             if (performance == null) {
+                // 다른 소스로 이미 들어온 같은 공연 — 더 풍부한(같거나 높은 순위) 쪽이 있으면 새로 만들지
+                // 않고, 비어 있는 주소·좌표만 보태 준다. 낮은 순위 쪽만 있으면 새로 만들고, 낮은 쪽은
+                // 배치 끝의 mergeCrossSourceDuplicates 가 정리한다.
+                Performance better = findBetterDuplicate(external);
+                if (better != null) {
+                    better.fillMissingLocation(external.getAddress(), external.getLatitude(), external.getLongitude());
+                    continue;
+                }
                 performance = performanceRepository.save(toEntity(external));
                 createSchedules(performance, external);
                 saved++;
@@ -158,28 +166,120 @@ public class PerformanceSyncService {
                         performance.getId(), performance.getTitle());
                 continue;
             }
-            // 찜도 공연을 FK 로 참조한다. 찜은 사용자가 만든 기록이지만 공연 자체가 사라지면
-            // 가리킬 대상이 없다 — 금전·입장 권리가 걸린 예매와 달라서 함께 지운다.
-            wishlistRepository.deleteByPerformanceId(performance.getId());
-            // 알림도 같은 이유로 공연을 FK 로 참조한다. 남겨두면 공연 삭제가 FK 제약에 막힌다.
-            notificationRepository.deleteByPerformanceId(performance.getId());
-            // 관람평도 마찬가지다. 그 공연이 사라지면 관람평이 가리킬 대상이 없다.
-            reviewRepository.deleteByPerformanceId(performance.getId());
-
-            // 좌석·구독은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지
-            // 않는다. 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로
-            // 함께 지워진다). 취소표 알림 구독도 같은 이유로 함께 정리한다 — 안 지우면
-            // schedule_id FK 가 회차 삭제를 막는다.
-            for (PerformanceSchedule schedule : scheduleRepository.findByPerformanceIdOrderByShowAtAsc(performance.getId())) {
-                seatRepository.deleteAll(
-                        seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(schedule.getId()));
-                restockSubscriptionRepository.deleteByScheduleId(schedule.getId());
-            }
-            performanceRepository.delete(performance);
+            deleteWithDependents(performance);
             log.info("공연이 아닌 항목을 제거했다. title={}", performance.getTitle());
             removed++;
         }
         return removed;
+    }
+
+    /** 공연을 지운다. 공연·회차를 FK 로 참조하는 사용자 기록(찜·알림·관람평·구독)과 좌석을 먼저 정리한다. */
+    private void deleteWithDependents(Performance performance) {
+        // 찜도 공연을 FK 로 참조한다. 찜은 사용자가 만든 기록이지만 공연 자체가 사라지면
+        // 가리킬 대상이 없다 — 금전·입장 권리가 걸린 예매와 달라서 함께 지운다.
+        wishlistRepository.deleteByPerformanceId(performance.getId());
+        // 알림도 같은 이유로 공연을 FK 로 참조한다. 남겨두면 공연 삭제가 FK 제약에 막힌다.
+        notificationRepository.deleteByPerformanceId(performance.getId());
+        // 관람평도 마찬가지다. 그 공연이 사라지면 관람평이 가리킬 대상이 없다.
+        reviewRepository.deleteByPerformanceId(performance.getId());
+
+        // 좌석·구독은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지
+        // 않는다. 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로
+        // 함께 지워진다). 취소표 알림 구독도 같은 이유로 함께 정리한다 — 안 지우면
+        // schedule_id FK 가 회차 삭제를 막는다.
+        for (PerformanceSchedule schedule : scheduleRepository.findByPerformanceIdOrderByShowAtAsc(performance.getId())) {
+            seatRepository.deleteAll(
+                    seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(schedule.getId()));
+            restockSubscriptionRepository.deleteByScheduleId(schedule.getId());
+        }
+        performanceRepository.delete(performance);
+    }
+
+    /**
+     * 다른 소스에서 들어온 <b>같은 공연</b>을 하나로 합친다 (멱등 — 매 배치 끝에 돈다).
+     *
+     * <p>같은 공연이 KOPIS 와 문화정보에서 따로 들어와 목록에 두 번 떴다
+     * ({@code 다이브 [대학로]} / {@code [대학로] 다이브}). 수집 루프의 중복 검사는 "더 나은 쪽이
+     * 먼저 있을 때"만 막는다 — 소스는 표준데이터 → 문화정보 → KOPIS 순으로 돌기 때문에 KOPIS 가
+     * 나중에 들어오면 낮은 쪽이 이미 DB 에 있다. 그건 여기서 걷어낸다.
+     *
+     * <p>남기는 쪽은 소스 순위(KOPIS > 표준데이터 > 문화정보)가 높은 쪽이고, 지우는 쪽의 주소·좌표를
+     * 비어 있으면 옮겨 받는다. <b>예매가 걸린 쪽은 지우지 않는다</b> — 표를 산 사람에게 예매 내역은
+     * 영수증이다(purgeNonPerformances 와 같은 원칙). 같은 소스 안의 중복은 건드리지 않는다
+     * — 기관이 일부러 나눠 올린 상품(일반/회원 패키지 등)일 수 있다.
+     */
+    @Transactional
+    public int mergeCrossSourceDuplicates() {
+        List<Performance> live = performanceRepository.findByEndDateGreaterThanEqual(LocalDate.now()).stream()
+                .filter(p -> ShowIdentity.rank(p.getSourceType()) > 0)
+                .toList();
+
+        java.util.Map<String, List<Performance>> byTitle = new java.util.HashMap<>();
+        for (Performance p : live) {
+            String key = ShowIdentity.titleKey(p.getTitle());
+            if (!key.isEmpty()) byTitle.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(p);
+        }
+
+        int removed = 0;
+        for (List<Performance> group : byTitle.values()) {
+            if (group.size() < 2) continue;
+            // 순위 높은 것 → 먼저 들어온 것(id 작은 것) 순. 앞에서부터 남길 후보가 된다.
+            List<Performance> sorted = group.stream()
+                    .sorted(java.util.Comparator.comparingInt((Performance p) -> -ShowIdentity.rank(p.getSourceType()))
+                            .thenComparing(Performance::getId))
+                    .toList();
+            java.util.Set<Long> gone = new java.util.HashSet<>();
+            for (Performance keeper : sorted) {
+                if (gone.contains(keeper.getId())) continue;
+                ShowIdentity keep = identityOf(keeper);
+                for (Performance other : sorted) {
+                    if (other == keeper || gone.contains(other.getId())) continue;
+                    if (other.getSourceType() == keeper.getSourceType()) continue;
+                    if (ShowIdentity.rank(other.getSourceType()) > ShowIdentity.rank(keeper.getSourceType())) continue;
+                    if (!keep.sameShowAs(identityOf(other))) continue;
+                    if (reservationRepository.existsByPerformanceId(other.getId())) {
+                        log.warn("다른 소스의 같은 공연이지만 예매가 있어 남긴다. keep={}, dup={}, title={}",
+                                keeper.getId(), other.getId(), other.getTitle());
+                        continue;
+                    }
+                    keeper.fillMissingLocation(other.getAddress(), other.getLatitude(), other.getLongitude());
+                    moveWishlists(other, keeper);
+                    deleteWithDependents(other);
+                    gone.add(other.getId());
+                    log.info("다른 소스의 같은 공연을 합쳤다. keep={}({}), removed={}({}), title={}",
+                            keeper.getId(), keeper.getSourceType(), other.getId(), other.getSourceType(), other.getTitle());
+                    removed++;
+                }
+            }
+        }
+        return removed;
+    }
+
+    /** 지우는 쪽에 걸린 찜을 남기는 쪽으로 옮긴다 — 같은 공연이니 사용자의 "나중에 볼까"는 그대로 유효하다 */
+    private void moveWishlists(Performance from, Performance to) {
+        for (com.portfolio.ticket.domain.Wishlist w : wishlistRepository.findByPerformanceId(from.getId())) {
+            if (wishlistRepository.existsByMemberIdAndPerformanceId(w.getMemberId(), to.getId())) continue;
+            wishlistRepository.save(com.portfolio.ticket.domain.Wishlist.builder()
+                    .memberId(w.getMemberId()).performance(to).createdAt(w.getCreatedAt()).build());
+        }
+    }
+
+    /** 이번에 들어온 항목과 같은 공연이 다른 소스로 이미 있고, 그쪽이 같거나 더 풍부하면 그것 */
+    private Performance findBetterDuplicate(ExternalPerformance e) {
+        if (e.getStartDate() == null || e.getEndDate() == null) return null;
+        ShowIdentity incoming = ShowIdentity.of(e.getTitle(), e.getVenue(), e.getStartDate(), e.getEndDate());
+        if (incoming.titleKey().isEmpty()) return null;
+        int incomingRank = ShowIdentity.rank(e.getSourceType());
+        for (Performance p : performanceRepository.findOverlapping(e.getStartDate(), e.getEndDate())) {
+            if (p.getSourceType() == e.getSourceType()) continue;
+            if (ShowIdentity.rank(p.getSourceType()) < incomingRank || ShowIdentity.rank(p.getSourceType()) == 0) continue;
+            if (identityOf(p).sameShowAs(incoming)) return p;
+        }
+        return null;
+    }
+
+    private static ShowIdentity identityOf(Performance p) {
+        return ShowIdentity.of(p.getTitle(), p.getVenue(), p.getStartDate(), p.getEndDate());
     }
 
     /**

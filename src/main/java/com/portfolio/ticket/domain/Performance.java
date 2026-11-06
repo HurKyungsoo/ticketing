@@ -139,7 +139,8 @@ public class Performance {
         this.title = title;
         this.genre = genre;
         this.venue = venue;
-        this.address = address;
+        // 주소가 비어 오는 소스가 있다(KOPIS 일부는 "-"). 다른 소스로 채워 둔 주소를 지우지 않는다.
+        if (hasAddress(address)) this.address = address;
         // 홀/시설 ID 는 KOPIS 상세에서만 온다. 다른 소스로 갱신될 때 지워지지 않게 한다.
         if (venueFacilityId != null) this.venueFacilityId = venueFacilityId;
         if (venueHallId != null) this.venueHallId = venueHallId;
@@ -162,6 +163,20 @@ public class Performance {
         // 같은 컬렉션 인스턴스에 그대로 반영되어 orphan 행이 지워지고 새 행이 들어간다.
         this.bookingLinks.clear();
         if (bookingLinks != null) this.bookingLinks.addAll(bookingLinks);
+    }
+
+    /**
+     * 같은 공연의 다른 소스 항목에서 비어 있는 위치 정보만 채운다 — 중복을 합칠 때 남기는 쪽(대개
+     * KOPIS)이 주소가 "-" 인 경우가 있어, 버리는 쪽(문화정보 등)의 주소·좌표를 옮겨 받는다.
+     */
+    public void fillMissingLocation(String address, Double latitude, Double longitude) {
+        if (!hasAddress(this.address) && hasAddress(address)) this.address = address;
+        if (this.latitude == null && latitude != null) this.latitude = latitude;
+        if (this.longitude == null && longitude != null) this.longitude = longitude;
+    }
+
+    private static boolean hasAddress(String a) {
+        return a != null && !a.isBlank() && !"-".equals(a.trim());
     }
 
     public void addSchedule(PerformanceSchedule schedule) {

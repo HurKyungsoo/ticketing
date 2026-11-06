@@ -36,4 +36,11 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
             )
             """)
     List<Long> findIdsWithNoFutureSchedule(@Param("today") LocalDate today, @Param("now") LocalDateTime now);
+
+    /** 기간이 [start, end] 와 겹치는 공연 — 다른 소스의 같은 공연(중복) 후보를 좁힌다 */
+    @Query("select p from Performance p where p.startDate <= :end and p.endDate >= :start")
+    List<Performance> findOverlapping(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    /** 아직 안 끝난 공연 — 중복 정리 대상 */
+    List<Performance> findByEndDateGreaterThanEqual(LocalDate today);
 }
