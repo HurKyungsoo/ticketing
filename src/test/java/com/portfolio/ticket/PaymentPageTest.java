@@ -118,6 +118,7 @@ class PaymentPageTest {
         mockMvc.perform(get("/reservations/{no}/payment", no).with(user(owner)))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("payable", true))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("실제 결제가 아닌 테스트 결제입니다")))
                 .andExpect(result -> {
                     long remaining = (long) result.getModelAndView().getModel().get("remainingSeconds");
                     if (remaining <= 0 || remaining > 9 * 60) {

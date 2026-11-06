@@ -5989,3 +5989,67 @@ body.page-compare .cmp-cta--muted {
 body.page-compare .cmp-cta--muted:hover { background: rgba(17, 18, 20, .04); }
 body.page-compare .cmp-foot { margin: 24px 0 0; font-size: 14px; }
 body.page-compare .cmp-foot a { color: var(--brass-ink); border-bottom: 1px solid currentColor; }
+
+/* ── 테스트 결제 안내 · 푸터 · 개인정보 안내 ─────────────────────────── */
+/* 결제 화면과 결제 완료 화면의 테스트 결제 안내 */
+.test-payment-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(143, 106, 21, 0.35);
+  border-radius: 10px;
+  background: rgba(233, 180, 76, 0.16);
+  color: #2A2925;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+/* 결제 패널은 어두운 배경이라 글자색을 밝게 바꾼다. 그대로 두면 글자가 보이지 않는다. */
+.paypanel .test-payment-notice {
+  border-color: rgba(233, 180, 76, 0.5);
+  background: rgba(233, 180, 76, 0.12);
+  color: var(--paper);
+}
+
+.site-footer {
+  border-top: 1px solid rgba(17, 18, 20, 0.12);
+  background: #F1EDE4;
+  /* 내용이 짧은 화면에서 푸터 아래가 비어 떠 보이지 않게, 같은 색을 화면 끝까지 칠한다. 레이아웃은 그대로다. */
+  box-shadow: 0 100vh 0 100vh #F1EDE4;
+  color: #55524C;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.site-footer-inner {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 24px 40px;
+}
+.site-footer-about strong { color: #111214; font-size: 15px; }
+.site-footer-about p { margin: 6px 0 0; max-width: 620px; }
+.site-footer-links { display: flex; flex: none; flex-direction: column; gap: 8px; }
+.site-footer-links a { color: #111214; text-decoration: underline; text-underline-offset: 3px; }
+
+/* 좁은 화면의 공연 상세는 예매 바가 하단에 고정되어, 그 높이만큼 비워야 푸터가 가려지지 않는다. */
+@media (max-width: 860px) {
+  .page-detail .site-footer { padding-bottom: 76px; }
+}
+@media (max-width: 640px) {
+  .site-footer-inner { flex-direction: column; gap: 18px; padding: 28px 20px 32px; }
+}
+
+.signup-privacy { margin: 4px 0 14px; color: #55524C; font-size: 13px; line-height: 1.6; }
+.signup-privacy a { color: var(--brass-ink); text-decoration: underline; }
+
+.infodoc { max-width: 720px; margin: 0 auto; color: #2A2925; line-height: 1.75; }
+.infodoc h2 { margin: 0 0 12px; color: #111214; font-size: 26px; }
+.infodoc h3 { margin: 30px 0 8px; color: #111214; font-size: 16px; }
+.infodoc p, .infodoc ul { margin: 0 0 8px; }
+.infodoc ul { padding-left: 20px; }
+.infodoc a { color: var(--brass-ink); text-decoration: underline; }
+.infodoc-lead {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(233, 180, 76, 0.16);
+}

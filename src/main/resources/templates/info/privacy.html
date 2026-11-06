@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>개인정보 안내 - 객석</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <th:block th:replace="~{fragment/head :: favicons}"></th:block>
+</head>
+<body class="page-info tone-light">
+<div class="wrap">
+    <header th:replace="~{fragment/header :: masthead(tag='개인정보 안내', showAuthNav=true)}"></header>
+
+    <article class="infodoc">
+        <h2>개인정보 안내</h2>
+        <p class="infodoc-lead">
+            객석은 포트폴리오 프로젝트입니다. 실제 예매와 결제가 이뤄지지 않으므로
+            <strong>평소 쓰는 비밀번호나 실제 결제 정보를 입력하지 마세요.</strong>
+        </p>
+
+        <h3>수집하는 정보</h3>
+        <ul>
+            <li>회원가입: 아이디, 비밀번호(암호화해 저장), 닉네임, 이메일</li>
+            <li>카카오·네이버 로그인: 해당 서비스의 회원 식별값과 닉네임</li>
+            <li>이용 내역: 예매, 찜, 관람평, 저장한 검색, 알림</li>
+            <li>접속 기록: 서버 로그에 남는 IP 주소 등</li>
+        </ul>
+
+        <h3>이용 목적</h3>
+        <ul>
+            <li>로그인과 비밀번호 재설정</li>
+            <li>예매, 찜, 알림 등 사이트 기능 제공</li>
+            <li>오류 확인과 사이트 운영</li>
+        </ul>
+
+        <h3>브라우저에 저장하는 정보</h3>
+        <p>로그인 유지에 세션 쿠키를 씁니다. 최근 본 공연과 비교함은 이용자의 브라우저에만 저장합니다.</p>
+
+        <h3>외부 서비스</h3>
+        <ul>
+            <li>AWS: 서버와 데이터베이스 운영</li>
+            <li>Cloudflare: 접속 중계와 보안</li>
+            <li>토스페이먼츠: 테스트 모드 결제. 실제 대금이 청구되지 않습니다.</li>
+            <li>카카오·네이버: 소셜 로그인, 공유, 지도</li>
+        </ul>
+
+        <h3>보관과 삭제</h3>
+        <p>
+            회원 탈퇴 기능은 아직 없습니다. 삭제를 원하시면 아래 GitHub 저장소로 요청해 주세요.
+            이슈는 공개되므로 개인정보를 적지 말고 아이디만 알려 주세요. 프로젝트 운영을 마치면 데이터를 함께 삭제합니다.
+        </p>
+
+        <h3>문의</h3>
+        <p><a href="https://github.com/HurKyungsoo/ticketing/issues" target="_blank" rel="noopener noreferrer">GitHub 이슈</a></p>
+    </article>
+</div>
+<footer th:replace="~{fragment/site :: footer}"></footer>
+</body>
+</html>
