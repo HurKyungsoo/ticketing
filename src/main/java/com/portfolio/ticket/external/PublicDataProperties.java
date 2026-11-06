@@ -21,4 +21,8 @@ public class PublicDataProperties {
     private String kopisUrl;
     /** 공연시설상세정보(좌석수 등). /{mt10id} 를 붙여서 호출한다. */
     private String kopisFacilityUrl;
+    /** KOPIS 호출 사이의 최소 간격. 상세·시설·목록 호출을 모두 합쳐 적용한다. */
+    private long kopisMinCallIntervalMs = 600;
+    /** KOPIS 방화벽에 막혔을 때 다시 시도하기 전 기다리는 시간. */
+    private long kopisBlockWaitMs = 15_000;
 }
