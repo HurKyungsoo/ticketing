@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    사이트 공통 푸터. 모델 값에 기대지 않는다 — 에러 페이지처럼
+    컨트롤러 어드바이스가 붙지 않는 화면에서도 그대로 나와야 한다.
+*/-->
+<footer class="site-footer" th:fragment="footer">
+    <div class="site-footer-inner">
+        <div class="site-footer-about">
+            <strong>객석</strong>
+            <p>공연 예매의 동시성 제어를 다루는 포트폴리오 프로젝트입니다. 실제 공연 예매처와 무관합니다.</p>
+            <p>공연 정보 출처: 공공데이터포털, KOPIS(공연예술통합전산망). 회차·좌석·가격은 추정치일 수 있으니 공식 예매처에서 확인하세요.</p>
+        </div>
+        <nav class="site-footer-links" aria-label="사이트 정보">
+            <a href="https://github.com/HurKyungsoo/ticketing" target="_blank" rel="noopener noreferrer">프로젝트 소개 (GitHub)</a>
+            <a th:href="@{/privacy}">개인정보 안내</a>
+        </nav>
+    </div>
+</footer>
+</body>
+</html>

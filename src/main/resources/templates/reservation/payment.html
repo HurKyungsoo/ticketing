@@ -109,6 +109,10 @@
                 </div>
             </dl>
 
+            <p class="test-payment-notice" role="note" th:if="${payable}">
+                실제 결제가 아닌 테스트 결제입니다. 카드 정보를 입력해도 대금이 청구되지 않으며 티켓이 발급되지 않습니다.
+            </p>
+
             <!-- 실제 결제. 아래 스크립트가 이 버튼에 토스 결제창을 붙인다. -->
             <button type="button" id="payBtn" class="paybtn"
                     th:if="${payable and !mockPayment}">카드로 결제하기</button>

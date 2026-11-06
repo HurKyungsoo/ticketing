@@ -45,6 +45,8 @@
                     <span class="hint">비밀번호를 잊었을 때 재설정 메일을 받는 데 씁니다.</span>
                 </label>
 
+                <p class="signup-privacy">실제 서비스가 아니니 평소 쓰는 비밀번호는 사용하지 마세요. 가입 정보는 <a th:href="@{/privacy}">개인정보 안내</a>에 따라 처리됩니다.</p>
+
                 <button type="submit">가입하기</button>
             </form>
 
@@ -52,5 +54,6 @@
         </div>
     </div>
 </div>
+<footer th:replace="~{fragment/site :: footer}"></footer>
 </body>
 </html>

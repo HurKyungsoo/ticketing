@@ -70,6 +70,7 @@
             </div>
         </dl>
         <p class="payno">예매번호 <span th:text="${reservation.reservationNo}">26073177684019</span></p>
+        <p class="test-payment-notice" role="note">테스트 예매입니다. 실제 공연 입장에 쓸 수 없습니다.</p>
 
         <div class="paydone-actions">
             <a class="paybtn" th:href="@{/mypage/reservations}">예매 내역 보기</a>
@@ -107,5 +108,6 @@
 <th:block th:replace="~{fragment/toast :: toast}"></th:block>
 <th:block th:replace="~{fragment/sharesheet :: sheetScript}"></th:block>
 <th:block th:replace="~{fragment/sharesheet :: sdk}"></th:block>
+<footer th:replace="~{fragment/site :: footer}"></footer>
 </body>
 </html>
