@@ -1,6 +1,7 @@
 package com.portfolio.ticket.config;
 
 import com.portfolio.ticket.security.CustomOAuth2UserService;
+import com.portfolio.ticket.security.NotFoundAwareAuthenticationEntryPoint;
 import com.portfolio.ticket.security.OAuth2ReturnToCaptureFilter;
 import com.portfolio.ticket.security.PostLoginRedirectHandler;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class SecurityConfig {
     private final OAuth2ReturnToCaptureFilter oAuth2ReturnToCaptureFilter;
     /** 정의는 {@link RequestCacheConfig} 에 있다 — 여기 두면 핸들러와 순환 참조가 된다. */
     private final RequestCache requestCache;
+    private final NotFoundAwareAuthenticationEntryPoint authenticationEntryPoint;
 
     /**
      * 관리자 API 전용 체인. 브라우저 폼 로그인이 아니라 HTTP Basic 을 쓴다.
@@ -73,6 +75,7 @@ public class SecurityConfig {
                         // 인증 대상이 되어 로그인 리다이렉트(302)로 바뀐다 — 실제 원인이 가려진다.
                         "/error",
                         "/favicon.svg", "/favicon.ico", "/favicon-180.png",
+                        "/robots.txt", "/sitemap.xml",
                         // h2-console 은 local 프로파일에서만 등록된다(spring.h2.console.enabled).
                         // prod 에서는 서블릿 자체가 뜨지 않으므로 이 허용이 노출로 이어지지 않는다.
                         "/h2-console/**",
@@ -88,6 +91,7 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
             .formLogin(form -> form
                 .loginPage("/login")
                 .successHandler(postLoginRedirectHandler)
