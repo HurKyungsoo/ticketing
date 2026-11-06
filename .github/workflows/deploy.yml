@@ -1,0 +1,97 @@
+name: Deploy
+
+# 사람이 Actions 화면에서 눌렀을 때만 돈다. 머지와 배포 시점을 분리하려고 push 트리거를 두지 않았다.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '접속만 점검하고 배포하지 않는다 (SSH·sudo·헬스체크 도달 여부)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# 배포가 겹치지 않게 줄 세운다. 취소는 하지 않는다 — 재시작 도중 끊기면 롤백도 못 한 채 멈춘다.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_URL: https://gaekseok.com
+
+    steps:
+      - name: Allow master only
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::master 에서만 배포할 수 있다 (현재: $GITHUB_REF)"
+          exit 1
+
+      # 공개 저장소라 Actions 로그도 공개다. 시크릿 값 ubuntu@IP 는 자동으로 가려지지만
+      # ssh 오류에 찍히는 IP 만 따로는 가려지지 않아 원본 IP 가 샌다.
+      - name: Mask server address
+        run: echo "::add-mask::${DEPLOY_HOST#*@}"
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # 서버 지문을 고정한다. StrictHostKeyChecking=no 는 중간자 공격을 막지 못한다.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      # 빌드에 시간을 쓰기 전에 서버에 닿는지부터 본다.
+      - name: Check SSH and sudo
+        run: ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_HOST" "sudo -n systemctl is-active gaeseok"
+
+      # 러너에서 헬스체크가 막히면(Cloudflare 등) 멀쩡한 새 버전이 실패로 판정돼 롤백된다.
+      # 사이트 장애를 고치는 배포일 수도 있으니 실제 배포에서는 경고만 하고 진행한다.
+      - name: Check health endpoint
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          CODE=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "$DEPLOY_URL/actuator/health" || true)
+          echo "헬스체크 응답: HTTP $CODE"
+          if [ "$CODE" = "200" ]; then exit 0; fi
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::error::러너에서 헬스체크가 200 이 아니다 (HTTP $CODE)"
+            exit 1
+          fi
+          echo "::warning::러너에서 헬스체크가 200 이 아니다 (HTTP $CODE) — 계속 이러면 롤백된다"
+
+      - name: Set up JDK 21
+        if: ${{ !inputs.dry_run }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      # 테스트(ReservationConcurrencyTest 포함)를 통과해야 배포 단계로 넘어간다.
+      - name: Build and test
+        if: ${{ !inputs.dry_run }}
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+
+      # 백업 → 전송 → 재시작 → 헬스체크 → 실패 시 롤백은 로컬 배포와 같은 deploy.sh 를 쓴다.
+      - name: Deploy
+        if: ${{ !inputs.dry_run }}
+        run: DEPLOY_KEY="$HOME/.ssh/deploy_key" bash deploy.sh
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
