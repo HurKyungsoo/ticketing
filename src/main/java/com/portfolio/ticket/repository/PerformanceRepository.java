@@ -43,4 +43,8 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
 
     /** 아직 안 끝난 공연 — 중복 정리 대상 */
     List<Performance> findByEndDateGreaterThanEqual(LocalDate today);
+
+    /** 아직 안 끝난 공연의 ID — 사이트맵용. 엔티티까지 읽을 필요가 없다. */
+    @Query("select p.id from Performance p where p.endDate >= :today order by p.id")
+    List<Long> findIdsEndingOnOrAfter(@Param("today") LocalDate today);
 }
