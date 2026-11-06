@@ -549,6 +549,7 @@ docker compose up --build
 
 | 문제 | 해결 |
 |---|---|
+| 앱이 5주 동안 `Java heap space` 로 31번 종료됐다. 시각이 불규칙하고 `ERROR` 로그도 남지 않았다. 포스터 표본을 재 보니 `ImageIO.read` 가 **파일 1.2MB 인 JPEG 을 메모리에 약 100MB 로 풀고**, 가장 큰 것은 136MB 였다. 서버와 같은 320MB 힙에서 큰 포스터를 동시에 요청하자 재현됐다. | 크기를 헤더로 먼저 읽어 **썸네일에 필요한 해상도로만 풀고**(`setSourceSubsampling`), 동시 변환을 3개로 제한했다. 다른 원인이 남아 있는지 확인하려고 운영에 힙 덤프도 켰다. |
 | 배포 이틀 뒤부터 앱이 `OutOfMemoryError: Metaspace` 를 쏟아내는데(6시간에 1,621건) `systemctl` 은 `active`, 재시작 횟수 0. **Metaspace OOM 은 프로세스를 죽이지 않고 예외만 던지므로 `Restart=on-failure` 가 걸리지 않는다** — 살아 있는 채로 오류만 반환해 한 번은 14시간을 아무도 모르게 장애 상태로 보냈다. 그동안 좌석 선점 만료 배치도 같이 멈춰 결제 안 한 좌석이 계속 잠긴다 | ① `-XX:+ExitOnOutOfMemoryError` 추가 — OOM 시 프로세스가 죽고 기존 `Restart=on-failure` 가 10초 만에 살린다. 몇 시간짜리 조용한 장애가 10초 재시작으로 바뀌는 게 핵심이다. ② `MaxMetaspaceSize` 를 128m → 192m. 실측해 보니 **기동 직후 사용량이 이미 117MB** 로 상한에 붙어 있었고(여유 11MB), 41시간에 10MB씩 자라 이틀이면 넘겼다. 폭주하는 누수가 아니라 한도가 기본 사용량에 너무 붙어 있던 것 |
 | 위 조사에서 `ExecStart` 만 보고 "JVM 에 메모리 옵션이 하나도 없다"고 오진했다. 실제 옵션은 `EnvironmentFile` 의 `JAVA_TOOL_OPTIONS` 에 있었고, 방향이 정반대(무제한이 아니라 과소 설정)라 처방도 완전히 달라졌다 | **JVM 실제 적용값은 유닛 파일이 아니라 실행 중인 프로세스에서 확인한다** — `jcmd <pid> VM.flags`. 환경변수·`JAVA_TOOL_OPTIONS`·래퍼 스크립트 등 옵션이 들어올 경로가 여러 개다 |
 | 힙 상한을 그대로 두고 Metaspace 만 올리면 cgroup(`MemoryMax=700M`)을 넘겨 이번엔 커널 OOM 킬러가 죽인다. `OOMScoreAdjust=500` 이라 이 앱이 1순위 표적이고 재시작 루프에 빠진다 | `MemoryMax` 를 900M 로 함께 올렸다(drop-in `gaeseok.service.d/memory.conf`, 지우고 `daemon-reload` 하면 원복). **JVM 상한과 컨테이너/cgroup 상한은 항상 같이 움직여야 한다** — 한쪽만 올리면 죽는 주체가 JVM 에서 커널로 바뀔 뿐이다 |

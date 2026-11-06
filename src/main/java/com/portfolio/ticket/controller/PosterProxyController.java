@@ -1,7 +1,10 @@
 package com.portfolio.ticket.controller;
 
+import com.portfolio.ticket.service.PosterImageDecoder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 포스터 이미지 프록시 + 썸네일 캐시.
@@ -57,6 +62,23 @@ public class PosterProxyController {
     private static final int MAX_REDIRECTS = 3;
 
     /**
+     * 원본을 풀 때의 최소 폭. 건너뛰며 푸는 방식은 썸네일 폭에 딱 맞추면 작은 글자가 거칠어져서
+     * 2배로 푼 뒤 줄인다. 4961x7016 포스터 기준 메모리에 약 6.5MB 를 쓴다.
+     */
+    private static final int DECODE_WIDTH = MAX_WIDTH * 2;
+
+    /** 썸네일 1장을 만들 때 메모리에 푸는 픽셀 수 상한. 픽셀당 최대 4바이트라 1장에 약 16MB 까지 쓴다. */
+    private static final long MAX_DECODED_PIXELS = 4_000_000L;
+
+    /**
+     * 동시에 만드는 썸네일 수. 크롤러가 캐시에 없는 포스터를 연달아 요청해도 이 수를 넘지 않아
+     * 변환에 쓰는 메모리가 일정 범위에 머문다(3장이면 원본을 푸는 데 약 48MB 까지).
+     */
+    private static final int MAX_CONCURRENT_THUMBNAILS = 3;
+    private static final Duration THUMBNAIL_WAIT = Duration.ofSeconds(10);
+    private static final String RETRY_AFTER_SECONDS = "5";
+
+    /**
      * 썸네일 1장이 60~70KB 라 공연 전체(수백 건)를 다 담으면 50MB 를 넘긴다.
      * 건수가 아니라 바이트로 상한을 두고 LRU 로 밀어낸다 — 건수 상한 + 초과 시 전체 삭제
      * 방식은 목록을 넓게 둘러보는 순간 캐시가 통째로 날아가서 매번 원본을 다시 받게 된다.
@@ -77,6 +99,18 @@ public class PosterProxyController {
 
     private final Map<String, Long> failedAt = new ConcurrentHashMap<>();
 
+    private final Semaphore thumbnailPermits;
+    private final Duration thumbnailWait;
+
+    public PosterProxyController() {
+        this(MAX_CONCURRENT_THUMBNAILS, THUMBNAIL_WAIT);
+    }
+
+    PosterProxyController(int maxConcurrentThumbnails, Duration thumbnailWait) {
+        this.thumbnailPermits = new Semaphore(maxConcurrentThumbnails, true);
+        this.thumbnailWait = thumbnailWait;
+    }
+
     @GetMapping("/img/poster")
     public ResponseEntity<byte[]> poster(@RequestParam("u") String url) {
         if (!isAllowed(url)) {
@@ -91,7 +125,15 @@ public class PosterProxyController {
             return ResponseEntity.notFound().build();
         }
 
+        if (!acquireThumbnailPermit()) {
+            return busyResponse();
+        }
         try {
+            // 자리를 기다리는 동안 다른 요청이 같은 포스터를 만들어 뒀을 수 있다.
+            byte[] readyMade = lookup(url);
+            if (readyMade != null) {
+                return imageResponse(readyMade);
+            }
             byte[] thumbnail = fetchAndResize(url);
             if (thumbnail == null) {
                 rememberFailure(url);
@@ -103,7 +145,26 @@ public class PosterProxyController {
             log.debug("포스터 프록시 실패. url={}, msg={}", url, e.getMessage());
             rememberFailure(url);
             return ResponseEntity.notFound().build();
+        } finally {
+            thumbnailPermits.release();
         }
+    }
+
+    private boolean acquireThumbnailPermit() {
+        try {
+            return thumbnailPermits.tryAcquire(thumbnailWait.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /** 원본 문제가 아니라 잠시 바쁜 것이므로 실패로 기억하지 않고, 앞단 캐시에도 남지 않게 한다. */
+    private ResponseEntity<byte[]> busyResponse() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS)
+                .cacheControl(CacheControl.noStore())
+                .build();
     }
 
     private boolean isAllowed(String url) {
@@ -155,7 +216,7 @@ public class PosterProxyController {
     }
 
     /** 원본을 받아 폭 기준으로 줄이고 JPEG 으로 다시 인코딩한다. 애니메이션 GIF 는 첫 프레임만 쓴다. */
-    private byte[] fetchAndResize(String url) throws Exception {
+    byte[] fetchAndResize(String url) throws Exception {
         BufferedImage source = readImage(url);
         if (source == null) return null;
 
@@ -197,7 +258,7 @@ public class PosterProxyController {
                     return null;
                 }
                 try (InputStream in = connection.getInputStream()) {
-                    return ImageIO.read(in);
+                    return PosterImageDecoder.decode(in, DECODE_WIDTH, MAX_DECODED_PIXELS);
                 }
             }
 
