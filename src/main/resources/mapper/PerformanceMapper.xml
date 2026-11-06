@@ -144,7 +144,8 @@
                          p.base_price ASC, p.id ASC
             </when>
             <otherwise>
-                ORDER BY (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
+                ORDER BY (CASE WHEN p.category = 'ETC' THEN 1 ELSE 0 END) ASC,
+                         (CASE WHEN p.poster_url IS NOT NULL AND p.poster_url &lt;&gt; '' THEN 0 ELSE 1 END) ASC,
                          p.start_date ASC, p.id ASC
             </otherwise>
         </choose>
