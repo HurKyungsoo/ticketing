@@ -26,3 +26,109 @@ jobs:
 
       - name: Build and test
         run: ./gradlew build
+
+      # 배포 job 이 같은 jar 을 쓰게 넘긴다 — 테스트를 통과한 바로 그 산출물을 올리기 위해서
+      # (다시 빌드하면 그 사이 의존성 캐시 등으로 다른 바이트가 나올 여지가 생긴다).
+      - name: Upload jar
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: |
+            build/libs/*.jar
+            !build/libs/*-plain.jar
+          retention-days: 3
+
+  # ── 자동 배포 (CD) ─────────────────────────────────────────────────────────
+  # deploy.sh 와 같은 순서: 이전 jar 백업 → 임시 이름으로 전송 후 교체 → 재시작 → 헬스체크,
+  # 실패하면 이전 jar 로 되돌린다. 서버 주소·키는 저장소에 두지 않고 GitHub Secrets 로만 받는다
+  # (도메인이 Cloudflare 뒤라 원본 IP 를 공개 저장소에 적으면 가림막이 무의미해진다 — deploy.sh 주석 참고).
+  #
+  # 필요한 Secrets: DEPLOY_HOST(ubuntu@IP), DEPLOY_SSH_KEY(개인키 내용), DEPLOY_KNOWN_HOSTS(ssh-keyscan 결과)
+  # 아직 등록 전이면 실패시키지 않고 건너뛴다 — 로컬 ./deploy.sh 는 그대로 쓸 수 있다.
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 연달아 머지돼도 배포가 겹치지 않게 — 앞의 배포가 끝난 뒤 다음이 돈다(취소하지 않음).
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      URL: https://gaekseok.com
+      REMOTE_DIR: ~/gaeseok
+      SERVICE: gaeseok
+
+    steps:
+      - name: Check secrets
+        id: check
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice::DEPLOY_HOST 등 배포 Secrets 가 없어 배포를 건너뛴다."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download jar
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: dist
+
+      - name: Set up SSH
+        if: steps.check.outputs.ready == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # 서버 지문을 미리 고정한다 — StrictHostKeyChecking=no 로 두면 중간자에게 키를 그대로 내준다.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          SSH=(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_HOST")
+          JAR=$(ls dist/*.jar | head -1)
+          echo "jar: $(basename "$JAR") ($(du -h "$JAR" | cut -f1))"
+
+          echo "▸ 이전 버전 백업"
+          "${SSH[@]}" "cp $REMOTE_DIR/app.jar $REMOTE_DIR/app.jar.prev 2>/dev/null && echo '  app.jar.prev 저장' || echo '  (이전 jar 없음)'"
+
+          echo "▸ 전송 (임시 이름 → 교체: 전송이 끊겨도 돌고 있는 app.jar 은 온전하다)"
+          scp -i ~/.ssh/deploy_key -o BatchMode=yes -q "$JAR" "$DEPLOY_HOST:$REMOTE_DIR/app.jar.new"
+          "${SSH[@]}" "mv $REMOTE_DIR/app.jar.new $REMOTE_DIR/app.jar"
+
+          echo "▸ 재시작"
+          "${SSH[@]}" "sudo systemctl restart $SERVICE"
+
+          echo "▸ 헬스체크 (최대 90초)"
+          OK=0
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "$URL/actuator/health" || true)
+            if [ "$CODE" = "200" ]; then OK=1; echo "  UP ($((i*3))초)"; break; fi
+            sleep 3
+          done
+
+          if [ "$OK" != "1" ]; then
+            echo "::error::헬스체크 실패 — 이전 버전으로 되돌린다"
+            "${SSH[@]}" "test -f $REMOTE_DIR/app.jar.prev && mv $REMOTE_DIR/app.jar.prev $REMOTE_DIR/app.jar && sudo systemctl restart $SERVICE && echo '  롤백 완료' || echo '  되돌릴 이전 jar 이 없다'"
+            "${SSH[@]}" "sudo journalctl -u $SERVICE --no-pager -n 40 | grep -aE 'ERROR|Caused by|APPLICATION FAILED' | tail -10" || true
+            exit 1
+          fi
+
+          echo "▸ 확인"
+          curl -s -m 15 "$URL/" | grep -oE '<title>[^<]*</title>' | head -1 || true
+          "${SSH[@]}" "free -h | awk '/Mem:/{printf \"  메모리 가용 %s / \", \$7} /Swap:/{print \"스왑 사용 \" \$3}'"
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

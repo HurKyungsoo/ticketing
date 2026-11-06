@@ -486,6 +486,21 @@ admin/admin)을 자동으로 채워주므로, 공공데이터 API 키 없이도 
 
 H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:file:./data/ticket`)
 
+### 자동 배포 (GitHub Actions)
+
+`master` 에 머지되면 CI(빌드·테스트) 통과 후 `deploy` job 이 그 jar 을 그대로 서버에 올린다.
+순서는 `deploy.sh` 와 같다 — 이전 jar 백업 → 임시 이름으로 전송 후 교체 → `systemctl restart` → `/actuator/health` 헬스체크(최대 90초), 실패하면 이전 jar 로 자동 롤백.
+
+저장소 Settings → Secrets and variables → Actions 에 세 값을 등록한다. 없으면 배포 단계는 건너뛴다(로컬 `./deploy.sh` 는 그대로 쓸 수 있다).
+
+| Secret | 값 |
+|---|---|
+| `DEPLOY_HOST` | `ubuntu@<서버 IP>` |
+| `DEPLOY_SSH_KEY` | 배포용 개인키 파일 내용 전체 (`-----BEGIN … KEY-----` 포함) |
+| `DEPLOY_KNOWN_HOSTS` | `ssh-keyscan <서버 IP>` 출력 — 서버 지문을 고정해 중간자 공격을 막는다 |
+
+서버 주소를 저장소에 적지 않는 이유는 `deploy.sh` 와 같다(Cloudflare 뒤 원본 IP 보호).
+
 ### Docker 로 실행 (MariaDB, prod 프로파일)
 
 ```bash
