@@ -135,6 +135,38 @@
         <button type="submit">검색</button>
     </form>
     <script th:if="${showAuthNav}">
+    /*
+        좁은 화면에서 아래로 스크롤하는 동안 헤더를 위로 숨기고, 위로 스크롤하면 다시 보인다.
+        헤더가 두 줄(약 120px)이라 늘 붙어 있으면 화면의 15% 를 계속 차지한다. 항목을 빼서
+        한 줄로 줄이는 대신 읽는 동안만 비켜 서게 했다 — 내비는 그대로 다 쓸 수 있다.
+        숨기는 모양은 CSS(.masthead--away)가 860px 이하에서만 그린다.
+    */
+    (function () {
+        var bar = document.currentScript && document.currentScript.closest('.masthead');
+        if (!bar || !window.matchMedia) return;
+        var narrow = window.matchMedia('(max-width: 860px)');
+        var lastY = window.scrollY;
+
+        window.addEventListener('scroll', function () {
+            var y = window.scrollY;
+            // 맨 위 근처, 검색창을 연 동안, 넓은 화면에서는 늘 보인다.
+            if (!narrow.matches || y < bar.offsetHeight || bar.classList.contains('searchopen')) {
+                bar.classList.remove('masthead--away');
+                lastY = y;
+                return;
+            }
+            // 손가락 떨림 같은 작은 움직임에는 반응하지 않는다.
+            if (Math.abs(y - lastY) < 8) return;
+            bar.classList.toggle('masthead--away', y > lastY);
+            lastY = y;
+        }, { passive: true });
+
+        // 키보드로 헤더 안 링크에 초점이 오면 숨어 있어도 보이게 한다.
+        bar.addEventListener('focusin', function () {
+            bar.classList.remove('masthead--away');
+        });
+    })();
+
     (function () {
         var toggle = document.getElementById('navsearchToggle');
         var panel = document.getElementById('navsearchPanel');

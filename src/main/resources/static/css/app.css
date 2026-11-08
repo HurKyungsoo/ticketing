@@ -6072,3 +6072,49 @@ body.page-info.tone-light .infodoc { padding: 40px 24px 0; }
   body.page-info.tone-light .masthead h1 { white-space: nowrap; }
   body.page-info.tone-light .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
 }
+
+/* ==================================================================
+   좁은 화면에서 스크롤하는 동안 헤더 숨기기
+
+   헤더가 두 줄(실측 390px 에서 120px)이라 sticky 로 늘 붙어 있으면 화면의 15% 를
+   차지한다. 항목을 빼 한 줄로 만드는 대신, 아래로 읽는 동안만 위로 비켜 서고 위로
+   스크롤하면 돌아오게 했다. 클래스는 fragment/header 의 스크립트가 붙인다.
+   ================================================================== */
+@media (max-width: 860px) {
+  .masthead { transition: transform .25s ease; }
+  .masthead.masthead--away { transform: translateY(-100%); }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .masthead { transition: none; }
+}
+
+/* ==================================================================
+   폰 폭 홈 첫 화면
+
+   소개·통계·포스터 콜라주가 첫 화면을 다 채워, 장르 칩이 화면 맨 아래에 겨우 걸리고
+   공연 카드는 스크롤해야 나왔다. 콜라주는 아래 카드에 같은 포스터가 다시 나오는
+   장식이라 빼고, 통계는 한 덩어리 문장으로 줄인다.
+   ================================================================== */
+/*
+   좁은 화면 홈 검색창 잘림. 한 칸으로 바꾼 grid 의 1fr 은 최소 폭이 내용 폭(auto)이라,
+   입력칸의 기본 폭만큼 칸이 넓어져 검색창 오른쪽 끝이 화면 밖으로 나갔다.
+   칸의 최소 폭을 0 으로 풀고, 입력칸도 남은 폭만 쓰게 한다.
+*/
+@media (max-width: 860px) {
+  body.page-home .hero-inner { grid-template-columns: minmax(0, 1fr); }
+  body.page-home .hero-search input { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 560px) {
+  body.page-home .hero { padding: 28px 20px 24px; }
+  body.page-home .hero-kicker { margin-bottom: 12px; }
+  body.page-home .hero h2 { font-size: 28px; margin-bottom: 18px; }
+  body.page-home .hero-inner { gap: 16px; }
+  body.page-home .hero-collage { display: none; }
+  /* 360px 에서 「모았습니 / 다」처럼 글자 단위로 끊겼다. 한국어도 단어 단위로 줄을 바꾼다. */
+  body.page-home .hero-stat { word-break: keep-all; }
+  body.page-home .hero-stat p,
+  body.page-home .hero-stat strong { display: inline; }
+  body.page-home .hero-stat strong { margin: 0 2px; font-size: 22px; }
+  body.page-home .hero-live { margin: 0 0 0 8px; vertical-align: middle; }
+}
