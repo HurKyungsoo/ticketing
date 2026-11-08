@@ -2287,12 +2287,9 @@ body.page-list .card .m-date {
   justify-self: start;
   display: inline-flex; align-items: center;
   /*
-     왼쪽 padding 만큼 당겨 놓는다. 알약의 "상자"를 0 에 맞추면 안쪽 글자가 10px
-     들여쓰기돼서, 제목·공연장·기간이 이루는 세로 열에서 이 줄만 혼자 밀려 보인다
-     (실측: 나머지 세 줄 left 0, 알약 글자만 left 10). 상자가 왼쪽으로 10px 나가지만
-     카드 사이 간격이 28px 이라 옆 카드를 침범하지 않고, 색이 옅은 판이라 튀지도 않는다.
+     알약 상자를 포스터 왼쪽 선에 맞춘다. 예전에는 글자 열을 맞추려고 10px 당겼지만,
+     진하게 채운 알약이 많아진 뒤로는 글자보다 상자가 먼저 보여 카드 밖으로 튀어나와 보였다.
   */
-  margin-left: -10px;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12.5px; font-weight: 700;
@@ -6052,4 +6049,26 @@ body.page-compare .cmp-foot a { color: var(--brass-ink); border-bottom: 1px soli
   padding: 14px 16px;
   border-radius: 10px;
   background: rgba(233, 180, 76, 0.16);
+}
+
+/* 404·개인정보 안내도 헤더를 화면 폭에 맞춘다. 화면을 옮겨 다닐 때 헤더 폭이 바뀌지 않게 한다. */
+body.page-error.tone-light .wrap,
+body.page-info.tone-light .wrap { max-width: none; margin: 0; padding: 0 0 72px; }
+body.page-error.tone-light .masthead,
+body.page-info.tone-light .masthead { margin: 0; padding: 22px 48px; }
+body.page-info.tone-light .masthead .tag { display: none; }
+body.page-error.tone-light .errorbody,
+body.page-error.tone-light .errorlinks {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+body.page-info.tone-light .infodoc { padding: 40px 24px 0; }
+@media (max-width: 860px) {
+  body.page-error.tone-light .masthead,
+  body.page-info.tone-light .masthead { padding: 16px 20px; flex-wrap: wrap; row-gap: 8px; }
+  body.page-info.tone-light .masthead h1 { white-space: nowrap; }
+  body.page-info.tone-light .masthead .authnav { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
 }
