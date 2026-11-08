@@ -119,6 +119,32 @@ class KopisPerformanceClientTest {
         assertThat((System.nanoTime() - startedAt) / 1_000_000).isGreaterThanOrEqualTo(190);
     }
 
+    @Test
+    void 저장된_공연의_상세를_다시_받는다() {
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(xml(DETAIL_XML));
+
+        assertThat(client.fetchDetail(basic())).hasValueSatisfying(p -> assertThat(p.getRunningTime()).isEqualTo("50분"));
+    }
+
+    @Test
+    void 상세를_못_받으면_빈_값이고_차단이_풀리지_않으면_예외다() {
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        assertThat(client.fetchDetail(basic())).isEmpty();
+
+        server.reset();
+        server.expect(times(4), requestTo(containsString(DETAIL_PATH))).andRespond(blocked());
+        assertThatThrownBy(() -> client.fetchDetail(basic())).isInstanceOf(KopisFetchException.class);
+    }
+
+    private static ExternalPerformance basic() {
+        return ExternalPerformance.builder()
+                .externalId("KOPIS-PF1")
+                .title("테스트 공연")
+                .startDate(java.time.LocalDate.of(2099, 1, 1))
+                .endDate(java.time.LocalDate.of(2099, 1, 2))
+                .build();
+    }
+
     private void expectList() {
         server.expect(requestTo(containsString("/pblprfr?"))).andRespond(xml(LIST_XML));
     }

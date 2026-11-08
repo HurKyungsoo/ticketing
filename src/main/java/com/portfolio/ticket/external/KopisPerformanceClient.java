@@ -23,6 +23,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -221,13 +222,37 @@ public class KopisPerformanceClient {
         return true;
     }
 
-    /** 상세 호출/파싱 실패는 이 건만 목록 정보로 대체한다. 배치 전체를 막지 않는다. */
-    private ExternalPerformance enrichWithDetail(ExternalPerformance basic) {
+    /**
+     * 이미 저장된 공연의 상세를 다시 받는다. 수집 때 상세를 놓친 공연을 채우는 데 쓴다.
+     *
+     * @return 응답을 받지 못했으면(차단이 아닌 HTTP 오류 등) 빈 값. 다음에 다시 시도한다.
+     * @throws KopisFetchException WAF 차단이 풀리지 않았을 때. 남은 공연도 막힐 것이므로 멈춘다.
+     */
+    public Optional<ExternalPerformance> fetchDetail(ExternalPerformance basic) {
         String mt20id = basic.getExternalId().substring(SOURCE_PREFIX.length());
-        URI uri = UriComponentsBuilder.fromUriString(properties.getKopisUrl() + "/" + mt20id)
+        byte[] body;
+        try {
+            body = call(detailUri(mt20id));
+        } catch (KopisFetchException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("KOPIS 상세 API 호출 실패. mt20id={}, msg={}", mt20id, e.getMessage());
+            return Optional.empty();
+        }
+        return Optional.of(applyDetail(basic, body));
+    }
+
+    private URI detailUri(String mt20id) {
+        return UriComponentsBuilder.fromUriString(properties.getKopisUrl() + "/" + mt20id)
                 .queryParam("service", properties.getKopisServiceKey())
                 .build(true)
                 .toUri();
+    }
+
+    /** 상세 호출/파싱 실패는 이 건만 목록 정보로 대체한다. 배치 전체를 막지 않는다. */
+    private ExternalPerformance enrichWithDetail(ExternalPerformance basic) {
+        String mt20id = basic.getExternalId().substring(SOURCE_PREFIX.length());
+        URI uri = detailUri(mt20id);
 
         try {
             return applyDetail(basic, call(uri));

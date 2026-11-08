@@ -109,6 +109,9 @@ public class Performance {
     /** API 가 준 관람요금 문자열에서 파싱한 기준가 */
     private Integer basePrice;
 
+    /** KOPIS 상세를 다시 받아 본 날. 원본에 정보가 없는 공연을 매일 다시 고르지 않으려고 남긴다. */
+    private LocalDate detailFetchedOn;
+
     @Builder.Default
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PerformanceSchedule> schedules = new ArrayList<>();
@@ -185,6 +188,10 @@ public class Performance {
     }
 
     private static final String KOPIS_EXTERNAL_ID_PREFIX = "KOPIS-";
+
+    public void markDetailFetched(LocalDate fetchedOn) {
+        this.detailFetchedOn = fetchedOn;
+    }
 
     /**
      * KOPIS 공식 상세 페이지로 연결할 mt20id. KOPIS 에서 수집된 공연만 값이 있고,
