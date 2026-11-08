@@ -1,6 +1,7 @@
 package com.portfolio.ticket.repository;
 
 import com.portfolio.ticket.domain.Performance;
+import com.portfolio.ticket.domain.SourceType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PerformanceRepository extends JpaRepository<Performance, Long> {
+
+    /**
+     * 상세를 놓친 채 저장된 공연 — 상영 중이고, 가격과 공연장 정보가 둘 다 없고, 아직 다시 받아 보지 않은 것.
+     * 가까운 공연부터 채운다.
+     */
+    @Query("""
+            select p from Performance p
+            where p.sourceType = :sourceType and p.endDate >= :today
+              and p.basePrice is null and p.venueHallId is null and p.detailFetchedOn is null
+            order by p.startDate asc, p.id asc
+            """)
+    List<Performance> findDetailBackfillTargets(@Param("sourceType") SourceType sourceType,
+                                                @Param("today") LocalDate today, Pageable pageable);
 
     Optional<Performance> findByExternalId(String externalId);
 

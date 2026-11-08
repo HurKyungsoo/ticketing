@@ -30,6 +30,7 @@ public class PerformanceSyncScheduler {
     private final PerformanceSyncService syncService;
     private final PublicDataProperties properties;
     private final SyncStateRepository syncStateRepository;
+    private final KopisDetailBackfill kopisDetailBackfill;
 
     /**
      * 증분 수집 시 마지막 성공일보다 하루 더 앞에서부터 다시 받는다.
@@ -117,6 +118,9 @@ public class PerformanceSyncScheduler {
             markKopisSynced(startedOn);
         }
 
+        // 상세를 놓친 채 들어와 있는 공연을 채운다. 수집이 막혔던 날은 상세도 막힐 것이므로 건너뛴다.
+        int detailBackfilled = kopis.success() ? kopisDetailBackfill.run() : 0;
+
         // 수집 루프의 skip 은 "다시 내려온" 항목만 막는다. 규칙이 생기기 전에 들어와 이미
         // DB 에 있는 건은 여기서 걷어낸다 (멱등이라 매번 돌려도 안전하다).
         int purged = syncService.purgeNonPerformances();
@@ -129,8 +133,8 @@ public class PerformanceSyncScheduler {
         // 위 세 소스 동기화만으로는 오래 안 건드려진 공연의 회차가 계속 빌 수 있다.
         int staleToppedUp = syncService.topUpStaleSchedules();
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건",
-                standard.created(), culture.created(), kopis.created(), purged, merged, staleToppedUp);
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, KOPIS 상세 보충 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건",
+                standard.created(), culture.created(), kopis.created(), detailBackfilled, purged, merged, staleToppedUp);
         return new SyncSummary(standard, culture, kopis, afterDate, purged, staleToppedUp);
     }
 
