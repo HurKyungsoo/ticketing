@@ -27,6 +27,20 @@ spring:
   web:
     locale: ko_KR
     locale-resolver: fixed
+    # 정적 파일(CSS·폰트·이미지)을 브라우저와 Cloudflare 가 1년 동안 재사용하게 한다.
+    # 그대로 오래 두면 배포해도 옛 CSS 가 남으므로, 내용 해시를 주소에 붙여(app-<해시>.css)
+    # 파일이 바뀌면 주소도 바뀌게 한다. 템플릿의 @{/css/app.css} 와 CSS 안의 url() 이 자동으로 바뀐다.
+    # 종전에는 Spring Security 기본 헤더(no-store)가 붙어 화면을 열 때마다 CSS 를 새로 받았다.
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 365d
+          cache-public: true
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: /**
 
   jpa:
     hibernate:

@@ -44,6 +44,13 @@
 로 설정하면 `build.gradle` 이 산출물을 그쪽으로 내보내 해결된다. 변수가 없으면(CI 등)
 원래대로 동작한다.
 
+## 배포
+
+- 운영은 gaekseok.com 한 대(Lightsail, systemd + jar). 자세한 구성은 README 7번 「운영 구성」.
+- GitHub Actions 의 **Deploy** 워크플로를 수동으로 실행해서만 배포한다. 머지만으로는 배포되지 않는다.
+- 배포하면 약 20초 동안 502 가 난다. 배포 직전에 결제 대기(`PENDING`) 예매가 있으면 끝날 때까지 기다린다.
+- 서버 OS 는 UTC 지만 앱은 `TicketApplication` 에서 `Asia/Seoul` 로 고정한다. 이 설정을 지우지 말 것.
+
 ## 아키텍처 규칙
 
 ### JPA vs MyBatis
@@ -109,6 +116,9 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 - 새 필드를 파싱할 때는 `PublicDataParser` 의 후보 키 방식을 따를 것.
   기관마다 필드명이 다르다.
 - API 키를 코드나 `application.yml` 에 하드코딩하지 말 것. 환경변수만.
+- KOPIS 호출은 반드시 `KopisPerformanceClient.call()` 을 거칠 것. 호출 간격과 방화벽 차단 재시도가
+  여기 있다. 직접 `RestClient` 를 부르면 수집이 다시 막힌다.
+- 목록 호출 실패를 빈 목록으로 돌려주지 말 것. 수집이 성공으로 기록되어 증분 기준일이 넘어간다.
 
 ## 작업 방식
 
@@ -129,7 +139,8 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 
 ## 다음 작업 순서
 
-1. Spring Security + 회원 도메인 (현재 `memberId` 파라미터 임시 처리 중)
-2. 토스페이먼츠 테스트 결제 + 웹훅
-3. 관리자 대시보드 (`selectDailySales` + Chart.js)
-4. Docker + GitHub Actions CI
+1. KOPIS 상세 보충(`KopisDetailBackfill`)으로 채운 공연의 회차·좌석을 실제 공연 시간과 가격으로 다시 만들기.
+   예매가 있는 회차는 건드리지 않는다. 좌석을 다루므로 `ReservationConcurrencyTest` 필수.
+2. 비슷한 제목으로 따로 들어온 중복 공연 합치기 보강 (예: 「다이브 [대학로]」와 「[대학로] 다이브」)
+3. `seat` 테이블 정리 — 지난 회차 좌석이 쌓여 1,100만 행을 넘는다.
+4. 메일 발송(SMTP) 설정 후 가입 이메일 검증
