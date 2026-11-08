@@ -38,8 +38,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>공연 상세와 결제 완료가 같은 조각을 쓴다. 조각으로 묶으면서 <b>화면으로는 안 보이는
  * 결함</b>을 하나 만들었다가 잡았고, 그게 이 테스트가 있는 이유다 — 아래
  * {@link #doesNotLoadKakaoSdkWithoutKey} 주석 참고.
+ *
+ * <p>키는 비워 둔 채로 돌린다. 개발 PC 셸에 KAKAO_JS_KEY 가 설정돼 있으면 "키가 없을 때" 검사가
+ * 그 키로 돌아 로컬에서만 실패했다.
  */
-@SpringBootTest
+@SpringBootTest(properties = "kakao.share.js-key=")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ShareSheetTest {

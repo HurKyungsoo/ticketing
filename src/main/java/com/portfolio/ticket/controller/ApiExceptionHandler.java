@@ -14,6 +14,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
@@ -57,6 +58,16 @@ public class ApiExceptionHandler {
                                                  HttpServletRequest request) {
         log.debug("경로변수 타입 불일치. uri={}, name={}", request.getRequestURI(), e.getName());
         return body(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다.");
+    }
+
+    /**
+     * 응답을 쓰는 도중 사용자가 페이지를 떠나 연결이 끊긴 경우(Broken pipe). 포스터 이미지처럼
+     * 한 화면에 여러 장 받는 응답에서 자주 난다. 서버 잘못이 아니고 응답을 받을 곳도 없으므로
+     * 오류 로그로 남기지 않고 아무것도 쓰지 않는다. 오류 로그에 섞이면 진짜 오류가 묻힌다.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientGone(AsyncRequestNotUsableException e, HttpServletRequest request) {
+        log.debug("응답 중 연결이 끊김. uri={}, msg={}", request.getRequestURI(), e.getMessage());
     }
 
     /**
