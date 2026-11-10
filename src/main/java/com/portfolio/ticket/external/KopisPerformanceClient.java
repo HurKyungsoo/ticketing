@@ -308,6 +308,8 @@ public class KopisPerformanceClient {
                     .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
                     .showTimesByDay(parseDtGuidance(parser.text(item, "dtguidance")))
                     .pricesByGrade(parsePcseGuidance(pcsGuidance))
+                    .showTimeGuidance(parser.text(item, "dtguidance"))
+                    .priceGuidance(pcsGuidance)
                     .bookingLinks(parseRelates(item))
                     .build();
         } catch (Exception e) {

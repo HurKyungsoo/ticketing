@@ -127,6 +127,19 @@ class KopisPerformanceClientTest {
     }
 
     @Test
+    void 상세의_공연_시각과_가격_원문을_함께_넘긴다() {
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(xml(
+                "<dbs><db><mt20id>PF1</mt20id><dtguidance>토요일(15:00,19:00)</dtguidance>"
+                        + "<pcseguidance>R석 60,000원, S석 40,000원</pcseguidance></db></dbs>"));
+
+        assertThat(client.fetchDetail(basic())).hasValueSatisfying(p -> {
+            assertThat(p.getShowTimeGuidance()).isEqualTo("토요일(15:00,19:00)");
+            assertThat(p.getPriceGuidance()).isEqualTo("R석 60,000원, S석 40,000원");
+            assertThat(p.getShowTimesByDay()).isNotEmpty();
+        });
+    }
+
+    @Test
     void 상세를_못_받으면_빈_값이고_차단이_풀리지_않으면_예외다() {
         server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(withStatus(HttpStatus.NOT_FOUND));
         assertThat(client.fetchDetail(basic())).isEmpty();
