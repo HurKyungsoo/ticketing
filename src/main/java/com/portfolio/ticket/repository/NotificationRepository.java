@@ -41,4 +41,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("delete from Notification n where n.performance.id = :performanceId")
     @org.springframework.data.jpa.repository.Modifying
     int deleteByPerformanceId(@Param("performanceId") Long performanceId);
+
+    boolean existsByScheduleId(Long scheduleId);
 }

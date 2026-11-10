@@ -37,4 +37,10 @@ public interface PerformanceScheduleRepository extends JpaRepository<Performance
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from PerformanceSchedule s where s.id = :id")
     Optional<PerformanceSchedule> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("select s.id from PerformanceSchedule s where s.performance.id = :performanceId and s.showAt >= :from order by s.showAt")
+    List<Long> findIdsFrom(@Param("performanceId") Long performanceId, @Param("from") LocalDateTime from);
+
+    @Query("select s.showAt from PerformanceSchedule s where s.performance.id = :performanceId and s.showAt >= :from")
+    List<LocalDateTime> findShowAtsFrom(@Param("performanceId") Long performanceId, @Param("from") LocalDateTime from);
 }

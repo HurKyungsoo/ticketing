@@ -81,4 +81,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      */
     @Query("select count(r) > 0 from Reservation r where r.schedule.performance.id = :performanceId")
     boolean existsByPerformanceId(@Param("performanceId") Long performanceId);
+
+    boolean existsByScheduleId(Long scheduleId);
 }
