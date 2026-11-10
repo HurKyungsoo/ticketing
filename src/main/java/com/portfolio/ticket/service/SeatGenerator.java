@@ -106,6 +106,7 @@ public class SeatGenerator {
         List<Seat> seats = (layout != null)
                 ? generateFromLayout(schedule, layout, price, pricesByGrade)
                 : generateDefault(schedule, totalSeatCount, price, pricesByGrade);
+        keepOnlyGivenGrades(seats, pricesByGrade, price);
 
         seatRepository.saveAll(seats);
 
@@ -307,6 +308,29 @@ public class SeatGenerator {
             return pricesByGrade.get(grade);
         }
         return grade.applyTo(fallbackBasePrice);
+    }
+
+    /**
+     * 원본이 알려준 등급만 남긴다. 예: 원본이 "R석 6만원, S석 4만원"이면 VIP석·A석은 만들지 않는다.
+     *
+     * <p>종전에는 위치로 정한 네 등급(VIP·R·S·A)을 그대로 두고, 원본에 없는 등급에는 기준가 비율을
+     * 곱해 값을 붙였다. 그래서 실제로 없는 「VIP석 75,000원」이 화면에 나왔다.
+     *
+     * <p>좌석 배치(앞줄이 좋은 자리)는 그대로 두고 등급 이름만 바꾼다. 네 등급을 원본 등급 수에 맞춰
+     * 순서대로 접는다 — R·S 두 등급이면 VIP·R 자리가 R, S·A 자리가 S 가 된다. 등급 정보가 없으면
+     * 종전대로 둔다.
+     */
+    private void keepOnlyGivenGrades(List<Seat> seats, Map<SeatGrade, Integer> pricesByGrade, int fallbackBasePrice) {
+        if (pricesByGrade == null || pricesByGrade.isEmpty()) return;
+
+        List<SeatGrade> given = new ArrayList<>(new java.util.TreeSet<>(pricesByGrade.keySet()));
+        SeatGrade[] all = SeatGrade.values();
+        for (Seat seat : seats) {
+            SeatGrade folded = given.get(seat.getGrade().ordinal() * given.size() / all.length);
+            if (folded != seat.getGrade()) {
+                seat.regrade(folded, resolvePrice(folded, fallbackBasePrice, pricesByGrade));
+            }
+        }
     }
 
     private SeatGrade gradeOf(int index, int total) {

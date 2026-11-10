@@ -87,6 +87,18 @@ public class Seat {
         return this.status == SeatStatus.AVAILABLE;
     }
 
+    /**
+     * 등급과 가격을 바꾼다. 좌석을 만드는 중(저장 전)에 원본에 있는 등급으로 맞출 때만 쓴다.
+     * 누가 잡았거나 산 좌석의 가격을 바꾸면 결제 금액과 어긋나므로 막는다.
+     */
+    public void regrade(SeatGrade grade, int price) {
+        if (!isAvailable()) {
+            throw new IllegalStateException("선점·판매된 좌석의 등급은 바꿀 수 없습니다. seatId=" + id);
+        }
+        this.grade = grade;
+        this.price = price;
+    }
+
     public void hold() {
         if (!isAvailable()) {
             throw new IllegalStateException("이미 선점되었거나 판매된 좌석입니다. seatId=" + id);

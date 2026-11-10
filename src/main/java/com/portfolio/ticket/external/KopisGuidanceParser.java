@@ -42,6 +42,12 @@ public final class KopisGuidanceParser {
     private static final Pattern EVERYDAY_TIME_PATTERN = Pattern.compile("매일\\s*\\(([^)]*)\\)");
 
     /** "VIP석 100,000원" / "R 80000원" 처럼 등급 문자 뒤에 붙는 가격을 뽑는다. B 는 SeatGrade 에 없어 버린다. */
+    /**
+     * "전석 30,000원". 표본 40건 중 절반 넘게 이 형태였다 — 등급 구분이 없는 공연이다.
+     * 뒤에 "사전예약 15,000원" 같은 할인가가 붙어도 정가인 전석 가격을 쓴다.
+     */
+    private static final Pattern ALL_SEATS_PRICE_PATTERN = Pattern.compile("전석\\s*([\\d,]{3,})\\s*원");
+
     private static final Pattern GRADE_PRICE_PATTERN =
             Pattern.compile("(VIP|R|S|A|B)\\s*석?\\s*([\\d,]{3,})\\s*원");
 
@@ -137,6 +143,18 @@ public final class KopisGuidanceParser {
                 result.put(grade, price);
             } catch (Exception ignored) {
                 // 다음 매치를 시도한다.
+            }
+        }
+        if (result.isEmpty()) {
+            // 등급 구분 없이 한 가격인 공연. 좌석은 한 등급(S석)으로 만든다 — S석의 기본 비율이 1.0 이라
+            // 원문이 없을 때의 기준가 계산과도 어긋나지 않는다.
+            Matcher allSeats = ALL_SEATS_PRICE_PATTERN.matcher(raw);
+            if (allSeats.find()) {
+                try {
+                    result.put(SeatGrade.S, Integer.parseInt(allSeats.group(1).replace(",", "")));
+                } catch (NumberFormatException ignored) {
+                    // 숫자로 읽을 수 없으면 등급 정보 없음으로 둔다.
+                }
             }
         }
         return result.isEmpty() ? null : result;
