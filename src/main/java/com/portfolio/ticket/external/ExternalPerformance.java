@@ -57,6 +57,12 @@ public class ExternalPerformance {
      */
     private Map<SeatGrade, Integer> pricesByGrade;
 
+    /** KOPIS dtguidance 원문. 회차를 나중에 다시 만들 수 있게 저장한다. */
+    private String showTimeGuidance;
+
+    /** KOPIS pcseguidance 원문. 회차를 나중에 다시 만들 수 있게 저장한다. */
+    private String priceGuidance;
+
     /** KOPIS 상세(relates) 전용 — 다른 소스는 항상 빈 목록. domain.Performance.bookingLinks 참고. */
     @Builder.Default
     private List<BookingLink> bookingLinks = List.of();

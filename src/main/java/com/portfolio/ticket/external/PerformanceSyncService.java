@@ -131,6 +131,7 @@ public class PerformanceSyncService {
                         external.getTotalSeatCount(), external.getBasePrice(),
                         external.getSourceType(), categoryResolver.resolve(external.getGenre()),
                         external.getRegion(), external.getBookingLinks());
+                performance.updateGuidance(external.getShowTimeGuidance(), external.getPriceGuidance());
                 topUpSchedules(performance, external);
             }
         }
@@ -338,7 +339,7 @@ public class PerformanceSyncService {
     }
 
     private Performance toEntity(ExternalPerformance e) {
-        return Performance.builder()
+        Performance performance = Performance.builder()
                 .externalId(e.getExternalId())
                 .sourceType(e.getSourceType())
                 .title(e.getTitle())
@@ -362,6 +363,8 @@ public class PerformanceSyncService {
                 .basePrice(e.getBasePrice())
                 .bookingLinks(e.getBookingLinks())
                 .build();
+        performance.updateGuidance(e.getShowTimeGuidance(), e.getPriceGuidance());
+        return performance;
     }
 
     /** 신규 수집. 오늘(또는 시작일, 더 늦은 쪽)부터 종료일까지 한 번에 다 만든다. */

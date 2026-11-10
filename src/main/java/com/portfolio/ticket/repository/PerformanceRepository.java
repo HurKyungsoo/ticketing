@@ -16,14 +16,16 @@ import java.util.Optional;
 public interface PerformanceRepository extends JpaRepository<Performance, Long> {
 
     /**
-     * 상세를 놓친 채 저장된 공연 — 상영 중이고, 가격과 공연장 정보가 둘 다 없고, 아직 다시 받아 보지 않은 것.
-     * 가까운 공연부터 채운다.
+     * 상세를 다시 받아야 하는 상영 중 공연 — 공연 시각·가격 원문이 둘 다 없고, 아직 다시 받아 보지 않은 것.
+     * 원문을 저장하기 전에 들어온 공연은 가격이 있어도 원문이 없어 여기 걸린다.
+     * 가격·공연장까지 빠진 공연을 먼저, 그다음 가까운 공연부터 채운다.
      */
     @Query("""
             select p from Performance p
             where p.sourceType = :sourceType and p.endDate >= :today
-              and p.basePrice is null and p.venueHallId is null and p.detailFetchedOn is null
-            order by p.startDate asc, p.id asc
+              and p.showTimeGuidance is null and p.priceGuidance is null and p.detailFetchedOn is null
+            order by case when p.basePrice is null and p.venueHallId is null then 0 else 1 end,
+                     p.startDate asc, p.id asc
             """)
     List<Performance> findDetailBackfillTargets(@Param("sourceType") SourceType sourceType,
                                                 @Param("today") LocalDate today, Pageable pageable);

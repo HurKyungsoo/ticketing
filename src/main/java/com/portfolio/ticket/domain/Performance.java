@@ -112,6 +112,12 @@ public class Performance {
     /** KOPIS 상세를 다시 받아 본 날. 원본에 정보가 없는 공연을 매일 다시 고르지 않으려고 남긴다. */
     private LocalDate detailFetchedOn;
 
+    /** KOPIS dtguidance 원문(요일별 공연 시각). 회차를 실제 시각으로 다시 만들 때 쓴다. */
+    private String showTimeGuidance;
+
+    /** KOPIS pcseguidance 원문(등급별 가격). 좌석을 실제 가격으로 다시 만들 때 쓴다. */
+    private String priceGuidance;
+
     @Builder.Default
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PerformanceSchedule> schedules = new ArrayList<>();
@@ -191,6 +197,18 @@ public class Performance {
 
     public void markDetailFetched(LocalDate fetchedOn) {
         this.detailFetchedOn = fetchedOn;
+    }
+
+    private static final int GUIDANCE_MAX_LENGTH = 2000;
+
+    /** 상세에서 받은 원문을 남긴다. 다른 소스로 갱신될 때(값 없음) 이미 받아 둔 원문을 지우지 않는다. */
+    public void updateGuidance(String showTimeGuidance, String priceGuidance) {
+        if (showTimeGuidance != null) this.showTimeGuidance = truncate(showTimeGuidance);
+        if (priceGuidance != null) this.priceGuidance = truncate(priceGuidance);
+    }
+
+    private static String truncate(String value) {
+        return value.length() <= GUIDANCE_MAX_LENGTH ? value : value.substring(0, GUIDANCE_MAX_LENGTH);
     }
 
     /**

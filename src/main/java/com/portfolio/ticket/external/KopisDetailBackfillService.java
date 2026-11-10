@@ -48,6 +48,7 @@ public class KopisDetailBackfillService {
                     detailed.getTotalSeatCount(), detailed.getBasePrice(),
                     detailed.getSourceType(), categoryResolver.resolve(detailed.getGenre()),
                     detailed.getRegion(), detailed.getBookingLinks());
+            performance.updateGuidance(detailed.getShowTimeGuidance(), detailed.getPriceGuidance());
             performance.markDetailFetched(LocalDate.now());
         });
     }
