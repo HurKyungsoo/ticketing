@@ -43,4 +43,15 @@ public interface PerformanceScheduleRepository extends JpaRepository<Performance
 
     @Query("select s.showAt from PerformanceSchedule s where s.performance.id = :performanceId and s.showAt >= :from")
     List<LocalDateTime> findShowAtsFrom(@Param("performanceId") Long performanceId, @Param("from") LocalDateTime from);
+
+    /** 이미 지난 회차 중 지울 빈 좌석이 남은 회차. 오래된 것부터. */
+    @Query("""
+            select s.id from PerformanceSchedule s
+            where s.showAt < :cutoff
+              and exists (select 1 from Seat t where t.schedule = s and t.status = :status and t.reservation is null)
+            order by s.showAt
+            """)
+    List<Long> findPastWithUnusedSeats(@Param("cutoff") LocalDateTime cutoff,
+                                       @Param("status") com.portfolio.ticket.domain.SeatStatus status,
+                                       org.springframework.data.domain.Pageable pageable);
 }

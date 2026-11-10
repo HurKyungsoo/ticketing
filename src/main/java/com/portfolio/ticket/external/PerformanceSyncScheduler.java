@@ -3,6 +3,7 @@ package com.portfolio.ticket.external;
 import com.portfolio.ticket.domain.SourceType;
 import com.portfolio.ticket.domain.SyncState;
 import com.portfolio.ticket.repository.SyncStateRepository;
+import com.portfolio.ticket.service.PastSeatCleanup;
 import com.portfolio.ticket.service.ScheduleRegeneration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class PerformanceSyncScheduler {
     private final SyncStateRepository syncStateRepository;
     private final KopisDetailBackfill kopisDetailBackfill;
     private final ScheduleRegeneration scheduleRegeneration;
+    private final PastSeatCleanup pastSeatCleanup;
 
     /**
      * 증분 수집 시 마지막 성공일보다 하루 더 앞에서부터 다시 받는다.
@@ -142,6 +144,13 @@ public class PerformanceSyncScheduler {
             schedulesRebuilt = scheduleRegeneration.run().performances();
         } catch (Exception e) {
             log.error("[회차 재생성] 실패. msg={}", e.getMessage(), e);
+        }
+
+        // 지난 회차의 빈 좌석을 정리한다. 정해 둔 시간만 쓰고 남으면 다음 날 이어서 한다.
+        try {
+            pastSeatCleanup.run();
+        } catch (Exception e) {
+            log.error("[지난 회차 좌석 정리] 실패. msg={}", e.getMessage(), e);
         }
 
         log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, KOPIS 상세 보충 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건, 회차 재생성 {}건",

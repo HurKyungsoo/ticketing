@@ -1,5 +1,6 @@
 package com.portfolio.ticket.repository;
 
+import org.springframework.data.jpa.repository.Modifying;
 import com.portfolio.ticket.domain.Seat;
 import com.portfolio.ticket.domain.SeatStatus;
 import jakarta.persistence.LockModeType;
@@ -47,4 +48,12 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
     @Query("select s from Seat s where s.schedule.id = :scheduleId")
     List<Seat> findAllByScheduleIdForUpdate(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 회차의 빈 좌석 중 어떤 예매와도 이어지지 않은 것을 지운다. 지난 회차 정리용.
+     * 판매·선점된 좌석과, 예매에 연결된 좌석(예매 내역이 가리킨다)은 남는다.
+     */
+    @Modifying
+    @Query("delete from Seat t where t.schedule.id = :scheduleId and t.status = :status and t.reservation is null")
+    int deleteUnusedBySchedule(@Param("scheduleId") Long scheduleId, @Param("status") SeatStatus status);
 }
