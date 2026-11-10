@@ -38,4 +38,13 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     /** 낙관적 락 비교용 - 락 힌트 없이 그냥 조회 */
     @Query("select s from Seat s where s.id = :id")
     Optional<Seat> findByIdPlain(@Param("id") Long id);
+
+    /**
+     * 회차의 좌석 전부를 잠근다. 회차를 지우기 전에, 그 사이 누가 좌석을 잡지 못하게 한다.
+     * 락 순서 규칙(Seat → PerformanceSchedule)을 지키려고 회차보다 먼저 부른다. 타임아웃 3초.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
+    @Query("select s from Seat s where s.schedule.id = :scheduleId")
+    List<Seat> findAllByScheduleIdForUpdate(@Param("scheduleId") Long scheduleId);
 }

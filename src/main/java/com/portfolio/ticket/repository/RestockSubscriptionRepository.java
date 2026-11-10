@@ -38,4 +38,6 @@ public interface RestockSubscriptionRepository extends JpaRepository<RestockSubs
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from RestockSubscription s where s.schedule.id = :scheduleId")
     int deleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    boolean existsByScheduleId(Long scheduleId);
 }

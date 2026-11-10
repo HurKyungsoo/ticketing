@@ -63,4 +63,14 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     /** 아직 안 끝난 공연의 ID — 사이트맵용. 엔티티까지 읽을 필요가 없다. */
     @Query("select p.id from Performance p where p.endDate >= :today order by p.id")
     List<Long> findIdsEndingOnOrAfter(@Param("today") LocalDate today);
+
+    /** 회차를 저장된 원문(실제 공연 시각)으로 다시 만들어야 하는 상영 중 KOPIS 공연. 가까운 공연부터. */
+    @Query("""
+            select p.id from Performance p
+            where p.sourceType = :sourceType and p.endDate > :today
+              and p.showTimeGuidance is not null and p.schedulesRebuiltOn is null
+            order by p.startDate asc, p.id asc
+            """)
+    List<Long> findScheduleRebuildTargets(@Param("sourceType") SourceType sourceType,
+                                          @Param("today") LocalDate today, Pageable pageable);
 }

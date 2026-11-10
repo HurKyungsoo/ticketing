@@ -118,6 +118,9 @@ public class Performance {
     /** KOPIS pcseguidance 원문(등급별 가격). 좌석을 실제 가격으로 다시 만들 때 쓴다. */
     private String priceGuidance;
 
+    /** 회차·좌석을 원문으로 다시 만든 날. 한 번 만든 공연을 매일 다시 고르지 않으려고 남긴다. */
+    private LocalDate schedulesRebuiltOn;
+
     @Builder.Default
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PerformanceSchedule> schedules = new ArrayList<>();
@@ -197,6 +200,10 @@ public class Performance {
 
     public void markDetailFetched(LocalDate fetchedOn) {
         this.detailFetchedOn = fetchedOn;
+    }
+
+    public void markSchedulesRebuilt(LocalDate rebuiltOn) {
+        this.schedulesRebuiltOn = rebuiltOn;
     }
 
     private static final int GUIDANCE_MAX_LENGTH = 2000;

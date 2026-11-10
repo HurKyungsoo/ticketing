@@ -27,4 +27,6 @@ public class PublicDataProperties {
     private long kopisBlockWaitMs = 15_000;
     /** 수집 뒤 상세를 다시 받아 채울 공연 수의 하루 상한. 0 이면 끈다. */
     private int kopisDetailBackfillLimit = 300;
+    /** 회차·좌석을 원문으로 다시 만들 공연 수의 하루 상한. 0 이면 끈다. */
+    private int scheduleRebuildLimit = 100;
 }

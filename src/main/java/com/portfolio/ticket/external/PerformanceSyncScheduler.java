@@ -3,6 +3,7 @@ package com.portfolio.ticket.external;
 import com.portfolio.ticket.domain.SourceType;
 import com.portfolio.ticket.domain.SyncState;
 import com.portfolio.ticket.repository.SyncStateRepository;
+import com.portfolio.ticket.service.ScheduleRegeneration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,6 +32,7 @@ public class PerformanceSyncScheduler {
     private final PublicDataProperties properties;
     private final SyncStateRepository syncStateRepository;
     private final KopisDetailBackfill kopisDetailBackfill;
+    private final ScheduleRegeneration scheduleRegeneration;
 
     /**
      * 증분 수집 시 마지막 성공일보다 하루 더 앞에서부터 다시 받는다.
@@ -133,8 +135,17 @@ public class PerformanceSyncScheduler {
         // 위 세 소스 동기화만으로는 오래 안 건드려진 공연의 회차가 계속 빌 수 있다.
         int staleToppedUp = syncService.topUpStaleSchedules();
 
-        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, KOPIS 상세 보충 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건",
-                standard.created(), culture.created(), kopis.created(), detailBackfilled, purged, merged, staleToppedUp);
+        // 원문(실제 공연 시각·가격)이 쌓인 공연의 회차·좌석을 다시 만든다. KOPIS 를 부르지 않고
+        // 저장된 원문만 쓰므로 수집이 막힌 날에도 돌린다. 실패해도 수집 결과는 그대로 둔다.
+        int schedulesRebuilt = 0;
+        try {
+            schedulesRebuilt = scheduleRegeneration.run().performances();
+        } catch (Exception e) {
+            log.error("[회차 재생성] 실패. msg={}", e.getMessage(), e);
+        }
+
+        log.info("전체 동기화 완료. 표준데이터 신규 {}건, 문화정보 신규 {}건, KOPIS 신규 {}건, KOPIS 상세 보충 {}건, 제외 {}건, 중복 합침 {}건, 회차 보충 {}건, 회차 재생성 {}건",
+                standard.created(), culture.created(), kopis.created(), detailBackfilled, purged, merged, staleToppedUp, schedulesRebuilt);
         return new SyncSummary(standard, culture, kopis, afterDate, purged, staleToppedUp);
     }
 
