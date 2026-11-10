@@ -118,7 +118,7 @@ class PastScheduleTest {
         assertThatThrownBy(() ->
                 reservationFacade.hold(HoldStrategy.PESSIMISTIC, seatId, member.getMemberId()))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("이미 시작된 공연");
+                .hasMessageContaining("예매가 마감된");
 
         assertThat(reservationRepository.findAll()).as("예매가 만들어지면 안 된다").isEmpty();
     }
@@ -132,7 +132,7 @@ class PastScheduleTest {
         assertThatThrownBy(() ->
                 reservationFacade.holdMultiple(HoldStrategy.PESSIMISTIC, List.of(seatId), member.getMemberId()))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("이미 시작된 공연");
+                .hasMessageContaining("예매가 마감된");
     }
 
     @DisplayName("아직 안 지난 회차는 그대로 선점된다 — 막는 조건이 과하지 않은지")
@@ -180,6 +180,61 @@ class PastScheduleTest {
         PerformanceSchedule past = scheduleWithSeat(LocalDateTime.now().minusHours(3));
 
         mockMvc.perform(get("/schedules/{id}/seats", past.getId()).with(user(member)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/performances/" + performance.getId()));
+    }
+
+    /* ------------------------------------------------------------------
+     *  예매 마감 (공연 시작 1시간 전)
+     * ------------------------------------------------------------------ */
+
+    @DisplayName("시작 1시간 안쪽 회차는 아직 시작 전이어도 선점이 거부된다")
+    @Test
+    void cannotHoldWithinBookingCutoff() {
+        PerformanceSchedule soon = scheduleWithSeat(LocalDateTime.now().plusMinutes(30));
+        Long seatId = seatIdOf(soon);
+
+        assertThatThrownBy(() ->
+                reservationFacade.hold(HoldStrategy.PESSIMISTIC, seatId, member.getMemberId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("예매가 마감된");
+        assertThat(reservationRepository.findAll()).isEmpty();
+    }
+
+    @DisplayName("시작까지 1시간이 넘게 남은 회차는 선점된다")
+    @Test
+    void canHoldBeforeBookingCutoff() {
+        PerformanceSchedule later = scheduleWithSeat(LocalDateTime.now().plusMinutes(90));
+
+        Reservation reservation =
+                reservationFacade.hold(HoldStrategy.PESSIMISTIC, seatIdOf(later), member.getMemberId());
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    @DisplayName("마감된 회차는 상세에 「예매 마감」으로 남고, 가장 빠른 회차는 그다음 회차다")
+    @Test
+    void closedScheduleShownAsClosedAndSkippedInSummary() throws Exception {
+        PerformanceSchedule soon = scheduleWithSeat(LocalDateTime.now().plusMinutes(30));
+        PerformanceSchedule later = scheduleWithSeat(LocalDateTime.now().plusDays(1));
+
+        String html = mockMvc.perform(get("/performances/{id}", performance.getId()))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    var summary = (com.portfolio.ticket.service.PerformanceSummaryView)
+                            result.getModelAndView().getModel().get("summary");
+                    if (!later.getId().equals(summary.nextSchedule().getId())) {
+                        throw new AssertionError("가장 빠른 회차는 마감되지 않은 회차여야 한다");
+                    }
+                })
+                .andReturn().getResponse().getContentAsString();
+
+        // 문구가 아니라 마감 칩 자체를 본다. 주석 등에 같은 문구가 있으면 칩이 없어도 통과해 버린다.
+        assertThat(html).containsOnlyOnce("sd-chip sd-chip--closed");
+        assertThat(html).doesNotContain("/schedules/" + soon.getId() + "/seats");
+        assertThat(html).contains("/schedules/" + later.getId() + "/seats");
+
+        mockMvc.perform(get("/schedules/{id}/seats", soon.getId()).with(user(member)))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/performances/" + performance.getId()));
     }

@@ -286,6 +286,8 @@ public class PerformanceController {
         PerformanceSummaryView summary =
                 PerformanceSummaryView.of(performance, schedules, gradePrices, LocalDateTime.now());
         model.addAttribute("summary", summary);
+        // 시작 1시간 전부터 마감된 회차를 "예매 마감"으로 그리는 기준 시각.
+        model.addAttribute("bookingNow", now);
         // 공유 카드 + schema.org/Event. 요약과 같은 값(최저가·가장 빠른 회차)을 쓰므로
         // 화면에 보이는 것과 공유 카드에 뜨는 것이 어긋나지 않는다.
         model.addAttribute("seo", seoView.forPerformance(performance, summary, baseUrl()));
@@ -326,7 +328,7 @@ public class PerformanceController {
         // 이미 시작된 회차의 좌석도는 고를 게 없는 화면이다. 404 로 두면 "없는 회차"라는
         // 틀린 설명이 되므로(존재는 한다) 공연 상세로 되돌려 남은 회차를 고르게 한다.
         // 예매 자체는 ReservationService 가 따로 막는다 — 여기 리다이렉트는 안내일 뿐이다.
-        if (schedule.isPast(LocalDateTime.now())) {
+        if (schedule.isBookingClosed(LocalDateTime.now())) {
             return "redirect:/performances/" + schedule.getPerformance().getId();
         }
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);

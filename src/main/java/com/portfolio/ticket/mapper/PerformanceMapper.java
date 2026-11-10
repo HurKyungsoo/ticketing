@@ -7,6 +7,7 @@ import com.portfolio.ticket.mapper.dto.PerformanceListRow;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -25,12 +26,12 @@ public interface PerformanceMapper {
     long countPerformances(@Param("f") PerformanceFilter filter);
 
     /**
-     * 주어진 공연들의 "오늘 이후 가장 가까운 회차". 회차가 남지 않은 공연은 결과에 없다.
+     * 주어진 공연들의 "지금 예매할 수 있는 가장 가까운 회차"(bookableFrom 이후). 회차가 남지 않은 공연은 결과에 없다.
      *
      * <p>{@code performanceIds} 가 비어 있으면 부르지 말 것 — {@code IN ()} 은 문법 오류다.
      */
     List<NextShowRow> selectNextShowAt(@Param("performanceIds") List<Long> performanceIds,
-                                        @Param("today") LocalDate today);
+                                        @Param("bookableFrom") LocalDateTime bookableFrom);
 
     List<FacetCountRow> selectCategoryCounts(@Param("f") PerformanceFilter filter);
 
@@ -45,5 +46,7 @@ public interface PerformanceMapper {
      */
     List<PerformanceListRow> selectNearby(@Param("lat") double lat, @Param("lng") double lng,
                                            @Param("radiusKm") double radiusKm,
-                                           @Param("today") LocalDate today, @Param("limit") int limit);
+                                           @Param("today") LocalDate today,
+                                           @Param("bookableFrom") LocalDateTime bookableFrom,
+                                           @Param("limit") int limit);
 }

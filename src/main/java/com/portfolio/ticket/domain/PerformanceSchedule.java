@@ -3,6 +3,7 @@ package com.portfolio.ticket.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -78,5 +79,16 @@ public class PerformanceSchedule {
      */
     public boolean isPast(LocalDateTime now) {
         return !showAt.isAfter(now);
+    }
+
+    /**
+     * 예매 마감 시각. 실제 예매처처럼 공연 시작 전에 마감한다 — 시작 직전에 예매하면 결제를
+     * 마치고 공연장에 갈 시간이 없다. 좌석 선점부터 결제까지 같은 기준을 쓴다.
+     */
+    public static final Duration BOOKING_CUTOFF = Duration.ofHours(1);
+
+    /** 예매가 마감된 회차인지. 아직 시작하지 않았어도 시작 1시간 전부터는 마감이다. */
+    public boolean isBookingClosed(LocalDateTime now) {
+        return !showAt.isAfter(now.plus(BOOKING_CUTOFF));
     }
 }

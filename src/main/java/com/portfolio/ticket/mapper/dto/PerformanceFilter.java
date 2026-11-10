@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -35,6 +36,8 @@ public class PerformanceFilter {
     private LocalTime timeSlotTo;
     private String status;         // "ONGOING" | "ENDED" | null(전체)
     private LocalDate today;       // status 판정 기준일
+    /** 이 시각 이후 회차만 "다음 공연"으로 친다. 지금 + 예매 마감 시간(1시간). */
+    private LocalDateTime bookableFrom;
     private String venue;
     private String region;
     private String keyword;
