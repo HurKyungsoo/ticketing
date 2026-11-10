@@ -237,8 +237,13 @@
                         <span class="sd-dow" th:text="${#temporals.format(d.date, '(E)')}">(금)</span>
                     </div>
                     <div class="sd-times">
-                        <th:block th:each="s : ${d.schedules}">
-                            <a th:if="${s.remainingSeats > 0}" class="sd-chip"
+                        <th:block th:each="s : ${d.schedules}" th:with="closed=${s.isBookingClosed(bookingNow)}">
+                            <!--/* 시작 1시간 전부터는 마감이다. 회차가 사라지면 "오늘 공연이 없나" 헷갈리므로 남겨 두고 누르지 못하게 한다. */-->
+                            <span th:if="${closed}" class="sd-chip sd-chip--closed" aria-disabled="true">
+                                <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
+                                <span class="sd-remain">예매 마감</span>
+                            </span>
+                            <a th:if="${!closed and s.remainingSeats > 0}" class="sd-chip"
                                th:href="@{/schedules/{id}/seats(id=${s.id})}">
                                 <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>
                                 <span class="sd-remain" th:text="'잔여 ' + ${s.remainingSeats}">잔여 400</span>
@@ -250,7 +255,7 @@
                                 NotificationService.onSeatsReleased 가 구독자에게 알린다.
                                 구독 상태(aria-pressed)는 컨트롤러가 미리 물어와서 첫 렌더에 반영한다.
                             -->
-                            <button type="button" th:if="${s.remainingSeats == 0}" class="sd-chip restock-btn"
+                            <button type="button" th:if="${!closed and s.remainingSeats == 0}" class="sd-chip restock-btn"
                                     th:attr="data-schedule-id=${s.id},
                                              aria-pressed=${subscribedScheduleIds.contains(s.id)}">
                                 <span class="sd-time" th:text="${#temporals.format(s.showAt, 'HH:mm')}">19:00</span>

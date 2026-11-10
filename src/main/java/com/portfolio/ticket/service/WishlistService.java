@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import com.portfolio.ticket.domain.PerformanceSchedule;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,7 +45,8 @@ public class WishlistService {
         List<Long> ids = wishes.stream().map(w -> w.getPerformance().getId()).toList();
         // 문구와 "오늘/내일이냐"까지 여기서 정해 넘긴다. 시각만 넘기면 그 판정을 템플릿에서
         // 다시 짜야 하고, 그러면 목록·홈과 찜의 표기가 갈릴 자리가 생긴다.
-        return performanceMapper.selectNextShowAt(ids, today).stream()
+        LocalDateTime bookableFrom = LocalDateTime.now().plus(PerformanceSchedule.BOOKING_CUTOFF);
+        return performanceMapper.selectNextShowAt(ids, bookableFrom).stream()
                 .collect(Collectors.toMap(NextShowRow::getPerformanceId,
                         r -> PerformanceListRow.nextShowFor(r.getNextShowAt(), today)));
     }

@@ -350,8 +350,9 @@ public class ReservationService {
         // 이미 시작된 공연은 예매할 수 없다. 목록에서 지난 회차를 감추는 것만으로는 부족하다 —
         // 좌석도 URL(/schedules/{id}/seats)과 선점 API 는 회차 id 만 있으면 그대로 호출되므로,
         // 두 hold 경로가 모두 지나가는 이 지점에서 막아야 한다.
-        if (schedule.isPast(now)) {
-            throw new IllegalStateException("이미 시작된 공연은 예매할 수 없습니다.");
+        // 시작 1시간 전부터 마감한다(PerformanceSchedule.BOOKING_CUTOFF). 화면도 같은 기준으로 감춘다.
+        if (schedule.isBookingClosed(now)) {
+            throw new IllegalStateException("예매가 마감된 회차입니다. 공연 시작 1시간 전에 마감합니다.");
         }
 
         // 매수 제한 체크. 위에서 잡은 schedule 락(findByIdForUpdate)이 이 회차에 대한 모든

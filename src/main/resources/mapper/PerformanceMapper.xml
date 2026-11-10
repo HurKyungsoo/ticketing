@@ -39,15 +39,15 @@
         좁힌 뒤 show_at 범위를 훑으므로 MIN 은 첫 행이다. 월 조건은 MONTH() 라 인덱스를
         못 타지만, 앞에서 공연 하나당 회차 몇 건으로 이미 좁혀져 있다.
 
-        기준을 now 가 아니라 today(자정)로 두는 이유: 오늘 저녁 공연은 아직 볼 수 있는데
-        지금 시각으로 자르면 낮에 시작한 오늘 공연들이 통째로 뒤로 밀린다. 화면이 D-day 를
-        날짜 단위로 세는 것과도 기준이 같아진다.
+        기준은 "지금 + 예매 마감 시간(1시간)"이다(f.bookableFrom). 예전에는 오늘 자정을 기준으로
+        해서, 오후에 보면 이미 끝난 오늘 오전 회차가 "다음 공연 오늘 11:00"으로 남아 있었다.
+        카드의 다음 공연은 지금 예매할 수 있는 가장 가까운 회차여야 한다.
     -->
     <sql id="nextShowAt">
         (SELECT MIN(ps2.show_at)
            FROM performance_schedule ps2
           WHERE ps2.performance_id = p.id
-            AND ps2.show_at &gt;= #{f.today}
+            AND ps2.show_at &gt; #{f.bookableFrom}
             <include refid="scheduleConditions"><property name="a" value="ps2"/></include>)
     </sql>
 
@@ -68,7 +68,7 @@
         (SELECT ps3.remaining_seats
            FROM performance_schedule ps3
           WHERE ps3.performance_id = p.id
-            AND ps3.show_at &gt;= #{f.today}
+            AND ps3.show_at &gt; #{f.bookableFrom}
             <include refid="scheduleConditions"><property name="a" value="ps3"/></include>
           ORDER BY ps3.show_at ASC LIMIT 1)
     </sql>
@@ -236,7 +236,7 @@
         SELECT ps.performance_id AS performance_id,
                MIN(ps.show_at)   AS next_show_at
           FROM performance_schedule ps
-         WHERE ps.show_at &gt;= #{today}
+         WHERE ps.show_at &gt; #{bookableFrom}
            AND ps.performance_id IN
            <foreach item="id" collection="performanceIds" open="(" separator="," close=")">#{id}</foreach>
          GROUP BY ps.performance_id
@@ -285,9 +285,9 @@
                p.start_date   AS start_date,
                p.end_date     AS end_date,
                (SELECT MIN(ps2.show_at) FROM performance_schedule ps2
-                 WHERE ps2.performance_id = p.id AND ps2.show_at &gt;= #{today}) AS next_show_at,
+                 WHERE ps2.performance_id = p.id AND ps2.show_at &gt; #{bookableFrom}) AS next_show_at,
                (SELECT ps3.remaining_seats FROM performance_schedule ps3
-                 WHERE ps3.performance_id = p.id AND ps3.show_at &gt;= #{today}
+                 WHERE ps3.performance_id = p.id AND ps3.show_at &gt; #{bookableFrom}
                  ORDER BY ps3.show_at ASC LIMIT 1) AS next_remaining_seats,
                <include refid="distanceKm"/> AS distance_km
           FROM performance p

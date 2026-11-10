@@ -70,7 +70,7 @@ public record PerformanceCompareView(
                 PerformanceListRow.availabilityFor(nextShowAt, nextRemaining, performance.getStartDate(), today),
                 performance.getRunningTime(),
                 performance.getAgeLimit(),
-                (int) schedules.stream().filter(s -> !s.isPast(now)).count());
+                (int) schedules.stream().filter(s -> !s.isBookingClosed(now)).count());
     }
 
     /** 예매하러 갈 수 있는 상태인지. 남은 회차가 하나도 없으면 CTA 를 죽인다. */

@@ -6118,3 +6118,10 @@ body.page-info.tone-light .infodoc { padding: 40px 24px 0; }
   body.page-home .hero-stat strong { margin: 0 2px; font-size: 22px; }
   body.page-home .hero-live { margin: 0 0 0 8px; vertical-align: middle; }
 }
+
+/* 예매 마감 회차(시작 1시간 전부터). 지난 회차처럼 감추지 않고 남겨 두되 누를 수 없게 흐리게 그린다. */
+body.page-detail .sd-times .sd-chip--closed {
+  opacity: .45;
+  cursor: default;
+  pointer-events: none;
+}

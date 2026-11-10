@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import com.portfolio.ticket.domain.PerformanceSchedule;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -237,6 +239,7 @@ public class PerformanceListService {
         PerformanceFilter filter = new PerformanceFilter();
         filter.setStatus("ONGOING");
         filter.setToday(today);
+        filter.setBookableFrom(bookableFrom());
         return filter;
     }
 
@@ -274,7 +277,7 @@ public class PerformanceListService {
 
     public NearbyResult nearby(double lat, double lng) {
         for (double radiusKm : NEARBY_RADIUS_TIERS_KM) {
-            List<PerformanceListRow> rows = performanceMapper.selectNearby(lat, lng, radiusKm, LocalDate.now(), NEARBY_LIMIT);
+            List<PerformanceListRow> rows = performanceMapper.selectNearby(lat, lng, radiusKm, LocalDate.now(), bookableFrom(), NEARBY_LIMIT);
             if (!rows.isEmpty()) {
                 return new NearbyResult(rows, radiusKm);
             }
@@ -348,6 +351,7 @@ public class PerformanceListService {
         // 들어오므로 여기서 맞춰준다 — 안 맞추면 조건문이 통째로 빠져 필터가 무시된다.
         filter.setStatus(status == null ? null : status.toUpperCase(Locale.ROOT));
         filter.setToday(LocalDate.now());
+        filter.setBookableFrom(bookableFrom());
         filter.setVenue(venue);
         filter.setRegion(region);
         filter.setKeyword(keyword);
@@ -478,10 +482,16 @@ public class PerformanceListService {
         copy.setTimeSlotTo(source.getTimeSlotTo());
         copy.setStatus(source.getStatus());
         copy.setToday(source.getToday());
+        copy.setBookableFrom(source.getBookableFrom());
         copy.setVenue(source.getVenue());
         copy.setRegion(source.getRegion());
         copy.setKeyword(source.getKeyword());
         mutator.accept(copy);
         return copy;
+    }
+
+    /** "다음 공연"으로 칠 수 있는 가장 이른 시각. 시작 1시간 전부터는 예매 마감이라 뺀다. */
+    private static LocalDateTime bookableFrom() {
+        return LocalDateTime.now().plus(PerformanceSchedule.BOOKING_CUTOFF);
     }
 }

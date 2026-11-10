@@ -53,8 +53,9 @@ public record PerformanceSummaryView(Integer lowestPrice, PerformanceSchedule ne
      * 지나 있어서, "가장 빠른 회차"라며 어제 날짜를 보여주게 된다. 전부 지났으면 null.
      */
     private static PerformanceSchedule nextScheduleOf(List<PerformanceSchedule> schedules, LocalDateTime now) {
+        // 예매가 마감된 회차(시작 1시간 전부터)는 "가장 빠른 회차"로 보여 주지 않는다.
         return schedules.stream()
-                .filter(s -> !s.isPast(now))
+                .filter(s -> !s.isBookingClosed(now))
                 .findFirst()
                 .orElse(null);
     }
