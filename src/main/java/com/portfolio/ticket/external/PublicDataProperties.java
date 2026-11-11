@@ -29,4 +29,6 @@ public class PublicDataProperties {
     private int kopisDetailBackfillLimit = 300;
     /** 회차·좌석을 원문으로 다시 만들 공연 수의 하루 상한. 0 이면 끈다. */
     private int scheduleRebuildLimit = 100;
+    /** 지난 회차 빈 좌석 정리에 하루 쓸 시간(분). 0 이면 끈다. */
+    private long pastSeatCleanupMinutes = 15;
 }
