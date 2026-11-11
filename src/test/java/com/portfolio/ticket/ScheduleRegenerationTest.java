@@ -110,6 +110,35 @@ class ScheduleRegenerationTest {
     }
 
     @Test
+    void 좌석이_많은_큰_공연장_회차도_지우고_다시_만든다() {
+        // 운영에서 회차당 1,500석인 공연의 재생성이 StackOverflowError 로 건너뛰어졌다.
+        Performance performance = performance(SHOW_TIMES, firstSaturday);
+        PerformanceSchedule big = scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(performance)
+                .showAt(LocalDate.now().plusDays(2).atTime(11, 0))
+                .totalSeats(1_500)
+                .remainingSeats(1_500)
+                .build());
+        List<Seat> seats = new java.util.ArrayList<>();
+        for (int i = 0; i < 1_500; i++) {
+            seats.add(Seat.builder()
+                    .schedule(big)
+                    .section("1층").rowNo(i / 30 + 1).seatNo(i % 30 + 1)
+                    .grade(SeatGrade.R).status(SeatStatus.AVAILABLE).price(50_000)
+                    .build());
+        }
+        seatRepository.saveAll(seats);
+
+        ScheduleRegeneration.Result result = regeneration.run();
+
+        assertThat(result.performances()).isEqualTo(1);
+        assertThat(scheduleRepository.findById(big.getId())).isEmpty();
+        assertThat(seatRepository.countByScheduleIdAndStatus(big.getId(), SeatStatus.AVAILABLE)).isZero();
+        assertThat(performanceRepository.findById(performance.getId()).orElseThrow().getSchedulesRebuiltOn())
+                .isEqualTo(LocalDate.now());
+    }
+
+    @Test
     void 원문으로_만들_회차가_없으면_아무것도_지우지_않는다() {
         // 남은 기간에 토요일이 없다.
         LocalDate end = firstSaturday.minusDays(1);
