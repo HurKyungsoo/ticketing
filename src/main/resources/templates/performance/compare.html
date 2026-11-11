@@ -75,17 +75,19 @@
                     <!-- 배지가 없는 게 곧 「예매 가능」이다(목록·홈 카드와 같은 규칙). 표에서는
                          빈칸이 어색하므로 그 경우에만 글자로 적는다. -->
                     <td th:each="it : ${items}">
-                        <span class="cmp-avail" th:if="${it.availability != null}"
+                        <span class="cmp-ok" th:if="${it.free}">무료 공연 · 예매 없음</span>
+                        <span class="cmp-avail" th:if="${!it.free and it.availability != null}"
                               th:classappend="${it.availability.cssClass}"
                               th:text="${it.availability.label}">매진</span>
-                        <span class="cmp-ok" th:if="${it.availability == null}">예매 가능</span>
+                        <span class="cmp-ok" th:if="${!it.free and it.availability == null}">예매 가능</span>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">최저가</th>
                     <td th:each="it : ${items}">
                         <strong th:if="${it.lowestPrice != null}"
-                                th:text="${#numbers.formatInteger(it.lowestPrice, 0, 'COMMA')} + '원~'">50,000원~</strong>
+                                th:text="${it.lowestPrice == 0} ? '무료'
+                                         : ${#numbers.formatInteger(it.lowestPrice, 0, 'COMMA')} + '원~'">50,000원~</strong>
                         <span class="cmp-none" th:if="${it.lowestPrice == null}">-</span>
                     </td>
                 </tr>

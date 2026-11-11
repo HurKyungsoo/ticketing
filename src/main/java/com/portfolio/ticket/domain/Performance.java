@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 공연. 공공데이터 API 로 수집되며 externalId 로 중복 수집을 막는다.
@@ -121,6 +122,9 @@ public class Performance {
     /** 회차·좌석을 원문으로 다시 만든 날. 한 번 만든 공연을 매일 다시 고르지 않으려고 남긴다. */
     private LocalDate schedulesRebuiltOn;
 
+    /** 관람료 원문에 적힌 금액. 하나라도 있으면 유료 공연이다 ("어린이 무료, 일반 10,000원"). */
+    private static final Pattern PAID_AMOUNT = Pattern.compile("\\d[\\d,]*\\s*원");
+
     @Builder.Default
     @OneToMany(mappedBy = "performance", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PerformanceSchedule> schedules = new ArrayList<>();
@@ -231,5 +235,21 @@ public class Performance {
             return null;
         }
         return externalId.substring(KOPIS_EXTERNAL_ID_PREFIX.length());
+    }
+
+    /**
+     * 관람료가 없는 공연인지.
+     *
+     * <p>수집할 때 관람료에 '무료'가 있으면 기준가를 0 으로 둔다({@code PublicDataParser.price}).
+     * 그런데 "어린이 무료, 일반 10,000원" 도 0 이 되므로, 가격 원문이 있으면 금액이 하나도 없을 때만
+     * 무료로 본다.
+     *
+     * <p>이 사이트는 무료 공연의 예매를 받지 않고 관람 방법만 안내한다. 무료 공연은 대부분 현장 입장이나
+     * 주최 측 사전 신청이라, 여기서 좌석을 "예매"해도 실제 입장과 아무 관계가 없다. 종전에는 가격을
+     * 못 읽은 공연처럼 기본 가격(40,000~75,000원)으로 좌석을 팔았다.
+     */
+    public boolean isFreeAdmission() {
+        if (basePrice == null || basePrice != 0) return false;
+        return priceGuidance == null || !PAID_AMOUNT.matcher(priceGuidance).find();
     }
 }

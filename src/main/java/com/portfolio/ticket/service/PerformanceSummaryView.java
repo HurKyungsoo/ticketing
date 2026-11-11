@@ -39,6 +39,8 @@ public record PerformanceSummaryView(Integer lowestPrice, PerformanceSchedule ne
      * basePrice 로 대체한다(둘 다 없으면 null → 화면에서 그 줄을 숨긴다).
      */
     private static Integer lowestPriceOf(Performance performance, List<GradePriceRow> gradePrices) {
+        // 무료 공연에도 좌석은 기본 가격으로 만들어져 있다(예매는 받지 않는다). 그 값을 "얼마부터"로 보이면 안 된다.
+        if (performance.isFreeAdmission()) return 0;
         return gradePrices.stream()
                 .mapToInt(GradePriceRow::getPrice)
                 .min()

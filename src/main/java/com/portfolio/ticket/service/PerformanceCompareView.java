@@ -33,7 +33,8 @@ public record PerformanceCompareView(
         PerformanceListRow.Availability availability,
         String runningTime,
         String ageLimit,
-        int upcomingCount
+        int upcomingCount,
+        boolean free
 ) {
 
     /**
@@ -70,11 +71,12 @@ public record PerformanceCompareView(
                 PerformanceListRow.availabilityFor(nextShowAt, nextRemaining, performance.getStartDate(), today),
                 performance.getRunningTime(),
                 performance.getAgeLimit(),
-                (int) schedules.stream().filter(s -> !s.isBookingClosed(now)).count());
+                (int) schedules.stream().filter(s -> !s.isBookingClosed(now)).count(),
+                performance.isFreeAdmission());
     }
 
-    /** 예매하러 갈 수 있는 상태인지. 남은 회차가 하나도 없으면 CTA 를 죽인다. */
+    /** 예매하러 갈 수 있는 상태인지. 남은 회차가 없거나 무료 공연(예매를 받지 않는다)이면 CTA 를 죽인다. */
     public boolean bookable() {
-        return upcomingCount > 0;
+        return upcomingCount > 0 && !free;
     }
 }

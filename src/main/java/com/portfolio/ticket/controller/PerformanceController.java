@@ -328,7 +328,8 @@ public class PerformanceController {
         // 이미 시작된 회차의 좌석도는 고를 게 없는 화면이다. 404 로 두면 "없는 회차"라는
         // 틀린 설명이 되므로(존재는 한다) 공연 상세로 되돌려 남은 회차를 고르게 한다.
         // 예매 자체는 ReservationService 가 따로 막는다 — 여기 리다이렉트는 안내일 뿐이다.
-        if (schedule.isBookingClosed(LocalDateTime.now())) {
+        // 무료 공연도 좌석도가 없다 — 예매를 받지 않고 상세에서 관람 방법을 안내한다.
+        if (schedule.isBookingClosed(LocalDateTime.now()) || schedule.getPerformance().isFreeAdmission()) {
             return "redirect:/performances/" + schedule.getPerformance().getId();
         }
         List<SeatMapRow> seats = seatMapper.selectSeatMap(scheduleId);

@@ -354,6 +354,11 @@ public class ReservationService {
         if (schedule.isBookingClosed(now)) {
             throw new IllegalStateException("예매가 마감된 회차입니다. 공연 시작 1시간 전에 마감합니다.");
         }
+        // 무료 공연은 예매를 받지 않는다(Performance.isFreeAdmission). 화면은 일정만 보여 주고 좌석도로
+        // 보내지 않지만, 좌석도 URL 과 선점 API 는 회차 id 만 있으면 호출되므로 여기서도 막는다.
+        if (schedule.getPerformance().isFreeAdmission()) {
+            throw new IllegalStateException("무료 공연은 예매를 받지 않습니다. 관람 방법은 공연 상세의 안내를 확인하세요.");
+        }
 
         // 매수 제한 체크. 위에서 잡은 schedule 락(findByIdForUpdate)이 이 회차에 대한 모든
         // createReservation 호출을 이미 직렬화하고 있으므로, 같은 회원이 동시에 여러 요청을
