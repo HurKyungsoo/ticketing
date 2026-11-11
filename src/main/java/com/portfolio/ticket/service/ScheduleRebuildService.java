@@ -65,7 +65,7 @@ public class ScheduleRebuildService {
                 || notificationRepository.existsByScheduleId(scheduleId)) {
             return false;
         }
-        seatRepository.deleteAllInBatch(seats);
+        seatRepository.deleteAllByScheduleId(scheduleId);
         scheduleRepository.delete(schedule);
         return true;
     }

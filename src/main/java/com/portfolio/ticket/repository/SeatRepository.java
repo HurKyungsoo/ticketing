@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
@@ -47,4 +48,16 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
     @Query("select s from Seat s where s.schedule.id = :scheduleId")
     List<Seat> findAllByScheduleIdForUpdate(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 회차의 좌석을 쿼리 한 번으로 지운다. 반드시 {@link #findAllByScheduleIdForUpdate} 로 잠그고
+     * 모두 비어 있는지 확인한 뒤에 부른다.
+     *
+     * <p>{@code deleteAllInBatch(좌석 목록)} 은 좌석 수만큼 {@code id = ? or id = ? ...} 를 이어 붙인
+     * 쿼리를 만드는데, 1,500석 회차에서 쿼리 해석이 운영 스레드 스택(512KB)을 넘겨
+     * {@code StackOverflowError} 가 났다. 좌석 수와 상관없이 조건이 하나인 이 쿼리를 쓴다.
+     */
+    @Modifying
+    @Query("delete from Seat s where s.schedule.id = :scheduleId")
+    int deleteAllByScheduleId(@Param("scheduleId") Long scheduleId);
 }

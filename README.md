@@ -573,6 +573,7 @@ docker compose up --build
 | 위 조사에서 `ExecStart` 만 보고 "JVM 에 메모리 옵션이 하나도 없다"고 오진했다. 실제 옵션은 `EnvironmentFile` 의 `JAVA_TOOL_OPTIONS` 에 있었고, 방향이 정반대(무제한이 아니라 과소 설정)라 처방도 완전히 달라졌다 | **JVM 실제 적용값은 유닛 파일이 아니라 실행 중인 프로세스에서 확인한다** — `jcmd <pid> VM.flags`. 환경변수·`JAVA_TOOL_OPTIONS`·래퍼 스크립트 등 옵션이 들어올 경로가 여러 개다 |
 | 힙 상한을 그대로 두고 Metaspace 만 올리면 cgroup(`MemoryMax=700M`)을 넘겨 이번엔 커널 OOM 킬러가 죽인다. `OOMScoreAdjust=500` 이라 이 앱이 1순위 표적이고 재시작 루프에 빠진다 | `MemoryMax` 를 900M 로 함께 올렸다(drop-in `gaeseok.service.d/memory.conf`, 지우고 `daemon-reload` 하면 원복). **JVM 상한과 컨테이너/cgroup 상한은 항상 같이 움직여야 한다** — 한쪽만 올리면 죽는 주체가 JVM 에서 커널로 바뀔 뿐이다 |
 | 재시작 후 로그 점검에서 `grep OutOfMemoryError` 가 1건을 잡아 재발로 오인할 뻔했다 | JVM 이 기동 시 출력하는 `Picked up JAVA_TOOL_OPTIONS: ... -XX:+ExitOnOutOfMemoryError` 줄이 걸린 것. 실제 발생은 `java.lang.OutOfMemoryError` 로 검사해야 한다. 마찬가지로 `grep Exception` 은 `ExceptionTranslationFilter` 같은 정상 INFO 로그를 잡는다 |
+| 저장된 KOPIS 원문으로 회차를 다시 만드는 첫 실행에서 30건 중 국립발레단 공연 1건만 `StackOverflowError` 로 건너뛰었다. 회차당 좌석이 1,500석이었고, 좌석을 지우던 `deleteAllInBatch(좌석 목록)` 이 **좌석 수만큼 `id = ? or id = ? ...` 를 이어 붙인 쿼리**를 만들어 쿼리 해석이 스택을 넘겼다. 같은 1,500석 테스트가 로컬에서는 통과했는데, 운영 JVM 은 `-Xss512k` 로 스레드 스택이 기본값(1MB)의 절반이었다. | 좌석을 잠그고 모두 비어 있는지 확인한 뒤 `delete from Seat s where s.schedule.id = :id` 한 번으로 지우도록 바꿨다. 테스트 JVM 도 운영과 같은 `-Xss512k` 로 돌려, 수정 전 코드가 1,500석 테스트에서 실제로 실패하는 것을 확인했다. |
 
 ---
 
