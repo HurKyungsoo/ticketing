@@ -73,4 +73,8 @@ dependencies {
     testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform()
+    // 운영 JVM 과 같은 스레드 스택 크기. 기본값(1MB)에서는 통과하고 운영에서만 StackOverflowError 가 나던 경우를 테스트에서 잡는다.
+    jvmArgs '-Xss512k'
+}
