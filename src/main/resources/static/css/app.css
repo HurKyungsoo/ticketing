@@ -6125,3 +6125,21 @@ body.page-detail .sd-times .sd-chip--closed {
   cursor: default;
   pointer-events: none;
 }
+
+/* 무료 공연의 일정 칩. 예매를 받지 않아 누를 곳이 없다 — 마감 칩처럼 흐리게 하지는 않는다(지난 게 아니다). */
+body.page-detail .sd-times .sd-chip--info {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* 무료 공연 안내. 회차 목록 바로 위에서, 왜 누를 수 없는지와 어디서 확인하는지를 말한다. */
+body.page-detail .free-notice {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, .1);
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+body.page-detail .free-notice a { text-decoration: underline; text-underline-offset: 2px; }
