@@ -4,13 +4,8 @@ import com.portfolio.ticket.domain.Performance;
 import com.portfolio.ticket.domain.PerformanceSchedule;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
-import com.portfolio.ticket.repository.ReservationRepository;
-import com.portfolio.ticket.repository.SeatRepository;
-import com.portfolio.ticket.repository.NotificationRepository;
-import com.portfolio.ticket.repository.RestockSubscriptionRepository;
-import com.portfolio.ticket.repository.ReviewRepository;
-import com.portfolio.ticket.repository.WishlistRepository;
 import com.portfolio.ticket.service.PerformanceRegisteredEvent;
+import com.portfolio.ticket.service.PerformanceRemover;
 import com.portfolio.ticket.service.ScheduleOpenedEvent;
 import com.portfolio.ticket.service.SeatGenerator;
 import lombok.RequiredArgsConstructor;
@@ -70,16 +65,11 @@ public class PerformanceSyncService {
 
     private final PerformanceRepository performanceRepository;
     private final PerformanceScheduleRepository scheduleRepository;
-    private final SeatRepository seatRepository;
-    private final ReservationRepository reservationRepository;
-    private final WishlistRepository wishlistRepository;
-    private final NotificationRepository notificationRepository;
-    private final RestockSubscriptionRepository restockSubscriptionRepository;
-    private final ReviewRepository reviewRepository;
     private final ApplicationEventPublisher events;
     private final SeatGenerator seatGenerator;
     private final PerformanceCategoryResolver categoryResolver;
     private final ShowTimeDistributionProperties showTimes;
+    private final PerformanceRemover performanceRemover;
 
     /** 한 페이지 분량 동기화 결과. skipped(이미 존재해 갱신만 함)는 received - created 로 구한다. */
     public record SyncBatchResult(int received, int created) {}
@@ -152,9 +142,9 @@ public class PerformanceSyncService {
      * 멱등이라 동기화 때마다 돌려도 안전하다.
      *
      * <p>예매가 걸린 항목은 남긴다. 표를 산 사람에게 예매 내역은 영수증이라, 수집 규칙이
-     * 바뀌었다고 그 기록을 지울 수는 없다.
+     * 바뀌었다고 그 기록을 지울 수는 없다. 삭제는 {@link PerformanceRemover} 가 회차마다 좌석을
+     * 먼저 잠그고 확인한 뒤 한다 — 트랜잭션 밖에서 불러야 하므로 여기엔 {@code @Transactional} 이 없다.
      */
-    @Transactional
     public int purgeNonPerformances() {
         List<Performance> targets = performanceRepository.findAll().stream()
                 .filter(p -> isNotPerformance(p.getTitle()))
@@ -162,38 +152,15 @@ public class PerformanceSyncService {
 
         int removed = 0;
         for (Performance performance : targets) {
-            if (reservationRepository.existsByPerformanceId(performance.getId())) {
-                log.warn("공연이 아닌 항목이지만 예매가 있어 남긴다. id={}, title={}",
+            if (!performanceRemover.removeIfUntouched(performance.getId(), null)) {
+                log.warn("공연이 아닌 항목이지만 예매·선점이 있어 남긴다. id={}, title={}",
                         performance.getId(), performance.getTitle());
                 continue;
             }
-            deleteWithDependents(performance);
             log.info("공연이 아닌 항목을 제거했다. title={}", performance.getTitle());
             removed++;
         }
         return removed;
-    }
-
-    /** 공연을 지운다. 공연·회차를 FK 로 참조하는 사용자 기록(찜·알림·관람평·구독)과 좌석을 먼저 정리한다. */
-    private void deleteWithDependents(Performance performance) {
-        // 찜도 공연을 FK 로 참조한다. 찜은 사용자가 만든 기록이지만 공연 자체가 사라지면
-        // 가리킬 대상이 없다 — 금전·입장 권리가 걸린 예매와 달라서 함께 지운다.
-        wishlistRepository.deleteByPerformanceId(performance.getId());
-        // 알림도 같은 이유로 공연을 FK 로 참조한다. 남겨두면 공연 삭제가 FK 제약에 막힌다.
-        notificationRepository.deleteByPerformanceId(performance.getId());
-        // 관람평도 마찬가지다. 그 공연이 사라지면 관람평이 가리킬 대상이 없다.
-        reviewRepository.deleteByPerformanceId(performance.getId());
-
-        // 좌석·구독은 회차에 매달려 있지만 회차 쪽에 컬렉션 매핑이 없어 cascade 가 닿지
-        // 않는다. 먼저 지우지 않으면 FK 제약에 걸린다 (회차는 Performance 의 cascade 로
-        // 함께 지워진다). 취소표 알림 구독도 같은 이유로 함께 정리한다 — 안 지우면
-        // schedule_id FK 가 회차 삭제를 막는다.
-        for (PerformanceSchedule schedule : scheduleRepository.findByPerformanceIdOrderByShowAtAsc(performance.getId())) {
-            seatRepository.deleteAll(
-                    seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(schedule.getId()));
-            restockSubscriptionRepository.deleteByScheduleId(schedule.getId());
-        }
-        performanceRepository.delete(performance);
     }
 
     /**
@@ -208,28 +175,37 @@ public class PerformanceSyncService {
      * 비어 있으면 옮겨 받는다. <b>예매가 걸린 쪽은 지우지 않는다</b> — 표를 산 사람에게 예매 내역은
      * 영수증이다(purgeNonPerformances 와 같은 원칙). 같은 소스 안의 중복은 건드리지 않는다
      * — 기관이 일부러 나눠 올린 상품(일반/회원 패키지 등)일 수 있다.
+     *
+     * <p>삭제는 {@link PerformanceRemover} 가 회차마다 좌석을 먼저 잠그고 확인한 뒤 한다. 선점·빈자리
+     * 알림이 걸린 쪽도 남긴다. 트랜잭션 밖에서 불러야 하므로 여기엔 {@code @Transactional} 이 없다.
      */
-    @Transactional
     public int mergeCrossSourceDuplicates() {
         List<Performance> live = performanceRepository.findByEndDateGreaterThanEqual(LocalDate.now()).stream()
                 .filter(p -> ShowIdentity.rank(p.getSourceType()) > 0)
                 .toList();
 
-        java.util.Map<String, List<Performance>> byTitle = new java.util.HashMap<>();
+        // 같은 공연 후보끼리만 비교한다. 정규화한 제목이 같은 묶음(기본 규칙)과, 시작일·종료일이
+        // 정확히 같은 묶음(느슨한 규칙 — ShowIdentity.looselySame)을 따로 만든다.
+        java.util.Map<String, List<Performance>> candidates = new java.util.HashMap<>();
         for (Performance p : live) {
             String key = ShowIdentity.titleKey(p.getTitle());
-            if (!key.isEmpty()) byTitle.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(p);
+            if (!key.isEmpty()) candidates.computeIfAbsent("T|" + key, k -> new java.util.ArrayList<>()).add(p);
+            if (p.getStartDate() != null && p.getEndDate() != null) {
+                candidates.computeIfAbsent("D|" + p.getStartDate() + "|" + p.getEndDate(),
+                        k -> new java.util.ArrayList<>()).add(p);
+            }
         }
 
         int removed = 0;
-        for (List<Performance> group : byTitle.values()) {
+        // 한 공연이 두 묶음에 다 들 수 있으므로 지운 공연은 묶음과 상관없이 기억한다.
+        java.util.Set<Long> gone = new java.util.HashSet<>();
+        for (List<Performance> group : candidates.values()) {
             if (group.size() < 2) continue;
             // 순위 높은 것 → 먼저 들어온 것(id 작은 것) 순. 앞에서부터 남길 후보가 된다.
             List<Performance> sorted = group.stream()
                     .sorted(java.util.Comparator.comparingInt((Performance p) -> -ShowIdentity.rank(p.getSourceType()))
                             .thenComparing(Performance::getId))
                     .toList();
-            java.util.Set<Long> gone = new java.util.HashSet<>();
             for (Performance keeper : sorted) {
                 if (gone.contains(keeper.getId())) continue;
                 ShowIdentity keep = identityOf(keeper);
@@ -238,14 +214,11 @@ public class PerformanceSyncService {
                     if (other.getSourceType() == keeper.getSourceType()) continue;
                     if (ShowIdentity.rank(other.getSourceType()) > ShowIdentity.rank(keeper.getSourceType())) continue;
                     if (!keep.sameShowAs(identityOf(other))) continue;
-                    if (reservationRepository.existsByPerformanceId(other.getId())) {
-                        log.warn("다른 소스의 같은 공연이지만 예매가 있어 남긴다. keep={}, dup={}, title={}",
+                    if (!performanceRemover.removeIfUntouched(other.getId(), keeper.getId())) {
+                        log.warn("다른 소스의 같은 공연이지만 예매·선점이 있어 남긴다. keep={}, dup={}, title={}",
                                 keeper.getId(), other.getId(), other.getTitle());
                         continue;
                     }
-                    keeper.fillMissingLocation(other.getAddress(), other.getLatitude(), other.getLongitude());
-                    moveWishlists(other, keeper);
-                    deleteWithDependents(other);
                     gone.add(other.getId());
                     log.info("다른 소스의 같은 공연을 합쳤다. keep={}({}), removed={}({}), title={}",
                             keeper.getId(), keeper.getSourceType(), other.getId(), other.getSourceType(), other.getTitle());
@@ -254,15 +227,6 @@ public class PerformanceSyncService {
             }
         }
         return removed;
-    }
-
-    /** 지우는 쪽에 걸린 찜을 남기는 쪽으로 옮긴다 — 같은 공연이니 사용자의 "나중에 볼까"는 그대로 유효하다 */
-    private void moveWishlists(Performance from, Performance to) {
-        for (com.portfolio.ticket.domain.Wishlist w : wishlistRepository.findByPerformanceId(from.getId())) {
-            if (wishlistRepository.existsByMemberIdAndPerformanceId(w.getMemberId(), to.getId())) continue;
-            wishlistRepository.save(com.portfolio.ticket.domain.Wishlist.builder()
-                    .memberId(w.getMemberId()).performance(to).createdAt(w.getCreatedAt()).build());
-        }
     }
 
     /** 이번에 들어온 항목과 같은 공연이 다른 소스로 이미 있고, 그쪽이 같거나 더 풍부하면 그것 */
