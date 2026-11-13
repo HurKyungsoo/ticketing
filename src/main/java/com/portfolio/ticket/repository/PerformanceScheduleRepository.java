@@ -41,6 +41,10 @@ public interface PerformanceScheduleRepository extends JpaRepository<Performance
     @Query("select s.id from PerformanceSchedule s where s.performance.id = :performanceId and s.showAt >= :from order by s.showAt")
     List<Long> findIdsFrom(@Param("performanceId") Long performanceId, @Param("from") LocalDateTime from);
 
+    /** 지난 회차까지 전부. 공연을 지울 때 회차를 하나씩 잠그고 지우려고 ID 만 읽는다. */
+    @Query("select s.id from PerformanceSchedule s where s.performance.id = :performanceId order by s.showAt")
+    List<Long> findAllIdsByPerformanceId(@Param("performanceId") Long performanceId);
+
     @Query("select s.showAt from PerformanceSchedule s where s.performance.id = :performanceId and s.showAt >= :from")
     List<LocalDateTime> findShowAtsFrom(@Param("performanceId") Long performanceId, @Param("from") LocalDateTime from);
 
