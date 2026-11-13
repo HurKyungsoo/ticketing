@@ -140,9 +140,10 @@ class ScheduleRegenerationTest {
 
     @Test
     void 원문으로_만들_회차가_없으면_아무것도_지우지_않는다() {
-        // 남은 기간에 토요일이 없다.
-        LocalDate end = firstSaturday.minusDays(1);
-        Performance performance = performance(SHOW_TIMES, end);
+        // 재생성은 내일부터 보므로 남은 기간은 내일 하루뿐이고, 원문 요일은 내일이 아니다.
+        // (전에는 "토요일 전날까지"로 잡아, 금요일에 돌리면 내일인 토요일이 기간에 들어가 실패했다.)
+        LocalDate end = LocalDate.now().plusDays(1);
+        Performance performance = performance(koreanDayName(end.getDayOfWeek().plus(3)) + "(15:00)", end);
         PerformanceSchedule existing = schedule(performance, end.atTime(11, 0));
 
         regeneration.run();
@@ -208,6 +209,10 @@ class ScheduleRegenerationTest {
                 .build();
         performance.updateGuidance(showTimes, PRICES);
         return performanceRepository.save(performance);
+    }
+
+    private static String koreanDayName(DayOfWeek day) {
+        return "월화수목금토일".charAt(day.getValue() - 1) + "요일";
     }
 
     private PerformanceSchedule schedule(Performance performance, LocalDateTime showAt) {
