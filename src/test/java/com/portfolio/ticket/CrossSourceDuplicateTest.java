@@ -139,4 +139,42 @@ class CrossSourceDuplicateTest {
         assertThat(performanceRepository.count()).isEqualTo(1);
         assertThat(performanceRepository.findAll().get(0).getAddress()).isEqualTo("서울 종로구");
     }
+
+    @DisplayName("지우려는 쪽 회차에 선점된 좌석이 있으면 합치지 않고 좌석도 그대로 둔다")
+    @Test
+    void keepsDuplicateWithHeldSeat() {
+        save(SourceType.KOPIS, "다이브 [대학로]", "링크더스페이스(LINK THE SPACE)", "-");
+        Performance culture = save(SourceType.CULTURE, "[대학로] 다이브", "링크더스페이스(LINK THE SPACE) 1관", "서울 종로구");
+        PerformanceSchedule schedule = scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(culture).showAt(LocalDateTime.now().plusDays(3)).totalSeats(2).remainingSeats(2).build());
+        Seat held = Seat.builder().schedule(schedule).section("1층").rowNo(1).seatNo(1)
+                .grade(SeatGrade.R).status(SeatStatus.AVAILABLE).price(50_000).build();
+        held.hold();
+        seatRepository.save(held);
+        seatRepository.save(Seat.builder().schedule(schedule).section("1층").rowNo(1).seatNo(2)
+                .grade(SeatGrade.R).status(SeatStatus.AVAILABLE).price(50_000).build());
+
+        assertThat(syncService.mergeCrossSourceDuplicates()).isZero();
+        assertThat(performanceRepository.existsById(culture.getId())).isTrue();
+        assertThat(seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(schedule.getId())).hasSize(2);
+    }
+
+    @DisplayName("지우는 쪽의 회차와 좌석도 함께 지운다")
+    @Test
+    void removesSchedulesAndSeatsOfDuplicate() {
+        save(SourceType.KOPIS, "다이브 [대학로]", "링크더스페이스(LINK THE SPACE)", "-");
+        Performance culture = save(SourceType.CULTURE, "[대학로] 다이브", "링크더스페이스(LINK THE SPACE) 1관", "서울 종로구");
+        PerformanceSchedule past = scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(culture).showAt(LocalDateTime.now().minusDays(2)).totalSeats(1).remainingSeats(1).build());
+        PerformanceSchedule future = scheduleRepository.save(PerformanceSchedule.builder()
+                .performance(culture).showAt(LocalDateTime.now().plusDays(2)).totalSeats(1).remainingSeats(1).build());
+        for (PerformanceSchedule s : List.of(past, future)) {
+            seatRepository.save(Seat.builder().schedule(s).section("1층").rowNo(1).seatNo(1)
+                    .grade(SeatGrade.R).status(SeatStatus.AVAILABLE).price(50_000).build());
+        }
+
+        assertThat(syncService.mergeCrossSourceDuplicates()).isEqualTo(1);
+        assertThat(performanceRepository.existsById(culture.getId())).isFalse();
+        assertThat(scheduleRepository.findAllById(List.of(past.getId(), future.getId()))).isEmpty();
+    }
 }
