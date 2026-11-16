@@ -151,6 +151,15 @@ public class ReservationApiController {
     }
 
     /**
+     * 저장된 가격 원문으로 기준가(좌석 최저가)를 다시 계산한다. purge·dedupe 와 같은 이유로 따로
+     * 열어둔다 — 계산 규칙을 바꿔도 이미 쌓인 공연은 다시 수집될 때까지 옛 값이다.
+     */
+    @PostMapping("/admin/performances/base-price")
+    public ResponseEntity<?> alignBasePrices() {
+        return ResponseEntity.ok(Map.of("changed", syncService.alignBasePrices()));
+    }
+
+    /**
      * 기존 회차의 좌석을 현재 생성 규칙으로 다시 만든다. 규칙을 바꿔도 이미 쌓인 데이터에는
      * 반영되지 않으므로 필요할 때 수동으로 호출한다. 예매가 있는 회차는 건너뛴다.
      */

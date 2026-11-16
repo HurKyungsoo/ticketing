@@ -104,4 +104,15 @@ class KopisGuidancePriceParserTest {
         assertThat(parse("전석")).isNull();
         assertThat(parse(null)).isNull();
     }
+
+    @Test
+    void 기준가는_원문의_첫_금액이_아니라_좌석_최저가다() {
+        assertThat(KopisGuidanceParser.lowestSeatPrice("R석 30,000원, S석 20,000원")).isEqualTo(20_000);
+        assertThat(KopisGuidanceParser.lowestSeatPrice("VIP석 100,000원 R석 80,000원 S석 60,000원")).isEqualTo(60_000);
+        // 할인·사전예매가는 좌석 가격이 아니다
+        assertThat(KopisGuidanceParser.lowestSeatPrice("전석 35,000원, 사전예약 10,000원")).isEqualTo(35_000);
+        assertThat(KopisGuidanceParser.lowestSeatPrice("전석무료")).isNull();
+        assertThat(KopisGuidanceParser.lowestSeatPrice("전석")).isNull();
+        assertThat(KopisGuidanceParser.lowestSeatPrice(null)).isNull();
+    }
 }
