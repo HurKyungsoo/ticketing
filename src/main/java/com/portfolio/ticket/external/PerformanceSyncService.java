@@ -145,6 +145,26 @@ public class PerformanceSyncService {
      * 바뀌었다고 그 기록을 지울 수는 없다. 삭제는 {@link PerformanceRemover} 가 회차마다 좌석을
      * 먼저 잠그고 확인한 뒤 한다 — 트랜잭션 밖에서 불러야 하므로 여기엔 {@code @Transactional} 이 없다.
      */
+    /**
+     * 저장된 가격 원문으로 기준가를 다시 계산한다(멱등). 기준가를 원문의 첫 금액에서 좌석 최저가로
+     * 바꿨는데({@link KopisGuidanceParser#lowestSeatPrice}) 이미 쌓인 공연은 다시 수집될 때까지
+     * 옛 값이라 「낮은 가격순」이 계속 어긋난다. 좌석은 건드리지 않는다 — 좌석 가격은 원래 등급별
+     * 실제 가격으로 만들어지고, 기준가는 정렬과 회차가 없을 때의 "얼마부터" 표시에만 쓰인다.
+     *
+     * @return 기준가를 바꾼 공연 수
+     */
+    @Transactional
+    public int alignBasePrices() {
+        int changed = 0;
+        for (Performance performance : performanceRepository.findByPriceGuidanceIsNotNull()) {
+            if (performance.alignBasePrice(KopisGuidanceParser.lowestSeatPrice(performance.getPriceGuidance()))) {
+                changed++;
+            }
+        }
+        log.info("기준가를 좌석 최저가로 맞췄다. changed={}", changed);
+        return changed;
+    }
+
     public int purgeNonPerformances() {
         List<Performance> targets = performanceRepository.findAll().stream()
                 .filter(p -> isNotPerformance(p.getTitle()))

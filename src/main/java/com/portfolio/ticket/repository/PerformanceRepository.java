@@ -30,6 +30,9 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     List<Performance> findDetailBackfillTargets(@Param("sourceType") SourceType sourceType,
                                                 @Param("today") LocalDate today, Pageable pageable);
 
+    /** 가격 원문이 있는 공연. 기준가를 원문으로 다시 계산할 때 쓴다. */
+    List<Performance> findByPriceGuidanceIsNotNull();
+
     Optional<Performance> findByExternalId(String externalId);
 
     /** 상세 화면용. open-in-view=false 라 뷰 렌더링 전에 bookingLinks 를 미리 가져와야 한다. */

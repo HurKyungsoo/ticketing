@@ -206,6 +206,18 @@ public class Performance {
         this.detailFetchedOn = fetchedOn;
     }
 
+    /**
+     * 기준가를 원문에서 읽은 좌석 최저가로 맞춘다. 원문의 첫 금액(대개 최고 등급)으로 저장된 기존
+     * 공연을 바로잡는 용도다. 값이 없거나 이미 같으면 그대로 둔다.
+     *
+     * @return 바꿨으면 true
+     */
+    public boolean alignBasePrice(Integer lowestSeatPrice) {
+        if (lowestSeatPrice == null || lowestSeatPrice.equals(basePrice)) return false;
+        this.basePrice = lowestSeatPrice;
+        return true;
+    }
+
     public void markSchedulesRebuilt(LocalDate rebuiltOn) {
         this.schedulesRebuiltOn = rebuiltOn;
     }

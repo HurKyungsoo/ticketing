@@ -150,6 +150,20 @@ public final class KopisGuidanceParser {
     }
 
     /**
+     * 원문에서 읽은 좌석 등급 가격 중 가장 싼 값. 등급을 못 읽으면 null.
+     *
+     * <p>공연의 기준가(basePrice)는 이 값을 쓴다. 전에는 원문의 <b>첫 금액</b>을 썼는데, 원문은 대개
+     * 비싼 등급부터 적으므로({@code R석 30,000원, S석 20,000원}) 기준가가 최고가가 됐다. 그래서
+     * 「낮은 가격순」 목록에서 2만 원부터인 공연이 3만 원 공연 사이에 섞였고, 상세의 "얼마부터"와도
+     * 달랐다. 할인·사전예매가는 {@link #pricesByGrade} 가 이미 걸러 내므로 최솟값이 실제 좌석 가격이다.
+     */
+    public static Integer lowestSeatPrice(String raw) {
+        Map<SeatGrade, Integer> prices = pricesByGrade(raw);
+        if (prices == null || prices.isEmpty()) return null;
+        return prices.values().stream().min(Integer::compare).orElse(null);
+    }
+
+    /**
      * "VIP석 100,000원 R석 80,000원 S석 60,000원" 같은 자유 텍스트를 등급별로 파싱한다.
      * 등급을 하나도 못 읽으면 null 을 반환해 호출부가 basePrice 비율 계산으로 대체하게 한다.
      */

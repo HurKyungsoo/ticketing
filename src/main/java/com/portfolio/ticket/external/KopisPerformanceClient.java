@@ -235,6 +235,16 @@ public class KopisPerformanceClient {
         }
     }
 
+    /**
+     * 기준가. 원문에서 좌석 등급을 읽었으면 그중 최저가, 못 읽었으면 원문의 첫 금액(무료면 0),
+     * 원문이 없으면 목록 값. 최저가를 쓰는 이유는 {@link KopisGuidanceParser#lowestSeatPrice}.
+     */
+    private Integer basePrice(JsonNode item, String pcsGuidance, Integer fallback) {
+        if (pcsGuidance == null) return fallback;
+        Integer lowest = KopisGuidanceParser.lowestSeatPrice(pcsGuidance);
+        return lowest != null ? lowest : parser.price(item, "pcseguidance");
+    }
+
     private ExternalPerformance applyDetail(ExternalPerformance basic, byte[] body) {
         if (body == null || body.length == 0) return basic;
 
@@ -276,7 +286,7 @@ public class KopisPerformanceClient {
                     .castMembers(truncate(parser.text(item, "prfcast"), 500))
                     .totalSeatCount(facility != null && facility.seatCount() != null
                             ? facility.seatCount() : basic.getTotalSeatCount())
-                    .basePrice(pcsGuidance != null ? parser.price(item, "pcseguidance") : basic.getBasePrice())
+                    .basePrice(basePrice(item, pcsGuidance, basic.getBasePrice()))
                     .showTimesByDay(KopisGuidanceParser.showTimes(parser.text(item, "dtguidance")))
                     .pricesByGrade(KopisGuidanceParser.pricesByGrade(pcsGuidance))
                     .showTimeGuidance(parser.text(item, "dtguidance"))
