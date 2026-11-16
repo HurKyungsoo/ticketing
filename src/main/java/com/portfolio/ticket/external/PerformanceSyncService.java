@@ -184,21 +184,28 @@ public class PerformanceSyncService {
                 .filter(p -> ShowIdentity.rank(p.getSourceType()) > 0)
                 .toList();
 
-        java.util.Map<String, List<Performance>> byTitle = new java.util.HashMap<>();
+        // 같은 공연 후보끼리만 비교한다. 정규화한 제목이 같은 묶음(기본 규칙)과, 시작일·종료일이
+        // 정확히 같은 묶음(느슨한 규칙 — ShowIdentity.looselySame)을 따로 만든다.
+        java.util.Map<String, List<Performance>> candidates = new java.util.HashMap<>();
         for (Performance p : live) {
             String key = ShowIdentity.titleKey(p.getTitle());
-            if (!key.isEmpty()) byTitle.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(p);
+            if (!key.isEmpty()) candidates.computeIfAbsent("T|" + key, k -> new java.util.ArrayList<>()).add(p);
+            if (p.getStartDate() != null && p.getEndDate() != null) {
+                candidates.computeIfAbsent("D|" + p.getStartDate() + "|" + p.getEndDate(),
+                        k -> new java.util.ArrayList<>()).add(p);
+            }
         }
 
         int removed = 0;
-        for (List<Performance> group : byTitle.values()) {
+        // 한 공연이 두 묶음에 다 들 수 있으므로 지운 공연은 묶음과 상관없이 기억한다.
+        java.util.Set<Long> gone = new java.util.HashSet<>();
+        for (List<Performance> group : candidates.values()) {
             if (group.size() < 2) continue;
             // 순위 높은 것 → 먼저 들어온 것(id 작은 것) 순. 앞에서부터 남길 후보가 된다.
             List<Performance> sorted = group.stream()
                     .sorted(java.util.Comparator.comparingInt((Performance p) -> -ShowIdentity.rank(p.getSourceType()))
                             .thenComparing(Performance::getId))
                     .toList();
-            java.util.Set<Long> gone = new java.util.HashSet<>();
             for (Performance keeper : sorted) {
                 if (gone.contains(keeper.getId())) continue;
                 ShowIdentity keep = identityOf(keeper);
