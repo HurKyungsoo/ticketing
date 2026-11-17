@@ -139,11 +139,33 @@ class ScheduleRegenerationTest {
     }
 
     @Test
-    void 원문으로_만들_회차가_없으면_아무것도_지우지_않는다() {
+    void 원문으로_만들_회차가_없으면_시각은_그대로_두고_좌석만_원문_가격으로_다시_만든다() {
         // 재생성은 내일부터 보므로 남은 기간은 내일 하루뿐이고, 원문 요일은 내일이 아니다.
         // (전에는 "토요일 전날까지"로 잡아, 금요일에 돌리면 내일인 토요일이 기간에 들어가 실패했다.)
+        // 운영의 공연 371: 원문 "토요일(15:00)" 인데 공연은 12/13 일요일 하루. 회차는 남았지만 좌석이
+        // 기준가 비율 네 등급(원문에 없는 가격)이었다.
         LocalDate end = LocalDate.now().plusDays(1);
         Performance performance = performance(koreanDayName(end.getDayOfWeek().plus(3)) + "(15:00)", end);
+        schedule(performance, end.atTime(11, 0));
+
+        regeneration.run();
+
+        assertThat(showTimesOf(performance)).as("회차 시각은 그대로").containsExactly(end.atTime(11, 0));
+        PerformanceSchedule rebuilt = scheduleRepository.findAll().stream()
+                .filter(s -> s.getPerformance().getId().equals(performance.getId())).findFirst().orElseThrow();
+        assertThat(seatRepository.findByScheduleIdOrderBySectionAscRowNoAscSeatNoAsc(rebuilt.getId()))
+                .isNotEmpty()
+                .extracting(Seat::getPrice).as("좌석은 원문 가격만").containsOnly(60_000, 40_000);
+        assertThat(performanceRepository.findById(performance.getId()).orElseThrow().getSchedulesRebuiltOn())
+                .isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void 원문으로_만들_회차도_읽을_가격도_없으면_아무것도_지우지_않는다() {
+        LocalDate end = LocalDate.now().plusDays(1);
+        Performance performance = performance(koreanDayName(end.getDayOfWeek().plus(3)) + "(15:00)", end);
+        performance.updateGuidance(null, "전석");
+        performanceRepository.save(performance);
         PerformanceSchedule existing = schedule(performance, end.atTime(11, 0));
 
         regeneration.run();
@@ -151,6 +173,21 @@ class ScheduleRegenerationTest {
         assertThat(scheduleRepository.findById(existing.getId())).isPresent();
         assertThat(performanceRepository.findById(performance.getId()).orElseThrow().getSchedulesRebuiltOn())
                 .isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void 시각을_그대로_두는_경우에도_선점이_걸린_회차는_건드리지_않는다() {
+        LocalDate end = LocalDate.now().plusDays(1);
+        Performance performance = performance(koreanDayName(end.getDayOfWeek().plus(3)) + "(15:00)", end);
+        PerformanceSchedule held = schedule(performance, end.atTime(11, 0));
+        Long seatId = seatIdOf(held);
+        reservationFacade.hold(HoldStrategy.PESSIMISTIC, seatId, member.getMemberId());
+
+        regeneration.run();
+
+        assertThat(scheduleRepository.findById(held.getId())).isPresent();
+        assertThat(showTimesOf(performance)).containsExactly(end.atTime(11, 0));
+        assertThat(seatRepository.findById(seatId).orElseThrow().getPrice()).as("잡힌 좌석 가격은 그대로").isEqualTo(50_000);
     }
 
     @Test
