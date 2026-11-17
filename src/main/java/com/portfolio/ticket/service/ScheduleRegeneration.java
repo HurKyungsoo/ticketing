@@ -30,7 +30,8 @@ import java.util.Map;
  * <ul>
  *   <li>내일 이후 회차만 다룬다. 오늘 회차는 지금 예매 중일 수 있어 두지 않는다.</li>
  *   <li>예매·선점·빈자리 알림·알림이 하나라도 걸린 회차는 그대로 둔다(사용자 기록 보존).</li>
- *   <li>원문으로 만들 회차가 하나도 없으면 아무것도 지우지 않는다 — 회차가 통째로 사라지지 않게.</li>
+ *   <li>원문으로 만들 회차가 하나도 없으면 회차를 지우지 않는다 — 회차가 통째로 사라지지 않게.
+ *       가격 원문은 읽히면 지금 회차 시각 그대로 좌석만 원문 가격으로 다시 만든다.</li>
  * </ul>
  * 동시성 처리(락 순서)는 {@link ScheduleRebuildService#removeIfUntouched} 주석 참고.
  */
@@ -61,17 +62,23 @@ public class ScheduleRegeneration {
                 if (performance == null) continue;
 
                 LocalDate fromDate = laterOf(today.plusDays(1), performance.getStartDate());
+                LocalDateTime from = fromDate.atStartOfDay();
+                Map<SeatGrade, Integer> prices = KopisGuidanceParser.pricesByGrade(performance.getPriceGuidance());
                 List<LocalDateTime> wanted = wantedShowTimes(performance, fromDate);
+                if (wanted.isEmpty() && prices != null) {
+                    // 시각 원문은 못 쓰지만(공연 기간에 그 요일이 없다 — "토요일(15:00)" 인데 12/13 일요일 하루)
+                    // 가격 원문은 읽힌다. 회차를 지우면 예매할 수 없게 되니 지금 시각을 그대로 두고,
+                    // 기준가 비율로 만든 좌석만 원문 가격으로 다시 만든다.
+                    wanted = scheduleRepository.findShowAtsFrom(performanceId, from).stream().sorted().toList();
+                }
                 if (wanted.isEmpty()) {
                     rebuildService.markSkipped(performanceId);
                     continue;
                 }
 
-                LocalDateTime from = fromDate.atStartOfDay();
                 for (Long scheduleId : scheduleRepository.findIdsFrom(performanceId, from)) {
                     if (rebuildService.removeIfUntouched(scheduleId)) removed++; else kept++;
                 }
-                Map<SeatGrade, Integer> prices = KopisGuidanceParser.pricesByGrade(performance.getPriceGuidance());
                 created += rebuildService.addMissingAndMark(performanceId, wanted, prices, from);
                 done++;
             } catch (Exception e) {
