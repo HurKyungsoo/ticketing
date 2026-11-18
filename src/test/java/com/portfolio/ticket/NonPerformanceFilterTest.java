@@ -71,10 +71,16 @@ class NonPerformanceFilterTest {
         save("[강북문화재단] 2026 블로그 서포터즈 2기 모집");
         save("[마포문화재단] 2026 꿈의 스튜디오 마포 - 예술 교육 프로그램 참여자 모집");
         save("[서초문화원] 2026년 『청년 문화 살롱』 참가자 모집");
+        // 2026-11-18 전체 점검에서 홈에 떠 있던 것과 같은 유형(운영 DB 실제 제목)
+        save("2026 서울시민예술학교 서초 예술마스터 'AMUSS 합창단' 합창단원 모집");
+        save("제2기 스튜디오 순천 웹툰스쿨 교육생 모집");
+        save("[서울영화센터] <스크린 속 미술 이야기> 수강생 모집!");
+        save("2026 부평 문화예술교육 학습공동체(CoP) 모집 공고");
+        save("문화예술교육 매개자 네트워크 <모닥> 신청 안내 - (8/20)");
 
         int purged = syncService.purgeNonPerformances();
 
-        assertThat(purged).isEqualTo(3);
+        assertThat(purged).isEqualTo(8);
         assertThat(performanceRepository.count()).isZero();
     }
 
@@ -82,18 +88,23 @@ class NonPerformanceFilterTest {
      * 오탐 확인. 아래 제목들은 전부 실데이터에 있는 <b>진짜 공연</b>이다.
      * "공모"나 "교육"을 표지에 넣었다면 여기서 사라졌을 것이다.
      */
-    @DisplayName("제목에 공모·교육이 들어간 실제 공연은 남는다")
+    @DisplayName("제목에 공모·교육·단원·클래스·신청이 들어간 실제 공연은 남는다")
     @Test
     void keepsRealPerformancesWithSimilarWords() {
         save("창작희곡공모 대상 수상작, 역행기");
         save("여름, 낭독시즌: 창작산실 대본공모 낭독공연");
         save("브런치 콘서트 아트리움: 국립예술단체 영아티스트 시리즈, 국립국악관현악단 청년교육단원");
         save("2026 드영미술관 청년작가 공모선정전 《기록되지 않은 기록》");
+        // "단원"·"클래스"·"워크샵"·"신청"이 들어간 실제 공연(운영 DB)
+        save("국립극단 청년교육단원 연극제: 어떤 연극, 하늘 Ciels");
+        save("음악공방 피오레움, 윤피아노 클래스 초청 연주회: 김지우");
+        save("뮤지컬 워크샵, 시지프스");
+        save("대전 플루트 콰이어 샬롱 콘서트 시리즈: 연주자의 신청곡 [대전]");
 
         int purged = syncService.purgeNonPerformances();
 
         assertThat(purged).isZero();
-        assertThat(performanceRepository.count()).isEqualTo(4);
+        assertThat(performanceRepository.count()).isEqualTo(8);
     }
 
     @DisplayName("멱등이다 — 두 번 돌려도 두 번째는 지울 게 없다")
