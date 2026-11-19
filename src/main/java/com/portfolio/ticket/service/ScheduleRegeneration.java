@@ -66,8 +66,8 @@ public class ScheduleRegeneration {
                 Map<SeatGrade, Integer> prices = KopisGuidanceParser.pricesByGrade(performance.getPriceGuidance());
                 List<LocalDateTime> wanted = wantedShowTimes(performance, fromDate);
                 if (wanted.isEmpty() && prices != null) {
-                    // 시각 원문은 못 쓰지만(공연 기간에 그 요일이 없다 — "토요일(15:00)" 인데 12/13 일요일 하루)
-                    // 가격 원문은 읽힌다. 회차를 지우면 예매할 수 없게 되니 지금 시각을 그대로 두고,
+                    // 시각 원문은 못 쓰지만(공연 기간에 그 요일이 없고 요일마다 시각도 달라 어느 쪽인지
+                    // 모른다 — KopisGuidanceParser.fitToPeriod) 가격 원문은 읽힌다. 회차를 지우면 예매할 수 없게 되니 지금 시각을 그대로 두고,
                     // 기준가 비율로 만든 좌석만 원문 가격으로 다시 만든다.
                     wanted = scheduleRepository.findShowAtsFrom(performanceId, from).stream().sorted().toList();
                 }
@@ -92,7 +92,9 @@ public class ScheduleRegeneration {
     }
 
     private static List<LocalDateTime> wantedShowTimes(Performance performance, LocalDate from) {
-        Map<DayOfWeek, List<LocalTime>> byDay = KopisGuidanceParser.showTimes(performance.getShowTimeGuidance());
+        Map<DayOfWeek, List<LocalTime>> byDay = KopisGuidanceParser.fitToPeriod(
+                KopisGuidanceParser.showTimes(performance.getShowTimeGuidance()),
+                performance.getStartDate(), performance.getEndDate());
         List<LocalDateTime> wanted = new ArrayList<>();
         if (byDay == null || byDay.isEmpty()) return wanted;
 

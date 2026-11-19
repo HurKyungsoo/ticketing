@@ -3,6 +3,7 @@ package com.portfolio.ticket.external;
 import com.portfolio.ticket.domain.SeatGrade;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -121,19 +122,55 @@ public final class KopisGuidanceParser {
         }
     }
 
-    /** 월~일 순서가 DayOfWeek 순서와 같다는 걸 이용해 범위를 펼친다. 역방향(토~월 등)은 지원하지 않고 건너뛴다. */
+    /**
+     * 요일 범위를 펼친다. 주를 넘어가는 범위도 그대로 읽는다 — "토요일 ~ 월요일" 은 토·일·월이고,
+     * "목요일 ~ 수요일" 은 한 바퀴 전부다. 전에는 역방향을 건너뛰어서, "목요일 ~ 수요일(19:30)" 인
+     * 12/24(목) 하루 공연이 같은 문구 안의 "수요일(19:30)" 만 읽혀 회차 시각을 잃었다.
+     */
     private static Set<DayOfWeek> expandRange(char fromChar, char toChar) {
         DayOfWeek from = DAY_CHAR.get(fromChar);
         DayOfWeek to = DAY_CHAR.get(toChar);
-        if (from == null || to == null || from.getValue() > to.getValue()) {
+        if (from == null || to == null) {
             return EnumSet.noneOf(DayOfWeek.class);
         }
 
-        Set<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
-        for (int v = from.getValue(); v <= to.getValue(); v++) {
-            days.add(DayOfWeek.of(v));
+        Set<DayOfWeek> days = EnumSet.of(from);
+        for (DayOfWeek d = from; d != to; ) {
+            d = d.plus(1);
+            days.add(d);
         }
         return days;
+    }
+
+    /**
+     * 원문 요일이 공연 기간에 하나도 없을 때, 원문 시각을 기간의 모든 날에 쓴다.
+     *
+     * <p>KOPIS 원문의 요일이 틀린 공연이 있다. 12/13(일) 하루 공연인데 원문은 "토요일(15:00)" 이고
+     * 포스터는 "일요일 오후 3시" 다. 요일대로만 맞추면 만들 날이 없어서, 전에는 기본 분포에서 고른
+     * 14:00 회차가 생겼다 — 요일만 틀렸지 맞는 시각(15:00)을 버린 셈이다.
+     *
+     * <p>7일 이상인 기간에는 모든 요일이 들어 있으므로 이 규칙은 6일 이하 공연에만 걸린다. 기간의
+     * 일부라도 원문 요일과 맞으면 원문 그대로 쓴다(그날만 공연하는 게 맞을 수 있다). 요일마다 시각이
+     * 다르면("토요일(15:00), 일요일(14:00)") 어느 시각이 맞는지 알 수 없으니 손대지 않는다.
+     *
+     * @return 고쳐 쓴 요일별 시각. 고칠 필요가 없거나 고칠 수 없으면 받은 값 그대로.
+     */
+    public static Map<DayOfWeek, List<LocalTime>> fitToPeriod(Map<DayOfWeek, List<LocalTime>> byDay,
+                                                              LocalDate start, LocalDate end) {
+        if (byDay == null || byDay.isEmpty() || start == null || end == null || end.isBefore(start)) {
+            return byDay;
+        }
+        for (LocalDate d = start; !d.isAfter(end) && !d.isAfter(start.plusDays(6)); d = d.plusDays(1)) {
+            if (byDay.containsKey(d.getDayOfWeek())) return byDay;
+        }
+        Set<Set<LocalTime>> distinct = new LinkedHashSet<>();
+        byDay.values().forEach(times -> distinct.add(new TreeSet<>(times)));
+        if (distinct.size() != 1) return byDay;
+
+        List<LocalTime> times = new ArrayList<>(distinct.iterator().next());
+        Map<DayOfWeek, List<LocalTime>> everyDay = new EnumMap<>(DayOfWeek.class);
+        for (DayOfWeek day : DayOfWeek.values()) everyDay.put(day, times);
+        return everyDay;
     }
 
     private static List<LocalTime> extractTimes(String segment) {

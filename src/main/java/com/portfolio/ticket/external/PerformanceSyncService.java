@@ -432,7 +432,8 @@ public class PerformanceSyncService {
     }
 
     private void generateSchedulesFrom(Performance performance, ExternalPerformance external, LocalDate from) {
-        Map<DayOfWeek, List<LocalTime>> showTimesByDay = external.getShowTimesByDay();
+        Map<DayOfWeek, List<LocalTime>> showTimesByDay = KopisGuidanceParser.fitToPeriod(
+                external.getShowTimesByDay(), performance.getStartDate(), performance.getEndDate());
         int totalSeats = performance.getTotalSeatCount() == null ? 200 : performance.getTotalSeatCount();
 
         List<PerformanceSchedule> created = (showTimesByDay == null || showTimesByDay.isEmpty())

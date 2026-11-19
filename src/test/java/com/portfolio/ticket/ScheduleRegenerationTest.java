@@ -142,8 +142,8 @@ class ScheduleRegenerationTest {
     void 원문으로_만들_회차가_없으면_시각은_그대로_두고_좌석만_원문_가격으로_다시_만든다() {
         // 재생성은 내일부터 보므로 남은 기간은 내일 하루뿐이고, 원문 요일은 내일이 아니다.
         // (전에는 "토요일 전날까지"로 잡아, 금요일에 돌리면 내일인 토요일이 기간에 들어가 실패했다.)
-        // 운영의 공연 371: 원문 "토요일(15:00)" 인데 공연은 12/13 일요일 하루. 회차는 남았지만 좌석이
-        // 기준가 비율 네 등급(원문에 없는 가격)이었다.
+        // 원문 요일은 기간 첫날(사흘 전)과 같다 — 그 요일에 하는 게 맞을 수 있어 시각을 다른 날로
+        // 옮기지 않는다(KopisGuidanceParser.fitToPeriod). 지난 회차라 만들 회차가 없다.
         LocalDate end = LocalDate.now().plusDays(1);
         Performance performance = performance(koreanDayName(end.getDayOfWeek().plus(3)) + "(15:00)", end);
         schedule(performance, end.atTime(11, 0));
@@ -158,6 +158,20 @@ class ScheduleRegenerationTest {
                 .extracting(Seat::getPrice).as("좌석은 원문 가격만").containsOnly(60_000, 40_000);
         assertThat(performanceRepository.findById(performance.getId()).orElseThrow().getSchedulesRebuiltOn())
                 .isEqualTo(LocalDate.now());
+    }
+
+    @Test
+    void 원문_요일이_공연_기간에_하나도_없으면_원문_시각을_그날에_쓴다() {
+        // 운영의 공연 371: 12/13(일) 하루 공연인데 원문은 "토요일(15:00)", 포스터는 "일요일 오후 3시".
+        // 전에는 요일이 안 맞아 기본 분포 시각(14:00) 회차가 남았다.
+        LocalDate day = LocalDate.now().plusDays(2);
+        Performance performance = oneDayPerformance(koreanDayName(day.getDayOfWeek().minus(1)) + "(15:00)", day);
+        PerformanceSchedule wrong = schedule(performance, day.atTime(14, 0));
+
+        regeneration.run();
+
+        assertThat(scheduleRepository.findById(wrong.getId())).as("기본 분포 시각 회차는 지운다").isEmpty();
+        assertThat(showTimesOf(performance)).containsExactly(day.atTime(15, 0));
     }
 
     @Test
@@ -241,6 +255,21 @@ class ScheduleRegenerationTest {
                 .startDate(LocalDate.now().minusDays(3))
                 .endDate(endDate)
                 // 좌석이 적으면 전부 앞줄(VIP)이 되어 등급별 가격을 확인할 수 없다.
+                .totalSeatCount(100)
+                .basePrice(50_000)
+                .build();
+        performance.updateGuidance(showTimes, PRICES);
+        return performanceRepository.save(performance);
+    }
+
+    private Performance oneDayPerformance(String showTimes, LocalDate day) {
+        Performance performance = Performance.builder()
+                .externalId("KOPIS-REGEN-" + System.nanoTime())
+                .sourceType(SourceType.KOPIS)
+                .title("하루 공연")
+                .venue("테스트홀")
+                .startDate(day)
+                .endDate(day)
                 .totalSeatCount(100)
                 .basePrice(50_000)
                 .build();
