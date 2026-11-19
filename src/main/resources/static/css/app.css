@@ -813,9 +813,13 @@ a { color: inherit; text-decoration: none; }
 
 .house {
   display: flex; flex-direction: column; gap: var(--seat-gap);
-  /* 호로 올라간 첫 줄 양끝이 구역 이름을 덮지 않도록. 가장 넓은 줄(44석)의 상승분만큼 준다.
+  /* 호로 올라간 첫 줄 양끝이 구역 이름을 덮지 않도록, 이 구역 가장 긴 줄의 상승분만큼 준다.
+     식은 .rowlabel 의 호 오프셋과 같다(--max-n 은 seatzone.html 이 구역마다 적는다).
+     종전에는 가장 넓은 홀의 44석 줄 기준(좌석 1.2칸)으로 모든 구역에 똑같이 줬다 — 6~8석
+     구역은 실제 상승이 1px 도 안 되는데 모바일(확대, 좌석 24px)에서 29px 를 비웠고, 아래
+     구역 이름 칸과 합쳐 이름과 1열 사이가 68px 였다(2026-11-18 전체 점검 발견 5).
      --i/--n 이 없는 경우(조각을 거치지 않고 렌더된 좌석)의 안전한 기본값도 여기 둔다 — 호가 0 이 된다. */
-  padding-top: calc(var(--seat-size) * 1.2);
+  padding-top: calc(((var(--max-n, 1) - 1) / 2) * ((var(--max-n, 1) - 1) / 2) * var(--seat-size) * 0.0024);
   --i: 0;
   --n: 1;
   /*
@@ -931,7 +935,11 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
    를 여기서 같이 고정해 두는 이유도 이 계산을 예측 가능하게 하려는 것이다. 구역 이름
    font-size 를 바꾸면 이 값도 같이 맞춰야 한다.
 */
-.housescroll.has-sides .floor { position: relative; padding-top: 57px; }
+/* 대개 이름은 알파벳 한 글자라 한 줄(17.5px) + .floorname 의 간격(14px)이면 된다.
+   두 줄로 감길 수 있는 긴 이름(3자 이상, 예: 「왼쪽사이드」)만 두 줄 분량을 잡는다 —
+   템플릿이 floor-longname 을 붙인다. 모두 57px 로 두면 한 글자 이름 아래로 한 줄이 통째로 빈다. */
+.housescroll.has-sides .floor { position: relative; padding-top: 32px; }
+.housescroll.has-sides .floor.floor-longname { padding-top: 57px; }
 /*
    구역 이름이 없는 구역에서는 그 자리를 비워두지 않는다.
 
@@ -1004,8 +1012,9 @@ body.page-seatmap.tone-light .housescroll.has-sides .rowlabel {
    라벨은 홀당 수십 개뿐이라 --seat-size 에 의존해도 확대 성능에 영향이 없다.
 */
 .house { --arc-strength: -0.24%; --arc-unit: -0.0024; }
-/* 무대 뒤 구역은 무대가 아래쪽에 있으니 반대로 휜다. */
-.zoneline-rear .house { --arc-strength: 0.24%; --arc-unit: 0.0024; }
+/* 무대 뒤 구역은 무대가 아래쪽에 있으니 반대로 휜다. 양끝이 위가 아니라 아래로 내려가므로
+   구역 이름 쪽에 호 여백(.house padding-top)을 둘 필요가 없다. */
+.zoneline-rear .house { --arc-strength: 0.24%; --arc-unit: 0.0024; padding-top: 0; }
 
 .seat {
   --u: calc(var(--i) - (var(--n) - 1) / 2);
