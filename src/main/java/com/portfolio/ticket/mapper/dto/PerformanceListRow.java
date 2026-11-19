@@ -41,6 +41,30 @@ public class PerformanceListRow {
      */
     private Double distanceKm;
 
+    /**
+     * 기준가 — 좌석 등급 중 최저가(PR #30 이후 수집 규칙). 낮은 가격순 정렬이 쓰는 값과 같다.
+     * 가격을 못 읽은 공연은 null 이다.
+     */
+    private Integer basePrice;
+
+    /** 카드에 적을 가격. 상세 화면 「최저가」와 같은 표기 — "무료" / "40,000원~". 모르면 null. */
+    public String priceLabel() {
+        return priceFor(basePrice);
+    }
+
+    /**
+     * 찜 목록은 이 DTO 가 아니라 엔티티를 쓰므로 같은 표기를 정적 메서드로도 연다.
+     *
+     * <p>0 은 "무료"로 적는다. 기준가가 0 인데 가격 원문에 금액이 있는 공연("어린이 무료, 일반
+     * 10,000원")은 기준가를 좌석 최저가로 맞춘 뒤(#30) 운영 DB 에 0 건이다 — 기준가 0 인 142 건은
+     * 모두 실제 무료 공연이었다.
+     */
+    public static String priceFor(Integer price) {
+        if (price == null || price < 0) return null;
+        if (price == 0) return "무료";
+        return String.format(Locale.KOREAN, "%,d원~", price);
+    }
+
     /** "850m" / "1.2km". 1km 미만은 미터로 반올림한다 — 가까운 거리일수록 자릿수 오차가 체감에 크다. */
     public String distanceLabel() {
         if (distanceKm == null) return null;

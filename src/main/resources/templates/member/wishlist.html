@@ -37,14 +37,18 @@
             <!-- 목록 카드와 같은 두 줄 규칙(list.html 주석 참고). 이 화면만 카드가 엔티티라
                  회차 문구는 서비스가 만들어 넘긴 것(nextShows)을 쓴다. -->
             <p class="meta" th:with="next=${nextShows[w.performance.id]},
-                                     run=${T(com.portfolio.ticket.mapper.dto.PerformanceListRow).periodFor(w.performance.startDate, w.performance.endDate, today)}">
+                                     run=${T(com.portfolio.ticket.mapper.dto.PerformanceListRow).periodFor(w.performance.startDate, w.performance.endDate, today)},
+                                     price=${T(com.portfolio.ticket.mapper.dto.PerformanceListRow).priceFor(w.performance.basePrice)}">
                 <span class="m-venue" th:text="${w.performance.venue}">공연장</span>
                 <span class="m-date" th:if="${next != null}"
                       th:classappend="${next.soon} ? 'm-date--soon'">
                     <span class="sr-only">다음 공연 </span><span th:text="${next.text}">8/27(목) 19:30</span>
                 </span>
-                <span class="m-run">
-                    <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${run}">6.4 – 8.30</span>
+                <span class="m-runrow">
+                    <span class="m-run">
+                        <span class="sr-only" th:if="${next != null}">공연 기간 </span><span th:text="${run}">6.4 – 8.30</span>
+                    </span>
+                    <span class="m-price" th:if="${price != null}"><span class="sr-only">관람료 </span><span th:text="${price}">40,000원~</span></span>
                 </span>
             </p>
         </a>

@@ -159,6 +159,7 @@
                p.category     AS category,
                p.start_date   AS start_date,
                p.end_date     AS end_date,
+               p.base_price   AS base_price,
                <!--
                    카드에 적을 "다음 회차". 임박순 정렬이 쓰는 것과 같은 조각이라 필터의
                    회차 조건(월·요일·시간대)이 그대로 걸린다 — 8월을 보고 있는데 카드에
@@ -284,6 +285,7 @@
                p.category     AS category,
                p.start_date   AS start_date,
                p.end_date     AS end_date,
+               p.base_price   AS base_price,
                (SELECT MIN(ps2.show_at) FROM performance_schedule ps2
                  WHERE ps2.performance_id = p.id AND ps2.show_at &gt; #{bookableFrom}) AS next_show_at,
                (SELECT ps3.remaining_seats FROM performance_schedule ps3
