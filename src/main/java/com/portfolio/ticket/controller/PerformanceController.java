@@ -12,6 +12,7 @@ import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.service.NotFoundException;
 import com.portfolio.ticket.service.PerformanceCompareService;
 import com.portfolio.ticket.service.PerformanceListService;
+import com.portfolio.ticket.service.PerformanceRedirectService;
 import com.portfolio.ticket.service.PerformanceSummaryView;
 import com.portfolio.ticket.service.ScheduleDayView;
 import com.portfolio.ticket.service.SeatMapView;
@@ -20,13 +21,16 @@ import com.portfolio.ticket.service.RestockAlertService;
 import com.portfolio.ticket.service.ReviewService;
 import com.portfolio.ticket.service.WishlistService;
 import com.portfolio.ticket.security.CustomUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URLEncoder;
@@ -61,6 +65,7 @@ public class PerformanceController {
     private final WishlistService wishlistService;
     private final RestockAlertService restockAlertService;
     private final ReviewService reviewService;
+    private final PerformanceRedirectService redirectService;
 
     /**
      * 공유 카드용 절대주소의 기준. Thymeleaf 3.1 부터 템플릿에서 {@code #request} 를 못 쓰므로
@@ -255,9 +260,17 @@ public class PerformanceController {
     @GetMapping("/performances/{id}")
     public String detail(@PathVariable Long id,
                           @AuthenticationPrincipal CustomUserDetails principal,
+                          HttpServletRequest request,
                           Model model) {
-        Performance performance = performanceRepository.findByIdWithBookingLinks(id)
-                .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
+        Performance performance = performanceRepository.findByIdWithBookingLinks(id).orElse(null);
+        if (performance == null) {
+            // 다른 소스의 같은 공연과 합쳐져 지워진 번호면 남긴 공연으로 보낸다. 영구 이동(301)이라
+            // 검색엔진도 옛 주소를 새 주소로 바꾼다.
+            Long movedTo = redirectService.movedTo(id)
+                    .orElseThrow(() -> new NotFoundException("공연을 찾을 수 없습니다."));
+            request.setAttribute(View.RESPONSE_STATUS_ATTRIBUTE, HttpStatus.MOVED_PERMANENTLY);
+            return "redirect:/performances/" + movedTo;
+        }
 
         LocalDateTime now = LocalDateTime.now();
         // 지난 회차는 목록에서 뺀다. 종전에는 그대로 노출돼서, 기간이 시작된 공연은

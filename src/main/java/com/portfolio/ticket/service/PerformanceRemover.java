@@ -1,8 +1,10 @@
 package com.portfolio.ticket.service;
 
 import com.portfolio.ticket.domain.Performance;
+import com.portfolio.ticket.domain.PerformanceRedirect;
 import com.portfolio.ticket.domain.Wishlist;
 import com.portfolio.ticket.repository.NotificationRepository;
+import com.portfolio.ticket.repository.PerformanceRedirectRepository;
 import com.portfolio.ticket.repository.PerformanceRepository;
 import com.portfolio.ticket.repository.PerformanceScheduleRepository;
 import com.portfolio.ticket.repository.ReservationRepository;
@@ -11,6 +13,8 @@ import com.portfolio.ticket.repository.WishlistRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDateTime;
 
 /**
  * 수집 배치가 공연 하나를 통째로 지울 때(다른 소스의 같은 공연, 모집 공고) 쓰는 단일 경로.
@@ -35,6 +39,7 @@ public class PerformanceRemover {
     private final WishlistRepository wishlistRepository;
     private final NotificationRepository notificationRepository;
     private final ReviewRepository reviewRepository;
+    private final PerformanceRedirectRepository redirectRepository;
     private final ScheduleRebuildService scheduleRebuildService;
     private final TransactionTemplate transactionTemplate;
 
@@ -69,6 +74,10 @@ public class PerformanceRemover {
         if (keeper != null) {
             keeper.fillMissingLocation(performance.getAddress(), performance.getLatitude(), performance.getLongitude());
             moveWishlists(performance, keeper);
+            // 옛 주소가 404 대신 남긴 공연으로 가게 남긴다. 지우는 쪽을 가리키던 기록도 함께 옮긴다.
+            redirectRepository.repoint(performanceId, keeper.getId());
+            redirectRepository.save(PerformanceRedirect.builder()
+                    .fromId(performanceId).toId(keeper.getId()).createdAt(LocalDateTime.now()).build());
         }
         // 찜·알림·관람평은 공연을 FK 로 참조한다. 공연이 사라지면 가리킬 대상이 없다 —
         // 금전·입장 권리가 걸린 예매와 달라서 함께 지운다(예매가 있으면 위에서 이미 남겼다).
