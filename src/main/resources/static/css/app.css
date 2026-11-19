@@ -2305,6 +2305,26 @@ body.page-list .card .m-date {
 body.page-list .card .m-date { background: rgba(233, 180, 76, .16); color: var(--brass); }
 body.page-list .card .m-date--soon { background: var(--brass); color: var(--ink); }
 body.page-list .card .m-run { font-size: 12px; }
+/*
+   가격. 기간과 한 줄에 둔다 — 줄을 하나 더 쓰면 가격을 못 읽은 공연(null)만 한 줄 짧아져
+   카드 높이가 다시 갈린다. 낮은 가격순 정렬의 근거가 되는 값이라 굵게 두되, 색은 회차 알약이
+   쓰는 브라스를 빌리지 않는다 — 브라스는 "지금 급한 것"이다.
+
+   한 줄에 안 들어가면 가격이 다음 줄로 내려간다(flex-wrap). 처음엔 기간을 말줄임으로 줄였는데,
+   모바일 두 칸 카드(약 140px)에서 해를 넘기는 공연이 "2026.11.19 – 2…" 로 잘려 종료일이
+   사라졌다. 기간과 가격은 둘 다 잘리면 안 되는 값이라 줄이는 대신 접는다. 접힌 카드는 한 줄
+   길어지지만 메타가 카드 바닥에 붙어 있어(.meta margin-top: auto) 같은 줄 카드끼리 높이는 맞는다.
+*/
+body.page-list .card .m-runrow {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: 2px 8px; min-width: 0;
+}
+body.page-list .card .m-runrow .m-run { white-space: nowrap; }
+body.page-list .card .m-price {
+  flex: none; font-size: 13px; font-weight: 700; color: var(--paper); white-space: nowrap;
+}
+body.tone-light .card .m-price,
+body.page-home .homesec .card .m-price { color: var(--ink); }
 
 /* 주변 공연 찾기 전용. 거리를 공연장과 한 줄에 묶는다 — 별도 줄로 빼면 이 화면
    카드만 한 줄 더 길어져 다른 화면의 카드 높이와 어긋난다. */
