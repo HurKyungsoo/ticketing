@@ -25,6 +25,8 @@ public class PublicDataProperties {
     private long kopisMinCallIntervalMs = 600;
     /** KOPIS 방화벽에 막혔을 때 다시 시도하기 전 기다리는 시간. */
     private long kopisBlockWaitMs = 15_000;
+    /** KOPIS 서버에 연결되지 않거나 응답이 끊겼을 때 다시 시도하기 전 기다리는 시간. */
+    private long kopisIoRetryWaitMs = 60_000;
     /** 수집 뒤 상세를 다시 받아 채울 공연 수의 하루 상한. 0 이면 끈다. */
     private int kopisDetailBackfillLimit = 300;
     /** 회차·좌석을 원문으로 다시 만들 공연 수의 하루 상한. 0 이면 끈다. */

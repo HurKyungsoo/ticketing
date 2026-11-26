@@ -183,6 +183,8 @@ publicdata:
   # 호출이 몰리면 KOPIS 방화벽에 막힌다. 간격 근거는 KopisPerformanceClient 주석 참고.
   kopis-min-call-interval-ms: 600
   kopis-block-wait-ms: 15000
+  # KOPIS 서버 연결 실패·응답 끊김 때 다시 시도하기 전 기다리는 시간(3번까지).
+  kopis-io-retry-wait-ms: 60000
   # 수집 뒤 상세를 놓친 공연을 다시 받는 하루 상한. 한 건에 호출 1~2번이라 300건이면 10분 안팎이다.
   kopis-detail-backfill-limit: 300
   # 저장된 원문으로 회차·좌석을 다시 만드는 하루 상한. 공연당 회차 5개 안팎, 회차당 최대 1,500석이다.

@@ -117,7 +117,7 @@ controller/  요청 검증과 응답 변환만. 로직 금지.
 - 새 필드를 파싱할 때는 `PublicDataParser` 의 후보 키 방식을 따를 것.
   기관마다 필드명이 다르다.
 - API 키를 코드나 `application.yml` 에 하드코딩하지 말 것. 환경변수만.
-- KOPIS 호출은 반드시 `KopisPerformanceClient.call()` 을 거칠 것. 호출 간격과 방화벽 차단 재시도가
+- KOPIS 호출은 반드시 `KopisPerformanceClient.call()` 을 거칠 것. 호출 간격과 방화벽 차단·연결 실패 재시도가
   여기 있다. 직접 `RestClient` 를 부르면 수집이 다시 막힌다.
 - 목록 호출 실패를 빈 목록으로 돌려주지 말 것. 수집이 성공으로 기록되어 증분 기준일이 넘어간다.
 

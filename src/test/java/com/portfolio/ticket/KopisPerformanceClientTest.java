@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.net.SocketTimeoutException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.ExpectedCount.times;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -50,6 +52,7 @@ class KopisPerformanceClientTest {
         properties.setKopisServiceKey("key");
         properties.setKopisMinCallIntervalMs(0);
         properties.setKopisBlockWaitMs(0);
+        properties.setKopisIoRetryWaitMs(0);
         client = new KopisPerformanceClient(builder.build(), properties, new PublicDataParser());
     }
 
@@ -149,6 +152,52 @@ class KopisPerformanceClientTest {
         assertThatThrownBy(() -> client.fetchDetail(basic())).isInstanceOf(KopisFetchException.class);
     }
 
+    @Test
+    void 목록_연결이_한번_안_되면_다시_시도해서_이어_받는다() {
+        // 2026-11-24 새벽 배치: 목록 첫 페이지 Connect timed out 으로 그날 KOPIS 수집을 통째로 건너뛰었다
+        server.expect(requestTo(containsString("/pblprfr?"))).andRespond(connectTimeout());
+        expectList();
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(xml(DETAIL_XML));
+
+        List<ExternalPerformance> result = client.fetchPage(1, null);
+
+        assertThat(result).singleElement()
+                .satisfies(p -> assertThat(p.getRunningTime()).isEqualTo("50분"));
+        server.verify();
+    }
+
+    @Test
+    void 연결이_계속_안_되면_세번_더_시도한_뒤_수집을_중단한다() {
+        // 빈 목록으로 넘기면 수집이 성공으로 기록되어 증분 기준일이 넘어간다 — 반드시 예외여야 한다
+        server.expect(times(4), requestTo(containsString("/pblprfr?"))).andRespond(connectTimeout());
+
+        assertThatThrownBy(() -> client.fetchPage(1, null))
+                .isInstanceOf(KopisFetchException.class)
+                .hasMessageContaining("연결되지 않아");
+        server.verify();
+    }
+
+    @Test
+    void 상세_호출이_끊겨도_다시_시도해서_채운다() {
+        expectList();
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(connectTimeout());
+        server.expect(requestTo(containsString(DETAIL_PATH))).andRespond(xml(DETAIL_XML));
+
+        assertThat(client.fetchPage(1, null)).singleElement()
+                .satisfies(p -> assertThat(p.getRunningTime()).isEqualTo("50분"));
+        server.verify();
+    }
+
+    @Test
+    void 상세_연결이_계속_안_되면_그_건을_넘기지_않고_수집을_중단한다() {
+        // KOPIS 가 내려간 것 — 남은 상세도 다 실패하므로 멈추고, 기준일을 지켜 다음 배치가 다시 받게 한다
+        expectList();
+        server.expect(times(4), requestTo(containsString(DETAIL_PATH))).andRespond(connectTimeout());
+
+        assertThatThrownBy(() -> client.fetchPage(1, null)).isInstanceOf(KopisFetchException.class);
+        server.verify();
+    }
+
     private static ExternalPerformance basic() {
         return ExternalPerformance.builder()
                 .externalId("KOPIS-PF1")
@@ -164,6 +213,10 @@ class KopisPerformanceClientTest {
 
     private static org.springframework.test.web.client.ResponseCreator blocked() {
         return withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.TEXT_HTML).body(BLOCKED_HTML);
+    }
+
+    private static org.springframework.test.web.client.ResponseCreator connectTimeout() {
+        return withException(new SocketTimeoutException("Connect timed out"));
     }
 
     private static org.springframework.test.web.client.ResponseCreator xml(String body) {
