@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -54,6 +55,15 @@ public class KopisPerformanceClient {
     private static final String WAF_BLOCK_MARKER = "Request Blocked";
     private static final int MAX_BLOCK_RETRIES = 3;
 
+    /**
+     * 연결이 안 되거나(Connect timed out) 응답 도중 끊긴 호출도 다시 시도한다. 2026-11-24 새벽 배치에서
+     * 목록 첫 페이지가 연결 시간 초과로 실패해 그날 KOPIS 수집을 통째로 건너뛰었다(다음 날 기준일부터 다시 받아
+     * 잃은 건 없었지만 신규 공연이 하루 늦었다). 일시적인 끊김이면 1분 뒤에는 대개 붙는다.
+     * 3번 다 실패하면 KOPIS 가 내려가 있다는 뜻이라, WAF 차단과 마찬가지로 수집을 멈춘다 — 남은 상세 호출도
+     * 같은 이유로 실패할 테고, 멈추면 증분 기준일이 그대로라 다음 배치가 이 구간을 다시 받는다.
+     */
+    private static final int MAX_IO_RETRIES = 3;
+
     private final RestClient publicDataRestClient;
     private final PublicDataProperties properties;
     private final PublicDataParser parser;
@@ -88,9 +98,14 @@ public class KopisPerformanceClient {
         return result;
     }
 
-    /** 모든 KOPIS 호출이 지나는 길. 호출 간격을 지키고, WAF 에 막히면 풀릴 때까지 기다렸다 다시 시도한다. */
+    /**
+     * 모든 KOPIS 호출이 지나는 길. 호출 간격을 지키고, WAF 에 막히거나 연결이 안 되면 기다렸다 다시 시도한다.
+     * 두 횟수는 따로 센다 — 이유가 다르고, 한쪽이 풀린 뒤 다른 쪽이 나는 경우까지 한 상한에 묶을 까닭이 없다.
+     */
     private byte[] call(URI uri) {
-        for (int retry = 0; ; retry++) {
+        int blockRetries = 0;
+        int ioRetries = 0;
+        while (true) {
             waitForCallSlot();
             try {
                 return publicDataRestClient.get().uri(uri).retrieve().body(byte[].class);
@@ -98,11 +113,19 @@ public class KopisPerformanceClient {
                 if (!e.getResponseBodyAsString().contains(WAF_BLOCK_MARKER)) {
                     throw e;
                 }
-                if (retry >= MAX_BLOCK_RETRIES) {
+                if (blockRetries++ >= MAX_BLOCK_RETRIES) {
                     throw new KopisFetchException("KOPIS WAF 차단이 풀리지 않아 수집을 중단합니다.", e);
                 }
                 log.warn("KOPIS WAF 에 막혔습니다. {}ms 후 다시 시도합니다.", properties.getKopisBlockWaitMs());
                 sleep(properties.getKopisBlockWaitMs());
+            } catch (ResourceAccessException e) {
+                // 연결 시간 초과·응답 시간 초과·연결 끊김. HTTP 응답을 받은 오류(4xx/5xx)는 여기 오지 않는다.
+                if (ioRetries++ >= MAX_IO_RETRIES) {
+                    throw new KopisFetchException("KOPIS 서버에 연결되지 않아 수집을 중단합니다. msg=" + e.getMessage(), e);
+                }
+                log.warn("KOPIS 호출이 연결 문제로 실패했습니다({}). {}ms 후 다시 시도합니다.",
+                        e.getMessage(), properties.getKopisIoRetryWaitMs());
+                sleep(properties.getKopisIoRetryWaitMs());
             }
         }
     }
